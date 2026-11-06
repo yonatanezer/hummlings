@@ -65,6 +65,19 @@ export class NativeEngine implements AudioEngine {
     for (const k of [...this.buffers.keys()]) if (!files.includes(k)) this.buffers.delete(k);
   }
 
+  async decodeBank(files: string[], loopSamples: number): Promise<Record<string, Float32Array>> {
+    const ctx = this.ctx!;
+    const out: Record<string, Float32Array> = {};
+    for (const f of files) {
+      const buf = await ctx.decodeAudioData(LOOP_ASSETS[f]!);
+      const ch = buf.getChannelData(0);
+      const a = new Float32Array(loopSamples);
+      a.set(ch.subarray(0, Math.min(loopSamples, ch.length)));
+      out[f] = a;
+    }
+    return out;
+  }
+
   start(bpm: number, provider: BarProvider): void {
     this.stop();
     const ctx = this.ctx!;

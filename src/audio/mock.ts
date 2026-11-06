@@ -17,6 +17,9 @@ export class MockEngine implements AudioEngine {
 
   async init(): Promise<void> {}
   async loadStage(stage: Stage): Promise<void> { this.loaded = stage.id; }
+  async decodeBank(files: string[], loopSamples: number): Promise<Record<string, Float32Array>> {
+    return Object.fromEntries(files.map((f) => [f, new Float32Array(loopSamples)]));
+  }
   start(bpm: number, provider: BarProvider): void {
     this.bpm = bpm; this.provider = provider; this.state = 'running'; this.beats = 0; this.bar = -1; this.plans = [];
     this.ask(0);

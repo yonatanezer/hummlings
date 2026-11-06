@@ -21,7 +21,7 @@ export interface Layout {
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
 /** Geometry of the stage screen (see LAYOUT.md). W x H = safe-area-reduced window in points. */
-export function computeLayout(W: number, H: number, creatureCount = 16): Layout {
+export function computeLayout(W: number, H: number, creatureCount = 16, padX = 0): Layout {
   const u = clamp(Math.min(W / 844, H / 390), 0.8, 2.2);
   const stageH = 0.65 * H;
   const size = clamp(Math.min(0.32 * H, (0.8 * W) / TUNING.maxSpots), TUNING.minTouchPt, 200);
@@ -32,7 +32,7 @@ export function computeLayout(W: number, H: number, creatureCount = 16): Layout 
   const tray: Rect = { x: 0, y: stageH, w: W, h: H - stageH };
   const groupGap = 16 * u;
   const groups = Math.ceil(creatureCount / 4);
-  const pad = 12 * u;
+  const pad = Math.max(12 * u, padX);
   const ideal = clamp(0.56 * tray.h, TUNING.minTouchPt, 112);
   const fit = (W - pad * 2 - (groups - 1) * groupGap) / creatureCount; // slot size at which all creatures fit without scrolling
   const slot = fit >= TUNING.minTouchPt ? Math.min(ideal, fit) : ideal; // phones: keep it big and scroll
