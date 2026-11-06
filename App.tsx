@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Localization from 'expo-localization';
 import { StatusBar } from 'expo-status-bar';
 import { getStage, STAGES } from './src/content';
+import { getPurchases } from './src/app/purchases';
 import { ProgressProvider, useProgress } from './src/app/progress';
 import { resolveLang, setLang } from './src/i18n';
 import { SettingsScreen } from './src/screens/SettingsScreen';
@@ -24,7 +25,7 @@ type Route =
   | { name: 'songs'; from: Route } | { name: 'player'; songId: string } | { name: 'unlock' } | { name: 'settings' };
 
 function Root() {
-  const { progress, ready } = useProgress();
+  const { progress, ready, update } = useProgress();
   const [route, setRoute] = useState<Route>({ name: 'splash' });
   const [gateFor, setGateFor] = useState<null | 'unlock'>(null);
   const [debug, setDebug] = useState('');
@@ -35,6 +36,12 @@ function Root() {
     setLang(resolveLang(progress.settings.language, device));
   }, [progress.settings.language]);
   useEffect(() => { I18nManager.allowRTL(false); I18nManager.forceRTL(false); }, []);
+
+  // Refunded purchases lock again on the next launch; offline (null) keeps the cached entitlement.
+  useEffect(() => {
+    if (!ready || !progress.unlocked) return;
+    void getPurchases().hasEntitlement().then((has) => { if (has === false) update((p) => ({ ...p, unlocked: false })); });
+  }, [ready]);
 
   const done = useCallback(() => setRoute({ name: 'select' }), []);
   if (!ready) return <View style={{ flex: 1, backgroundColor: COLORS.sky }} />;
