@@ -17,3 +17,4 @@
 - Plain state-based navigation in App.tsx instead of Expo Router — 7 screens, no deep links, fewer moving parts.
 - Touch handling is a pure `GestureTracker` in core fed by raw RN touch events (no gesture-handler API) — fully unit-tested, supports multi-touch.
 - Look sheet audio is mp3 (the artifact host does not serve m4a); the app itself ships m4a.
+- Art redo after look-sheet feedback ("creatures are ugly"): generic blobs replaced by 8 recognisable species (cat, bunny, bear, mouse, frog, bird, dino, axolotl) with kawaii faces (big low eyes, blush, tiny mouth, belly), still drawn in code and still one body family per layer. Schema field `ears` became `species`.

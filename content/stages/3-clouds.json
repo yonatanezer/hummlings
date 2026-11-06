@@ -67,7 +67,7 @@
       "shape": {
         "body": "round",
         "eyes": "sleepy",
-        "ears": "floppy",
+        "species": "dino",
         "accessory": "scarf"
       }
     },
@@ -114,7 +114,7 @@
       "shape": {
         "body": "round",
         "eyes": "dots",
-        "ears": "pointy",
+        "species": "cat",
         "accessory": "none"
       }
     },
@@ -192,7 +192,7 @@
       "shape": {
         "body": "round",
         "eyes": "sparkle",
-        "ears": "round",
+        "species": "bear",
         "accessory": "star"
       }
     },
@@ -225,7 +225,7 @@
       "shape": {
         "body": "round",
         "eyes": "big",
-        "ears": "none",
+        "species": "frog",
         "accessory": "hat"
       }
     },
@@ -271,7 +271,7 @@
       "shape": {
         "body": "wide",
         "eyes": "dots",
-        "ears": "none",
+        "species": "axolotl",
         "accessory": "star"
       }
     },
@@ -301,7 +301,7 @@
       "shape": {
         "body": "wide",
         "eyes": "sparkle",
-        "ears": "floppy",
+        "species": "bunny",
         "accessory": "hat"
       }
     },
@@ -331,7 +331,7 @@
       "shape": {
         "body": "wide",
         "eyes": "big",
-        "ears": "pointy",
+        "species": "mouse",
         "accessory": "scarf"
       }
     },
@@ -353,7 +353,7 @@
       "shape": {
         "body": "wide",
         "eyes": "sleepy",
-        "ears": "round",
+        "species": "bird",
         "accessory": "none"
       }
     },
@@ -399,7 +399,7 @@
       "shape": {
         "body": "tall",
         "eyes": "sparkle",
-        "ears": "round",
+        "species": "cat",
         "accessory": "scarf"
       }
     },
@@ -433,7 +433,7 @@
       "shape": {
         "body": "tall",
         "eyes": "big",
-        "ears": "none",
+        "species": "bear",
         "accessory": "none"
       }
     },
@@ -457,7 +457,7 @@
       "shape": {
         "body": "tall",
         "eyes": "sleepy",
-        "ears": "floppy",
+        "species": "frog",
         "accessory": "star"
       }
     },
@@ -487,7 +487,7 @@
       "shape": {
         "body": "tall",
         "eyes": "dots",
-        "ears": "pointy",
+        "species": "dino",
         "accessory": "hat"
       }
     },
@@ -507,7 +507,7 @@
       "shape": {
         "body": "small",
         "eyes": "big",
-        "ears": "pointy",
+        "species": "bunny",
         "accessory": "star"
       }
     },
@@ -534,7 +534,7 @@
       "shape": {
         "body": "small",
         "eyes": "sleepy",
-        "ears": "round",
+        "species": "mouse",
         "accessory": "hat"
       }
     },
@@ -560,7 +560,7 @@
       "shape": {
         "body": "small",
         "eyes": "dots",
-        "ears": "none",
+        "species": "bird",
         "accessory": "scarf"
       }
     },
@@ -580,7 +580,7 @@
       "shape": {
         "body": "small",
         "eyes": "sparkle",
-        "ears": "floppy",
+        "species": "axolotl",
         "accessory": "none"
       }
     }

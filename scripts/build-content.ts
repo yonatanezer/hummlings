@@ -2,7 +2,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { buildPattern, onsetsOf } from '../src/core/patterns';
 import { validateStage } from '../src/core/schema';
-import { LAYER_COLORS, type Creature, type Stage } from '../src/core/types';
+import { LAYER_COLORS, SPECIES, type Creature, type Stage } from '../src/core/types';
 import { shade } from './colors';
 import { BODY_OF, LAYER_ORDER, STAGES } from './stage-defs';
 
@@ -20,7 +20,7 @@ export function buildStage(stageIdx: number): Stage {
       creatures.push({
         id, layer, loopFile: `${id}.m4a`, onsets: onsetsOf(events),
         color: shade(LAYER_COLORS[layer], d.hueShift, LIGHTNESS[v]!),
-        shape: { body: BODY_OF[layer], eyes: d.eyes[(v + li) % 4]!, ears: d.ears[(v * 3 + li) % 4]!, accessory: d.accessories[(v + li * 2) % 4]! },
+        shape: { body: BODY_OF[layer], eyes: d.eyes[(v + li) % 4]!, species: SPECIES[(v * 2 + li + stageIdx * 3) % 8]!, accessory: d.accessories[(v + li * 2) % 4]! },
       });
     }
   });

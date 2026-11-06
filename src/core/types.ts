@@ -11,13 +11,14 @@ export const LAYER_COLORS: Record<Layer, string> = {
 
 export type BodyShape = 'round' | 'wide' | 'tall' | 'small';
 export type EyeStyle = 'dots' | 'big' | 'sleepy' | 'sparkle';
-export type EarStyle = 'none' | 'pointy' | 'round' | 'floppy' | 'antenna';
-export type Accessory = 'none' | 'bow' | 'hat' | 'crown' | 'flower' | 'glasses' | 'scarf' | 'star';
+export type Species = 'cat' | 'bunny' | 'bear' | 'mouse' | 'frog' | 'bird' | 'dino' | 'axolotl';
+export const SPECIES: readonly Species[] = ['cat', 'bunny', 'bear', 'mouse', 'frog', 'bird', 'dino', 'axolotl'];
+export type Accessory = 'none' | 'bow' | 'hat' | 'crown' | 'flower' | 'scarf' | 'star';
 
 export interface ShapeParams {
   body: BodyShape;
   eyes: EyeStyle;
-  ears: EarStyle;
+  species: Species;
   accessory: Accessory;
 }
 

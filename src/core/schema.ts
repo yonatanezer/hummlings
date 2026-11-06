@@ -14,8 +14,8 @@ const creatureSchema = z.object({
   shape: z.object({
     body: z.enum(['round', 'wide', 'tall', 'small']),
     eyes: z.enum(['dots', 'big', 'sleepy', 'sparkle']),
-    ears: z.enum(['none', 'pointy', 'round', 'floppy', 'antenna']),
-    accessory: z.enum(['none', 'bow', 'hat', 'crown', 'flower', 'glasses', 'scarf', 'star']),
+    species: z.enum(['cat', 'bunny', 'bear', 'mouse', 'frog', 'bird', 'dino', 'axolotl']),
+    accessory: z.enum(['none', 'bow', 'hat', 'crown', 'flower', 'scarf', 'star']),
   }),
 });
 
