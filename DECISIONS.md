@@ -18,3 +18,5 @@
 - Touch handling is a pure `GestureTracker` in core fed by raw RN touch events (no gesture-handler API) — fully unit-tested, supports multi-touch.
 - Look sheet audio is mp3 (the artifact host does not serve m4a); the app itself ships m4a.
 - Art redo after look-sheet feedback ("creatures are ugly"): generic blobs replaced by 8 recognisable species (cat, bunny, bear, mouse, frog, bird, dino, axolotl) with kawaii faces (big low eyes, blush, tiny mouth, belly), still drawn in code and still one body family per layer. Schema field `ears` became `species`.
+- Look and sound approved by Yonatan ("סבבה") — art direction is now final.
+- "More melodies": kept 16 creatures per world (tray, schema and the 8,008-combo audit depend on it) but every melody creature of every world is now a different composed tune (rhythm cell x world contour, test-enforced). Adding more melodies later = add cells/contours in src/core/patterns.ts.

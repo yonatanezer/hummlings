@@ -53,7 +53,7 @@ STAGES.forEach((d, si) => {
     const layerIdx = ['drums', 'bass', 'melody', 'voice'].indexOf(c.layer);
     const v = i % 4;
     const seed = seedOf(si, layerIdx, v);
-    emit(c.loopFile, buildPattern({ stage: base, layer: c.layer, variant: v, seed, swing: d.swing }), c.layer, si, seed);
+    emit(c.loopFile, buildPattern({ stage: base, layer: c.layer, variant: v, seed, swing: d.swing, world: si }), c.layer, si, seed);
   });
   stage.combos.forEach((c, i) => emit(c.bonusLoopFile, buildBonusPattern(base, i, 9000 + si * 10 + i), 'bonus', si, 9000 + si * 10 + i));
 });

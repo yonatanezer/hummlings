@@ -51,7 +51,7 @@ describe('content audit (every stage, every creature, every combo)', () => {
     stages.forEach((s, si) => {
       const scale = scalePitchClasses(s.key);
       s.creatures.forEach((c, i) => {
-        const events = buildPattern({ stage: s, layer: c.layer, variant: i % 4, seed: seedOf(si, ['drums', 'bass', 'melody', 'voice'].indexOf(c.layer), i % 4), swing: DEFS[si]!.swing });
+        const events = buildPattern({ stage: s, layer: c.layer, variant: i % 4, seed: seedOf(si, ['drums', 'bass', 'melody', 'voice'].indexOf(c.layer), i % 4), swing: DEFS[si]!.swing, world: si });
         expect(events.length, c.id).toBeGreaterThan(0);
         expect(onsetsOf(events)).toEqual(c.onsets);
         if (c.layer === 'drums') return;
@@ -82,5 +82,22 @@ describe('content audit (every stage, every creature, every combo)', () => {
     expect(hz(REGISTER.bass.hi)).toBeLessThan(250);
     expect(hz(REGISTER.voice.lo)).toBeGreaterThanOrEqual(250);
     expect(hz(REGISTER.voice.hi)).toBeLessThanOrEqual(500);
+  });
+});
+
+describe('melody variety', () => {
+  it('every melody creature of every world is a different tune (rhythm + interval shape)', () => {
+    const sigs = new Set<string>();
+    let count = 0;
+    stages.forEach((s, si) => {
+      s.creatures.filter((c) => c.layer === 'melody').forEach((c, v) => {
+        const ev = buildPattern({ stage: s, layer: 'melody', variant: v, seed: seedOf(si, 2, v), swing: DEFS[si]!.swing, world: si });
+        const ivs = ev.slice(1).map((e, i) => e.midi! - ev[i]!.midi!);
+        sigs.add(ev.map((e) => e.beat.toFixed(2)).join(',') + '|' + ivs.join(','));
+        count++;
+      });
+    });
+    expect(count).toBe(12);
+    expect(sigs.size).toBe(12);
   });
 });

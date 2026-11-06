@@ -32,9 +32,30 @@ interface Ctx {
   rand: () => number;
   variant: number; // 0..3
   swing: number; // 0..0.3 of an 8th
+  world: number; // stage index: selects the melodic contour family so each world has its own tunes
 }
 const bars = TUNING.loopBars;
 const B = TUNING.beatsPerBar;
+
+/** Rhythm cells (beat, duration) for one bar and melodic contours (pentatonic steps) for 4 bars: call, answer, call, resolve.
+ *  rhythm = variant, contour = world, so every melody creature of every world is a different tune. */
+const RHYTHMS: [number, number][][] = [
+  [[0, 0.75], [0.75, 0.75], [1.5, 0.5], [2, 1], [3, 1]],
+  [[0, 1], [1, 0.5], [1.5, 0.5], [2, 1.5], [3.5, 0.5]],
+  [[0.5, 0.5], [1, 0.5], [2, 0.5], [2.5, 1], [3.5, 0.5]],
+  [[0, 0.5], [0.5, 0.5], [1, 1], [2.5, 0.5], [3, 1]],
+];
+const CONTOURS: number[][][] = [
+  [[0, 1, 2, 1, 0], [2, 3, 2, 1, 2], [0, 1, 3, 2, 1], [3, 2, 1, 0, -1]], // rising question, falling answer
+  [[2, 2, 3, 2, 0], [1, 1, 2, 1, -1], [2, 3, 4, 3, 2], [3, 1, 2, 0, 0]], // repeated notes with leaps
+  [[0, 2, 1, 3, 2], [4, 3, 2, 1, 2], [0, 2, 4, 3, 1], [2, 1, 0, 1, 0]], // wide skips, gentle landing
+];
+/** Notes of one bar of the composed tune: [beat, duration, pool index]. */
+export function tuneBar(world: number, variant: number, bar: number, anchor: number): [number, number, number][] {
+  const cell = RHYTHMS[variant % 4]!;
+  const steps = CONTOURS[world % 3]![bar % 4]!;
+  return cell.map(([b, d], i) => [b, d, anchor + steps[i % steps.length]!]);
+}
 
 const nearest = (pool: number[], target: number): number =>
   pool.reduce((best, m) => (Math.abs(m - target) < Math.abs(best - target) ? m : best), pool[0]!);
@@ -98,9 +119,6 @@ function melody(c: Ctx): NoteEvent[] {
   const out: NoteEvent[] = [];
   const { lo, hi } = REGISTER.melody;
   const scalePool = notesIn(c.scale, lo, hi);
-  const r = c.rand;
-  let idx = Math.floor(scalePool.length / 2);
-  const motif = Array.from({ length: 4 }, () => pick([-2, -1, 0, 1, 2], r));
   for (let bar = 0; bar < bars; bar++) {
     const chord = c.chords[bar]!;
     const tones = notesIn(chordPitchClasses(chord).filter((p) => c.scale.includes(p)), lo, hi);
@@ -113,12 +131,12 @@ function melody(c: Ctx): NoteEvent[] {
         for (let i = 0; i < 8; i++) add(i * 0.5, 0.45, seq[(i < 4 ? i : 7 - i) % seq.length]!, i % 2 ? 0.55 : 0.8);
         break;
       }
-      case 1: { // hook: motif walking the scale, long note at the end of bar
-        for (let i = 0; i < 4; i++) {
-          idx = Math.max(0, Math.min(scalePool.length - 1, idx + motif[(i + bar) % 4]!));
-          add(i * 0.75, 0.7, scalePool[idx]!, 0.8);
+      case 1: { // hook: a composed tune (world contour x rhythm cell), resolving on a chord tone at the end
+        const anchor = Math.floor(scalePool.length / 2) - 1;
+        for (const [beat, dur, k] of tuneBar(c.world, 1, bar, anchor)) {
+          const m = scalePool[Math.max(0, Math.min(scalePool.length - 1, k))]!;
+          add(beat, dur * 0.9, bar === bars - 1 && beat >= 3 ? nearest(pool, m) : m, 0.8);
         }
-        add(3, 1, nearest(pool, scalePool[idx]!), 0.7);
         break;
       }
       case 2: { // chimes: sparse long bells
@@ -126,12 +144,12 @@ function melody(c: Ctx): NoteEvent[] {
         if (bar % 2) add(3.5, 0.5, pool[1] ?? pool[0]!, 0.4);
         break;
       }
-      default: { // counter line: call & response, syncopated
-        const steps = [0.5, 1.5, 2, 3];
-        steps.forEach((s, i) => {
-          idx = Math.max(0, Math.min(scalePool.length - 1, idx + (i % 2 ? 1 : -1) * (1 + (r() > 0.6 ? 1 : 0))));
-          add(s, 0.6, scalePool[idx]!, 0.75);
-        });
+      default: { // counter melody: composed tune with the syncopated rhythm cell, a third lower than the hook
+        const anchor = Math.floor(scalePool.length / 2) - 3;
+        for (const [beat, dur, k] of tuneBar(c.world, 3, bar, anchor)) {
+          const m = scalePool[Math.max(0, Math.min(scalePool.length - 1, k))]!;
+          add(beat, dur * 0.85, bar === bars - 1 && beat >= 3 ? nearest(pool, m) : m, 0.72);
+        }
       }
     }
   }
@@ -168,11 +186,12 @@ export interface PatternParams {
   variant: number; // 0..3
   seed: number;
   swing?: number;
+  world?: number;
 }
 
 export function buildPattern(p: PatternParams): NoteEvent[] {
   const chords = [...p.stage.chordLoop].sort((a, b) => a.bar - b.bar);
-  const ctx: Ctx = { chords, scale: scalePitchClasses(p.stage.key), rand: rng(p.seed), variant: p.variant, swing: p.swing ?? 0 };
+  const ctx: Ctx = { chords, scale: scalePitchClasses(p.stage.key), rand: rng(p.seed), variant: p.variant, swing: p.swing ?? 0, world: p.world ?? 0 };
   const events = { drums, bass, melody, voice }[p.layer](ctx);
   return events.filter((e) => e.beat >= 0 && e.beat < TUNING.beatsPerBar * bars).sort((a, b) => a.beat - b.beat);
 }

@@ -16,7 +16,7 @@ export function buildStage(stageIdx: number): Stage {
   LAYER_ORDER.forEach((layer, li) => {
     for (let v = 0; v < 4; v++) {
       const id = `${d.id}_${layer}_${v + 1}`;
-      const events = buildPattern({ stage: stageBase, layer, variant: v, seed: seedOf(stageIdx, li, v), swing: d.swing });
+      const events = buildPattern({ stage: stageBase, layer, variant: v, seed: seedOf(stageIdx, li, v), swing: d.swing, world: stageIdx });
       creatures.push({
         id, layer, loopFile: `${id}.m4a`, onsets: onsetsOf(events),
         color: shade(LAYER_COLORS[layer], d.hueShift, LIGHTNESS[v]!),
