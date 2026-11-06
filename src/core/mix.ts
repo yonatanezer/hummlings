@@ -93,3 +93,17 @@ export function lufs(buf: Float32Array, sampleRate = TUNING.sampleRate): number 
   const ms = sum / Math.max(1, buf.length);
   return ms > 0 ? -0.691 + 10 * Math.log10(ms) : -Infinity;
 }
+
+/** Transfer curve for the live master soft-clipper (WaveShaper): linear up to the knee, then eases to the ceiling. */
+export function softClipCurve(points = 2049): Float32Array {
+  const ceil = Math.pow(10, TUNING.masterLimiterDb / 20);
+  const knee = 0.5; // below -6 dBFS the curve is perfectly linear
+  const out = new Float32Array(points);
+  for (let i = 0; i < points; i++) {
+    const x = (i / (points - 1)) * 2 - 1;
+    const a = Math.abs(x);
+    const y = a <= knee ? a : knee + (ceil - knee) * Math.tanh((a - knee) / (ceil - knee));
+    out[i] = Math.sign(x) * y;
+  }
+  return out;
+}
