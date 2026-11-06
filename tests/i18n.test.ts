@@ -25,3 +25,12 @@ describe('strings', () => {
     expect(resolveLang('he', 'en-US')).toBe('he');
   });
 });
+
+describe('help guide', () => {
+  it('has a sentence for each of the 7 lessons in both languages', () => {
+    for (let i = 1; i <= 7; i++) {
+      expect(en[`help.step${i}` as keyof typeof en].length).toBeGreaterThan(10);
+      expect(he[`help.step${i}` as keyof typeof he].length).toBeGreaterThan(10);
+    }
+  });
+});

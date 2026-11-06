@@ -12,6 +12,7 @@ import { renderPng } from './render-lib';
 import { renderClip } from './anim-clip';
 import { drawComboCard } from '../src/ui/draw/comboCard';
 import { IDLE_POSE, drawCreature } from '../src/ui/draw/creature';
+import { drawHelpStep } from '../src/ui/draw/help';
 import { drawSplash } from '../src/ui/draw/logo';
 import { drawScene, type SceneInput } from '../src/ui/draw/scene';
 import { drawStageCard } from '../src/ui/draw/stageCard';
@@ -24,7 +25,7 @@ const stages = loadStages();
 const shots: { file: string; title: string; note?: string }[] = [];
 const save = (file: string, buf: Buffer, title: string, note?: string) => { writeFileSync(`${OUT}/${file}`, buf); shots.push({ file, title, note }); };
 
-function scene(stage: Stage, W: number, H: number, over: Partial<SceneInput> = {}, picks = [0, 5, 10, 14, 3, 8]): SceneInput {
+function scene(stage: Stage, W: number, H: number, over: Partial<SceneInput> = {}, picks = [0, 8, 14, 20, 3, 10]): SceneInput {
   const layout = computeLayout(W, H, undefined, 40);
   const ids = picks.map((i) => stage.creatures[i]!.id);
   return {
@@ -37,14 +38,14 @@ async function main() {
   const pond = stages[0]!;
   // 1. all 48 creatures, one image per stage
   for (const st of stages) {
-    const png = await renderPng(1000, 640, (sk, c) => {
-      c.drawRect(sk.XYWHRect(0, 0, 1000, 640), gradientPaint(sk, 0, 0, 0, 640, [st.palette.sky, st.palette.floor]));
+    const png = await renderPng(1200, 640, (sk, c) => {
+      c.drawRect(sk.XYWHRect(0, 0, 1200, 640), gradientPaint(sk, 0, 0, 0, 640, [st.palette.sky, st.palette.floor]));
       st.creatures.forEach((cr, i) => {
-        const col = i % 4, row = Math.floor(i / 4);
-        drawCreature(sk, c, cr, 140 + col * 240, 170 + row * 150, 120, { ...IDLE_POSE, mouth: (i % 3) * 0.35 });
+        const row = Math.floor(i / 6), col = i % 6;
+        drawCreature(sk, c, cr, 100 + col * 200, 160 + row * 150, 110, { ...IDLE_POSE, mouth: (i % 3) * 0.35 });
       });
     }, 1.5);
-    save(`creatures_${st.id}.png`, png, `Creatures: ${st.id}`, 'Rows = layers (drums round, bass wide, melody tall, voice small); 4 variants each.');
+    save(`creatures_${st.id}.png`, png, `Creatures: ${st.id}`, 'Rows = layers (drums round, bass wide, melody tall, voice small); 6 creatures each.');
   }
   // 2. stage states (stage 1, 844x390 and others)
   const states: [string, string, Partial<SceneInput>, string?][] = [
@@ -64,7 +65,7 @@ async function main() {
     save(`${file}.png`, await renderPng(844, 390, (sk, c) => drawScene(sk, c, s), 2), title, note);
   }
   for (const st of stages.slice(1)) {
-    const s = scene(st, 844, 390, {}, [1, 4, 9, 13, 2, 15]);
+    const s = scene(st, 844, 390, {}, [1, 7, 15, 19, 4, 22]);
     s.celebration = { celebrationId: st.combos[1]!.celebrationId, creatureIds: s.placed.slice(0, 4).map((p) => p.id), startBeat: 2 };
     save(`stage_${st.id}.png`, await renderPng(844, 390, (sk, c) => drawScene(sk, c, s), 2), `World: ${st.id} (with celebration)`);
   }
@@ -87,9 +88,13 @@ async function main() {
 
   // 4b. animated clips: creatures hop in one by one, bounce on the beat, mouths follow the notes, ears sway; then a celebration
   mkdirSync(`${OUT}/video`, { recursive: true });
-  await renderClip(pond, `${OUT}/video/stage.mp4`, { seconds: 12, picks: [0, 5, 10, 14, 3, 8], celebrationAtBeat: 12 });
-  await renderClip(stages[1]!, `${OUT}/video/fair.mp4`, { seconds: 8, picks: [1, 4, 9, 13, 2, 15] });
-  await renderClip(stages[2]!, `${OUT}/video/clouds.mp4`, { seconds: 8, picks: [2, 6, 8, 12, 5, 11], celebrationAtBeat: 8 });
+  await renderClip(pond, `${OUT}/video/stage.mp4`, { seconds: 12, picks: [0, 8, 14, 20, 3, 10], celebrationAtBeat: 12 });
+  await renderClip(stages[1]!, `${OUT}/video/fair.mp4`, { seconds: 8, picks: [1, 7, 15, 19, 4, 22] });
+  await renderClip(stages[2]!, `${OUT}/video/clouds.mp4`, { seconds: 8, picks: [2, 9, 13, 18, 5, 21], celebrationAtBeat: 8 });
+  // 4c. how-to-play guide: one frame per lesson
+  for (let i = 0; i < 7; i++) {
+    save(`help_${i + 1}.png`, await renderPng(560, 308, (sk, c) => drawHelpStep(sk, c, pond, i, [2000, 2000, 2000, 1800, 1500, 3000, 1000][i]!, 560, 308), 2), `How to play, lesson ${i + 1}`, 'Each lesson loops as a short animation in the app, with one sentence of text (English and Hebrew).');
+  }
   // 5. audio: every stage-1 loop + one full mix
   mkdirSync(`${OUT}/audio`, { recursive: true });
   const audio: { file: string; title: string }[] = [];

@@ -8,6 +8,7 @@ export interface Progress {
   unlocked: boolean; // cached entitlement
   settings: Settings;
   firstDropDone: boolean;
+  helpSeen: boolean; // the how-to-play guide was opened at least once
 }
 
 export interface Settings {
@@ -24,6 +25,7 @@ export const defaultProgress = (): Progress => ({
   unlocked: false,
   settings: { musicVolume: 0.8, haptics: true, reduceMotion: false, language: 'system' },
   firstDropDone: false,
+  helpSeen: false,
 });
 
 /** Tolerant loader: unknown / corrupt data becomes defaults, known fields are kept. */
@@ -44,6 +46,7 @@ export function parseProgress(raw: unknown): Progress {
       language: s.language === 'en' || s.language === 'he' ? s.language : 'system',
     },
     firstDropDone: r.firstDropDone === true,
+    helpSeen: r.helpSeen === true,
   };
 }
 

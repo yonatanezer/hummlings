@@ -1,10 +1,12 @@
 import { Canvas, Circle, Group, Path, RoundedRect } from '@shopify/react-native-skia';
 
-export type IconName = 'back' | 'record' | 'stop' | 'book' | 'note' | 'gear' | 'trash' | 'play' | 'pause' | 'share' | 'close' | 'pencil' | 'lock' | 'sweep' | 'restore' | 'check' | 'full' | 'info';
+export type IconName = 'back' | 'record' | 'stop' | 'book' | 'note' | 'gear' | 'trash' | 'play' | 'pause' | 'share' | 'close' | 'pencil' | 'lock' | 'sweep' | 'restore' | 'check' | 'full' | 'info' | 'next' | 'help';
 
 // Icons are drawn from SVG path data on a 24x24 grid (original shapes, no icon font).
 const STROKES: Partial<Record<IconName, string>> = {
   back: 'M15 5 L8 12 L15 19',
+  next: 'M9 5 L16 12 L9 19',
+  help: 'M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8 M12 17.2v.3',
   book: 'M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z M8 4v13',
   note: 'M9 18V6l10-2v12',
   trash: 'M5 7h14 M9 7V4h6v3 M7 7l1 13h8l1-13',
@@ -33,6 +35,7 @@ export function Icon({ name, size = 28, color = '#FFFFFF' }: { name: IconName; s
         {name === 'gear' && <Circle cx={12} cy={12} r={4.5} color={color} style="stroke" strokeWidth={2.2} />}
         {name === 'lock' && <RoundedRect x={5} y={11} width={14} height={10} r={2.5} color={color} />}
         {name === 'full' && <Circle cx={12} cy={12} r={9} color={color} style="stroke" strokeWidth={2} />}
+        {name === 'help' && <Circle cx={12} cy={12} r={9} color={color} style="stroke" strokeWidth={2} />}
         {name === 'info' && <Circle cx={12} cy={12} r={9} color={color} style="stroke" strokeWidth={2} />}
         {STROKES[name] && <Path path={STROKES[name]!} color={color} style="stroke" strokeWidth={2.2} strokeCap="round" strokeJoin="round" />}
       </Group>

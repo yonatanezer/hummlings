@@ -23,10 +23,11 @@ interface Props {
   stage: Stage;
   onBack: () => void;
   onSongs: () => void;
+  onHelp: () => void;
   onDebug?: (s: string) => void;
 }
 
-export function StageScreen({ stage, onBack, onSongs, onDebug }: Props) {
+export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { rtl } = useLang();
@@ -226,6 +227,7 @@ export function StageScreen({ stage, onBack, onSongs, onDebug }: Props) {
           <IconButton icon={recording ? 'stop' : 'record'} label={recording ? t('a11y.stopRecord') : t('a11y.record')} color={recording ? '#FFFFFF' : COLORS.rec} bg={recording ? COLORS.rec : undefined} onPress={onRecord} />
           <IconButton icon="book" label={t('a11y.comboBook')} onPress={() => setBook(true)} />
           <IconButton icon="note" label={t('a11y.songs')} onPress={onSongs} />
+          <IconButton icon="help" label={t('a11y.help')} onPress={onHelp} />
         </View>
       </View>
       <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 14, top: layout.stageH - 70 }]}>

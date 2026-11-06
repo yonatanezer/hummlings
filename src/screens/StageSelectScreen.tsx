@@ -10,7 +10,7 @@ import { StageCardArt } from '../ui/StageCardArt';
 import { COLORS } from '../ui/theme';
 import { hapticLight } from '../ui/haptics';
 
-export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs }: { onPick: (id: string) => void; onLocked: () => void; onSettings: () => void; onSongs: () => void }) {
+export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHelp }: { onPick: (id: string) => void; onLocked: () => void; onSettings: () => void; onSongs: () => void; onHelp: () => void }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { rtl } = useLang();
@@ -23,7 +23,10 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs }: { o
       <View style={[styles.top, { top: insets.top + 6, left: insets.left + 10, right: insets.right + 10, flexDirection: row }]}>
         <IconButton icon="note" label={t('a11y.songs')} onPress={onSongs} />
         <View style={{ flex: 1 }} />
+        <View style={{ flexDirection: row, gap: 10 }}>
+        <IconButton icon="help" label={t('a11y.help')} onPress={onHelp} badge={!progress.helpSeen} />
         <IconButton icon="gear" label={t('a11y.settings')} onPress={onSettings} />
+        </View>
       </View>
       <View style={[styles.cards, { flexDirection: 'row' }]}>
         {STAGES.map((st) => {
