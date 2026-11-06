@@ -9,6 +9,7 @@ import { TUNING } from '../src/core/tuning';
 import { encodeWav } from '../src/core/wav';
 import { decodeLoop, loadStages } from './qa-lib';
 import { renderPng } from './render-lib';
+import { renderClip } from './anim-clip';
 import { drawComboCard } from '../src/ui/draw/comboCard';
 import { IDLE_POSE, drawCreature } from '../src/ui/draw/creature';
 import { drawSplash } from '../src/ui/draw/logo';
@@ -84,6 +85,11 @@ async function main() {
     pond.combos.forEach((cb, i) => { c.save(); c.translate(24 + i * 270, 20); drawComboCard(sk, c, pond, cb, 250, 190, i === 0); c.restore(); });
   }, 2), 'Combo book: one discovered, two secret', 'Four dots (app UI) light up for creatures on stage: an honest hint.');
 
+  // 4b. animated clips: creatures hop in one by one, bounce on the beat, mouths follow the notes, ears sway; then a celebration
+  mkdirSync(`${OUT}/video`, { recursive: true });
+  await renderClip(pond, `${OUT}/video/stage.mp4`, { seconds: 12, picks: [0, 5, 10, 14, 3, 8], celebrationAtBeat: 12 });
+  await renderClip(stages[1]!, `${OUT}/video/fair.mp4`, { seconds: 8, picks: [1, 4, 9, 13, 2, 15] });
+  await renderClip(stages[2]!, `${OUT}/video/clouds.mp4`, { seconds: 8, picks: [2, 6, 8, 12, 5, 11], celebrationAtBeat: 8 });
   // 5. audio: every stage-1 loop + one full mix
   mkdirSync(`${OUT}/audio`, { recursive: true });
   const audio: { file: string; title: string }[] = [];
@@ -111,12 +117,13 @@ async function main() {
 body{background:var(--bg);color:var(--text);font:16px/1.5 system-ui,sans-serif;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 h1{margin:0 0 4px;font-size:28px;text-wrap:balance}h2{margin:32px 0 8px;font-size:20px}p{color:var(--dim);margin:4px 0;max-width:65ch}
 .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px}
-figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:10px;min-width:0}img{width:100%;height:auto;border-radius:10px;display:block}figcaption{padding:8px 4px 0}
+figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:10px;min-width:0}video,img{width:100%;height:auto;border-radius:10px;display:block}figcaption{padding:8px 4px 0}
 .a{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:8px}.a div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px;min-width:0}audio{width:100%}
 .sw{display:flex;gap:8px;flex-wrap:wrap}.sw span{padding:8px 12px;border-radius:10px;color:#111;font-weight:600}
 </style>
 <h1>Hummlings look and sound sheet</h1><p>Rendered headlessly with the same drawing code the app uses. Waiting for your approval of the art direction.</p>
 <div class="sw"><span style="background:#FF7AA8">drums #FF7AA8</span><span style="background:#7A8CFF">bass #7A8CFF</span><span style="background:#5FE3C0">melody #5FE3C0</span><span style="background:#FFC857">voice #FFC857</span></div>
+<h2>Animation</h2><p>Hop on every note, squash and stretch on the beat, mouths follow the notes, ears, tails and gills sway, eyes glance around, then a celebration.</p><div class="g"><figure><video controls loop muted autoplay playsinline src="video/stage.mp4"></video><figcaption><b>Moonlit Pond: build-up and celebration</b></figcaption></figure><figure><video controls loop muted autoplay playsinline src="video/fair.mp4"></video><figcaption><b>Candy Fair</b></figcaption></figure><figure><video controls loop muted autoplay playsinline src="video/clouds.mp4"></video><figcaption><b>Sleepy Cloud Town with celebration</b></figcaption></figure></div>
 <h2>Sound</h2><p>One full mix of the pond (28 bars, a layer joins every 2 bars, then mute and unmute) and every stage 1 loop (4 bars each). Press play on each.</p>
 <div class="a"><div><b>Full mix</b><audio controls preload="none" src="audio/full_mix.mp3"></audio></div>${audio.map((a) => `<div>${a.title}<audio controls preload="none" src="${a.file}"></audio></div>`).join('')}</div>
 <h2>Screens and states</h2><div class="g">${shots.map((s) => `<figure><img loading="lazy" src="${s.file}" alt="${s.title}"><figcaption><b>${s.title}</b>${s.note ? `<br><span style="color:var(--dim)">${s.note}</span>` : ''}</figcaption></figure>`).join('')}</div>`;

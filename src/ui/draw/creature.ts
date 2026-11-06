@@ -14,8 +14,9 @@ export interface Pose {
   alpha: number; // extra opacity (solo dimming)
   glow: number; // 0..1 spotlight / celebration glow
   arms: number; // -1..1 swing
+  time: number; // ms, drives ear/tail/gill wiggle and eye glances (0 = still)
 }
-export const IDLE_POSE: Pose = { sx: 1, sy: 1, lift: 0, tilt: 0, mouth: 0, eyes: 1, muted: false, sat: 1, alpha: 1, glow: 0, arms: 0 };
+export const IDLE_POSE: Pose = { sx: 1, sy: 1, lift: 0, tilt: 0, mouth: 0, eyes: 1, muted: false, sat: 1, alpha: 1, glow: 0, arms: 0, time: 0 };
 
 const DIM: Record<BodyShape, { w: number; h: number }> = {
   round: { w: 0.92, h: 0.84 },
@@ -52,14 +53,17 @@ function drawBack(sk: SkiaApi, c: Canvas, cr: Creature, S: number, w: number, h:
   switch (cr.shape.species) {
     case 'cat':
       for (const d of [-1, 1]) {
+        c.save();
+        c.rotate(d * wig * 6, d * hw * 0.5, top + S * 0.08);
         tri(sk, c, d * hw * 0.25, top + S * 0.06, d * hw * 0.95, top + S * 0.1, d * hw * 0.78, top - S * 0.17 + wig * S * 0.01, paint(sk, light));
         tri(sk, c, d * hw * 0.42, top + S * 0.07, d * hw * 0.8, top + S * 0.09, d * hw * 0.72, top - S * 0.08, paint(sk, inner, 0.85));
+        c.restore();
       }
       break;
     case 'bunny':
       for (const d of [-1, 1]) {
         c.save();
-        c.rotate(d * (9 + wig * 5), d * hw * 0.4, top + S * 0.1);
+        c.rotate(d * (9 + wig * 9), d * hw * 0.4, top + S * 0.1);
         c.drawOval(oval(sk, d * hw * 0.42, top - S * 0.12, S * 0.075, S * 0.21), paint(sk, light));
         c.drawOval(oval(sk, d * hw * 0.42, top - S * 0.1, S * 0.036, S * 0.15), paint(sk, inner, 0.85));
         c.restore();
@@ -81,16 +85,16 @@ function drawBack(sk: SkiaApi, c: Canvas, cr: Creature, S: number, w: number, h:
       for (const d of [-1, 1]) c.drawCircle(d * hw * 0.5, top + S * 0.03, S * 0.1, paint(sk, light));
       break;
     case 'bird':
-      for (let i = -1; i <= 1; i++) c.drawOval(oval(sk, i * S * 0.045, top - S * 0.04 - (i === 0 ? S * 0.03 : 0), S * 0.03, S * 0.075), paint(sk, light));
+      for (let i = -1; i <= 1; i++) c.drawOval(oval(sk, i * S * 0.045 + wig * S * 0.012, top - S * 0.04 - (i === 0 ? S * 0.03 : 0), S * 0.03, S * 0.075), paint(sk, light));
       break;
     case 'dino':
       for (let i = -1; i <= 1; i++) tri(sk, c, i * S * 0.12 - S * 0.06, top + S * 0.05, i * S * 0.12, top - S * 0.1 - (i === 0 ? S * 0.04 : 0), i * S * 0.12 + S * 0.06, top + S * 0.05, paint(sk, mix(color, '#FFFFFF', 0.4)));
-      tri(sk, c, hw * 0.8, -S * 0.1, hw * 1.25, -S * 0.2 + wig * S * 0.03, hw * 0.85, -S * 0.3, paint(sk, color));
+      tri(sk, c, hw * 0.8, -S * 0.1, hw * 1.25, -S * 0.2 + wig * S * 0.06, hw * 0.85, -S * 0.3, paint(sk, color));
       break;
     default: // axolotl: feathery gills
       for (const d of [-1, 1]) for (let i = 0; i < 3; i++) {
         c.save();
-        c.rotate(d * (28 + i * 22 + wig * 4), d * hw * 0.85, -h * S * 0.62);
+        c.rotate(d * (28 + i * 22 + wig * 9), d * hw * 0.85, -h * S * 0.62);
         c.drawOval(oval(sk, d * (hw * 0.95 + S * 0.08), -h * S * 0.62, S * 0.1, S * 0.03), paint(sk, inner, 0.9));
         c.restore();
       }
@@ -103,6 +107,7 @@ function drawFace(sk: SkiaApi, c: Canvas, cr: Creature, S: number, w: number, h:
   const dx = w * S * 0.22;
   const style = cr.shape.eyes;
   const closed = pose.muted || pose.eyes < 0.12;
+  const look = Math.sin(pose.time / 1300) * S * 0.014;
   const rx = S * (style === 'big' ? 0.068 : 0.055);
   const ry = S * (style === 'big' ? 0.088 : 0.072) * pose.eyes;
   for (const d of [-1, 1]) {
@@ -111,11 +116,12 @@ function drawFace(sk: SkiaApi, c: Canvas, cr: Creature, S: number, w: number, h:
       c.drawArc(oval(sk, x, ey + S * 0.01, S * 0.06, S * 0.05), 200, 140, false, paint(sk, dark, 1, STROKE, S * 0.026));
       continue;
     }
-    c.drawOval(oval(sk, x, ey, rx, ry), paint(sk, dark));
-    c.drawCircle(x - rx * 0.3, ey - ry * 0.35, rx * 0.4, paint(sk, '#FFFFFF'));
-    c.drawCircle(x + rx * 0.35, ey + ry * 0.4, rx * 0.2, paint(sk, '#FFFFFF', 0.85));
+    const px = x + look;
+    c.drawOval(oval(sk, px, ey, rx, ry), paint(sk, dark));
+    c.drawCircle(px - rx * 0.3, ey - ry * 0.35, rx * 0.4, paint(sk, '#FFFFFF'));
+    c.drawCircle(px + rx * 0.35, ey + ry * 0.4, rx * 0.2, paint(sk, '#FFFFFF', 0.85));
     if (style === 'sparkle') {
-      const sx = x + rx * 0.5, sy = ey - ry * 0.55;
+      const sx = px + rx * 0.5, sy = ey - ry * 0.55;
       c.drawLine(sx - S * 0.02, sy, sx + S * 0.02, sy, paint(sk, '#FFFFFF', 0.95, STROKE, S * 0.008));
       c.drawLine(sx, sy - S * 0.02, sx, sy + S * 0.02, paint(sk, '#FFFFFF', 0.95, STROKE, S * 0.008));
     }
@@ -218,7 +224,8 @@ export function drawCreature(sk: SkiaApi, c: Canvas, cr: Creature, x: number, y:
 
   if (pose.glow > 0.01) c.drawCircle(0, -h * S * 0.5, S * 0.85, radialPaint(sk, 0, -h * S * 0.5, S * 0.85, ['#FFFFFF', color, '#00000000'], 0.45 * pose.glow));
 
-  drawBack(sk, c, cr, S, w, h, color, pose.arms);
+  const wave = pose.time > 0 ? Math.sin(pose.time / 170) : 0; // ears, tail, gills sway continuously
+  drawBack(sk, c, cr, S, w, h, color, pose.arms * 0.7 + wave);
   for (const d of [-1, 1]) c.drawOval(oval(sk, d * w * S * 0.22, -S * 0.025, S * 0.085, S * 0.05), paint(sk, deep));
   const armSwing = pose.arms;
   for (const d of [-1, 1]) {

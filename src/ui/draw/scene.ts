@@ -91,6 +91,8 @@ function poseFor(cr: Creature, s: SceneInput, base: Partial<Pose>, bounce: boole
     alpha: dim ? TUNING.soloDimOpacity : 1,
     arms: pulse * (seed % 2 ? 1 : -1),
     glow: s.solo === cr.id ? 1 : 0,
+    time: s.reduceMotion ? 0 : s.timeMs + (seed % 1000),
+    lift: !bounce || muted || s.reduceMotion ? 0 : pulse * s.layout.size * 0.07, // little hop on every sung/played note
     ...base,
   };
 }
