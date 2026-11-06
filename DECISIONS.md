@@ -24,3 +24,4 @@
 - Mix audit with 134,596 combinations per world is infeasible; it now covers every 6-combination of the 9 loudest-peak loops plus 8,008 seeded random combinations per world (fast check: 120 random).
 - How-to-play guide: 7 short animated lessons (same scene code as the game) with one sentence each, en/he; reached by a "?" button on stage select (pulsing badge until first opened) and on the stage top bar. This adds text to an otherwise text-free first run, by the owner's request.
 - Opening the guide from a stage leaves the stage (it restarts on return): acceptable for v1, noted for polish.
+- Playable web demo (artifact): Canvas 2D + Web Audio in web/ (esbuild bundle of the real src/core logic, gesture tracker and layout), sprites pre-rendered by the real Skia draw code, mp3 loops. It is a preview for the owner, not a shipped build (celebrations and ear sway are simplified; no recording). The native app remains Skia + react-native-audio-api.
