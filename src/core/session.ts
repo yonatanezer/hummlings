@@ -1,3 +1,4 @@
+import { TUNING } from './tuning';
 import { initialTracker, matchingCombos, stepTracker, type TrackerState } from './combos';
 import type { AudioEngine, BarPlan } from './engine';
 import { audibleIds, emptyStage, onStage, reduceStage, type StageAction, type StageState } from './stageState';
@@ -23,6 +24,7 @@ export class Session {
   celebrating: { comboId: string; startBar: number; bonusFile: string } | null = null;
   recorder: Recorder | null = null;
   private prevState: StageState = emptyStage(); // what sounded during the previous bar
+  private replay: string | null = null; // combo book replay waiting for the next loop boundary
   countIn = false; // first-run soft hi-hat count
   private discovered = new Set<string>();
   constructor(readonly stage: Stage, readonly engine: AudioEngine, private events: SessionEvents = {}, discovered: Iterable<string> = []) {
@@ -48,7 +50,14 @@ export class Session {
   private plan(bar: number): BarPlan {
     this.lastProvidedBar = bar;
     // Combo tracking: a celebration begins on a loop boundary after the combo was held for a full loop.
-    if (bar > 0) {
+    if (this.replay && bar % 4 === 0 && !this.celebrating) {
+      const combo = this.stage.combos.find((c) => c.id === this.replay)!;
+      this.replay = null;
+      this.tracker = { ...initialTracker(), celebrating: { comboId: combo.id, barsLeft: TUNING.celebrationBars } };
+      this.celebrating = { comboId: combo.id, startBar: bar, bonusFile: combo.bonusLoopFile };
+      this.recorder?.combo(bar, combo.id);
+      this.events.onCelebration?.(combo.id, bar);
+    } else if (bar > 0) {
       const matching = this.celebrating ? [] : matchingCombos(this.stage.combos, this.prevState);
       const res = stepTracker(this.tracker, bar - 1, matching);
       this.tracker = res.state;
@@ -74,6 +83,15 @@ export class Session {
       bonusFile: this.celebrating?.bonusFile ?? null,
       tick: onStage(this.state).length === 0 || this.countIn ? 'soft' : 'off',
     };
+  }
+
+  /** Combo book: puts the combo's 4 creatures on stage and plays its celebration at the next loop boundary. */
+  replayCombo(comboId: string): void {
+    const combo = this.stage.combos.find((c) => c.id === comboId);
+    if (!combo || this.celebrating) return;
+    this.dispatch({ kind: 'clear' });
+    combo.creatureIds.forEach((id, i) => this.dispatch({ kind: 'drop', creatureId: id, spot: i + 1 }));
+    this.replay = comboId;
   }
 
   startRecording(): void {

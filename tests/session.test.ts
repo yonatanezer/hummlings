@@ -63,3 +63,18 @@ describe('session', () => {
     expect(stateAtBar(song, song.bars - 1).spots[1]).toBe(b);
   });
 });
+
+describe('combo replay', () => {
+  it('puts the four creatures on stage and celebrates at the next loop boundary', () => {
+    const engine = new MockEngine();
+    const starts: number[] = [];
+    const s = new Session(stage, engine, { onCelebration: (_id, bar) => starts.push(bar) });
+    s.start();
+    engine.advanceBars(1);
+    s.replayCombo(combo.id);
+    expect(Object.keys(s.state.spots.filter(Boolean)).length).toBe(4);
+    engine.advanceBars(10);
+    expect(starts).toEqual([4]);
+    expect(engine.plans[4]!.bonusFile).toBe(combo.bonusLoopFile);
+  });
+});
