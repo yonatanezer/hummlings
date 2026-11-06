@@ -1,0 +1,10 @@
+{
+  "plugins": [
+    "expo-localization",
+    "expo-sharing",
+    "expo-splash-screen",
+    "expo-asset",
+    "react-native-audio-api",
+    "expo-iap"
+  ]
+}

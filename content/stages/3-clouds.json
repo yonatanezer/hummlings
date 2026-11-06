@@ -1,0 +1,623 @@
+{
+  "id": "clouds",
+  "nameKey": "stage.clouds",
+  "bpm": 84,
+  "key": {
+    "root": "D",
+    "mode": "major"
+  },
+  "timeSignature": "4/4",
+  "loopBars": 4,
+  "chordLoop": [
+    {
+      "bar": 0,
+      "root": "D",
+      "quality": "maj7"
+    },
+    {
+      "bar": 1,
+      "root": "B",
+      "quality": "min7"
+    },
+    {
+      "bar": 2,
+      "root": "G",
+      "quality": "maj7"
+    },
+    {
+      "bar": 3,
+      "root": "A",
+      "quality": "dom7"
+    }
+  ],
+  "palette": {
+    "sky": "#12304A",
+    "floor": "#1F4A6E",
+    "glow": "#D6F0FF",
+    "accent": "#5FE3C0"
+  },
+  "creatures": [
+    {
+      "id": "clouds_drums_1",
+      "layer": "drums",
+      "loopFile": "clouds_drums_1.m4a",
+      "onsets": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        6.5,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        14.5,
+        15,
+        15.5,
+        15.75
+      ],
+      "color": "#FF5BBA",
+      "shape": {
+        "body": "round",
+        "eyes": "sleepy",
+        "ears": "floppy",
+        "accessory": "scarf"
+      }
+    },
+    {
+      "id": "clouds_drums_2",
+      "layer": "drums",
+      "loopFile": "clouds_drums_2.m4a",
+      "onsets": [
+        0,
+        0.5,
+        1,
+        1.5,
+        2,
+        2.5,
+        3,
+        3.5,
+        4,
+        4.5,
+        5,
+        5.5,
+        6,
+        6.5,
+        7,
+        7.5,
+        8,
+        8.5,
+        9,
+        9.5,
+        10,
+        10.5,
+        11,
+        11.5,
+        12,
+        12.5,
+        13,
+        13.5,
+        14,
+        14.5,
+        15,
+        15.5,
+        15.75
+      ],
+      "color": "#FF7AC7",
+      "shape": {
+        "body": "round",
+        "eyes": "dots",
+        "ears": "pointy",
+        "accessory": "none"
+      }
+    },
+    {
+      "id": "clouds_drums_3",
+      "layer": "drums",
+      "loopFile": "clouds_drums_3.m4a",
+      "onsets": [
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1,
+        1.25,
+        1.5,
+        1.75,
+        2,
+        2.25,
+        2.5,
+        2.75,
+        3,
+        3.25,
+        3.5,
+        3.75,
+        4,
+        4.25,
+        4.5,
+        4.75,
+        5,
+        5.25,
+        5.5,
+        5.75,
+        6,
+        6.25,
+        6.5,
+        6.75,
+        7,
+        7.25,
+        7.5,
+        7.75,
+        8,
+        8.25,
+        8.5,
+        8.75,
+        9,
+        9.25,
+        9.5,
+        9.75,
+        10,
+        10.25,
+        10.5,
+        10.75,
+        11,
+        11.25,
+        11.5,
+        11.75,
+        12,
+        12.25,
+        12.5,
+        12.75,
+        13,
+        13.25,
+        13.5,
+        13.75,
+        14,
+        14.25,
+        14.5,
+        14.75,
+        15,
+        15.25,
+        15.5,
+        15.75
+      ],
+      "color": "#FF94D2",
+      "shape": {
+        "body": "round",
+        "eyes": "sparkle",
+        "ears": "round",
+        "accessory": "star"
+      }
+    },
+    {
+      "id": "clouds_drums_4",
+      "layer": "drums",
+      "loopFile": "clouds_drums_4.m4a",
+      "onsets": [
+        0,
+        1.5,
+        2.5,
+        3,
+        4,
+        5.5,
+        6.5,
+        7,
+        8,
+        9.5,
+        10.5,
+        11,
+        12,
+        13.5,
+        14.5,
+        15,
+        15.25,
+        15.5,
+        15.75
+      ],
+      "color": "#FFADDC",
+      "shape": {
+        "body": "round",
+        "eyes": "big",
+        "ears": "none",
+        "accessory": "hat"
+      }
+    },
+    {
+      "id": "clouds_bass_1",
+      "layer": "bass",
+      "loopFile": "clouds_bass_1.m4a",
+      "onsets": [
+        0,
+        0.5,
+        1,
+        1.5,
+        2,
+        2.5,
+        3,
+        3.5,
+        4,
+        4.5,
+        5,
+        5.5,
+        6,
+        6.5,
+        7,
+        7.5,
+        8,
+        8.5,
+        9,
+        9.5,
+        10,
+        10.5,
+        11,
+        11.5,
+        12,
+        12.5,
+        13,
+        13.5,
+        14,
+        14.5,
+        15,
+        15.5
+      ],
+      "color": "#5B98FF",
+      "shape": {
+        "body": "wide",
+        "eyes": "dots",
+        "ears": "none",
+        "accessory": "star"
+      }
+    },
+    {
+      "id": "clouds_bass_2",
+      "layer": "bass",
+      "loopFile": "clouds_bass_2.m4a",
+      "onsets": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "color": "#7AABFF",
+      "shape": {
+        "body": "wide",
+        "eyes": "sparkle",
+        "ears": "floppy",
+        "accessory": "hat"
+      }
+    },
+    {
+      "id": "clouds_bass_3",
+      "layer": "bass",
+      "loopFile": "clouds_bass_3.m4a",
+      "onsets": [
+        0,
+        1.5,
+        3,
+        3.5,
+        4,
+        5.5,
+        7,
+        7.5,
+        8,
+        9.5,
+        11,
+        11.5,
+        12,
+        13.5,
+        15,
+        15.5
+      ],
+      "color": "#94BBFF",
+      "shape": {
+        "body": "wide",
+        "eyes": "big",
+        "ears": "pointy",
+        "accessory": "scarf"
+      }
+    },
+    {
+      "id": "clouds_bass_4",
+      "layer": "bass",
+      "loopFile": "clouds_bass_4.m4a",
+      "onsets": [
+        0,
+        3.5,
+        4,
+        7.5,
+        8,
+        11.5,
+        12,
+        15.5
+      ],
+      "color": "#ADCBFF",
+      "shape": {
+        "body": "wide",
+        "eyes": "sleepy",
+        "ears": "round",
+        "accessory": "none"
+      }
+    },
+    {
+      "id": "clouds_melody_1",
+      "layer": "melody",
+      "loopFile": "clouds_melody_1.m4a",
+      "onsets": [
+        0,
+        0.5,
+        1,
+        1.5,
+        2,
+        2.5,
+        3,
+        3.5,
+        4,
+        4.5,
+        5,
+        5.5,
+        6,
+        6.5,
+        7,
+        7.5,
+        8,
+        8.5,
+        9,
+        9.5,
+        10,
+        10.5,
+        11,
+        11.5,
+        12,
+        12.5,
+        13,
+        13.5,
+        14,
+        14.5,
+        15,
+        15.5
+      ],
+      "color": "#45DE92",
+      "shape": {
+        "body": "tall",
+        "eyes": "sparkle",
+        "ears": "round",
+        "accessory": "scarf"
+      }
+    },
+    {
+      "id": "clouds_melody_2",
+      "layer": "melody",
+      "loopFile": "clouds_melody_2.m4a",
+      "onsets": [
+        0,
+        0.75,
+        1.5,
+        2.25,
+        3,
+        4,
+        4.75,
+        5.5,
+        6.25,
+        7,
+        8,
+        8.75,
+        9.5,
+        10.25,
+        11,
+        12,
+        12.75,
+        13.5,
+        14.25,
+        15
+      ],
+      "color": "#5FE3A1",
+      "shape": {
+        "body": "tall",
+        "eyes": "big",
+        "ears": "none",
+        "accessory": "none"
+      }
+    },
+    {
+      "id": "clouds_melody_3",
+      "layer": "melody",
+      "loopFile": "clouds_melody_3.m4a",
+      "onsets": [
+        0,
+        2,
+        4,
+        6,
+        7.5,
+        8,
+        10,
+        12,
+        14,
+        15.5
+      ],
+      "color": "#75E7AE",
+      "shape": {
+        "body": "tall",
+        "eyes": "sleepy",
+        "ears": "floppy",
+        "accessory": "star"
+      }
+    },
+    {
+      "id": "clouds_melody_4",
+      "layer": "melody",
+      "loopFile": "clouds_melody_4.m4a",
+      "onsets": [
+        0.5,
+        1.5,
+        2,
+        3,
+        4.5,
+        5.5,
+        6,
+        7,
+        8.5,
+        9.5,
+        10,
+        11,
+        12.5,
+        13.5,
+        14,
+        15
+      ],
+      "color": "#8AEBBB",
+      "shape": {
+        "body": "tall",
+        "eyes": "dots",
+        "ears": "pointy",
+        "accessory": "hat"
+      }
+    },
+    {
+      "id": "clouds_voice_1",
+      "layer": "voice",
+      "loopFile": "clouds_voice_1.m4a",
+      "onsets": [
+        0,
+        4,
+        6.5,
+        8,
+        12,
+        14.5
+      ],
+      "color": "#FF9038",
+      "shape": {
+        "body": "small",
+        "eyes": "big",
+        "ears": "pointy",
+        "accessory": "star"
+      }
+    },
+    {
+      "id": "clouds_voice_2",
+      "layer": "voice",
+      "loopFile": "clouds_voice_2.m4a",
+      "onsets": [
+        0.5,
+        1.5,
+        2.5,
+        4.5,
+        5.5,
+        6.5,
+        8.5,
+        9.5,
+        10.5,
+        12.5,
+        13.5,
+        14.5,
+        15.5
+      ],
+      "color": "#FFA157",
+      "shape": {
+        "body": "small",
+        "eyes": "sleepy",
+        "ears": "round",
+        "accessory": "hat"
+      }
+    },
+    {
+      "id": "clouds_voice_3",
+      "layer": "voice",
+      "loopFile": "clouds_voice_3.m4a",
+      "onsets": [
+        0,
+        0.75,
+        1.5,
+        4,
+        4.75,
+        5.5,
+        8,
+        8.75,
+        9.5,
+        12,
+        12.75,
+        13.5
+      ],
+      "color": "#FFAF71",
+      "shape": {
+        "body": "small",
+        "eyes": "dots",
+        "ears": "none",
+        "accessory": "scarf"
+      }
+    },
+    {
+      "id": "clouds_voice_4",
+      "layer": "voice",
+      "loopFile": "clouds_voice_4.m4a",
+      "onsets": [
+        1.5,
+        3,
+        5.5,
+        9.5,
+        11,
+        13.5
+      ],
+      "color": "#FFBD8A",
+      "shape": {
+        "body": "small",
+        "eyes": "sparkle",
+        "ears": "floppy",
+        "accessory": "none"
+      }
+    }
+  ],
+  "combos": [
+    {
+      "id": "clouds_combo_1",
+      "creatureIds": [
+        "clouds_drums_1",
+        "clouds_bass_2",
+        "clouds_melody_3",
+        "clouds_voice_4"
+      ],
+      "bonusLoopFile": "clouds_bonus_1.m4a",
+      "celebrationId": "cel_clouds_1"
+    },
+    {
+      "id": "clouds_combo_2",
+      "creatureIds": [
+        "clouds_drums_2",
+        "clouds_bass_3",
+        "clouds_melody_4",
+        "clouds_voice_1"
+      ],
+      "bonusLoopFile": "clouds_bonus_2.m4a",
+      "celebrationId": "cel_clouds_2"
+    },
+    {
+      "id": "clouds_combo_3",
+      "creatureIds": [
+        "clouds_drums_3",
+        "clouds_bass_4",
+        "clouds_melody_1",
+        "clouds_voice_2"
+      ],
+      "bonusLoopFile": "clouds_bonus_3.m4a",
+      "celebrationId": "cel_clouds_3"
+    }
+  ]
+}

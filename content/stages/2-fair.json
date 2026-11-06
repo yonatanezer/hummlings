@@ -1,0 +1,623 @@
+{
+  "id": "fair",
+  "nameKey": "stage.fair",
+  "bpm": 112,
+  "key": {
+    "root": "C",
+    "mode": "major"
+  },
+  "timeSignature": "4/4",
+  "loopBars": 4,
+  "chordLoop": [
+    {
+      "bar": 0,
+      "root": "C",
+      "quality": "maj"
+    },
+    {
+      "bar": 1,
+      "root": "G",
+      "quality": "maj"
+    },
+    {
+      "bar": 2,
+      "root": "A",
+      "quality": "min"
+    },
+    {
+      "bar": 3,
+      "root": "F",
+      "quality": "maj"
+    }
+  ],
+  "palette": {
+    "sky": "#3A1346",
+    "floor": "#5C1F58",
+    "glow": "#FFD6E8",
+    "accent": "#FF7AA8"
+  },
+  "creatures": [
+    {
+      "id": "fair_drums_1",
+      "layer": "drums",
+      "loopFile": "fair_drums_1.m4a",
+      "onsets": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        6.5625,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        14.5625,
+        15,
+        15.5625,
+        15.75
+      ],
+      "color": "#FF5B63",
+      "shape": {
+        "body": "round",
+        "eyes": "big",
+        "ears": "pointy",
+        "accessory": "hat"
+      }
+    },
+    {
+      "id": "fair_drums_2",
+      "layer": "drums",
+      "loopFile": "fair_drums_2.m4a",
+      "onsets": [
+        0,
+        0.5625,
+        1,
+        1.5625,
+        2,
+        2.5625,
+        3,
+        3.5625,
+        4,
+        4.5625,
+        5,
+        5.5625,
+        6,
+        6.5625,
+        7,
+        7.5625,
+        8,
+        8.5625,
+        9,
+        9.5625,
+        10,
+        10.5625,
+        11,
+        11.5625,
+        12,
+        12.5625,
+        13,
+        13.5625,
+        14,
+        14.5625,
+        15,
+        15.5625,
+        15.75
+      ],
+      "color": "#FF7A80",
+      "shape": {
+        "body": "round",
+        "eyes": "sparkle",
+        "ears": "antenna",
+        "accessory": "bow"
+      }
+    },
+    {
+      "id": "fair_drums_3",
+      "layer": "drums",
+      "loopFile": "fair_drums_3.m4a",
+      "onsets": [
+        0,
+        0.25,
+        0.5625,
+        0.75,
+        1,
+        1.25,
+        1.5625,
+        1.75,
+        2,
+        2.25,
+        2.5625,
+        2.75,
+        3,
+        3.25,
+        3.5625,
+        3.75,
+        4,
+        4.25,
+        4.5625,
+        4.75,
+        5,
+        5.25,
+        5.5625,
+        5.75,
+        6,
+        6.25,
+        6.5625,
+        6.75,
+        7,
+        7.25,
+        7.5625,
+        7.75,
+        8,
+        8.25,
+        8.5625,
+        8.75,
+        9,
+        9.25,
+        9.5625,
+        9.75,
+        10,
+        10.25,
+        10.5625,
+        10.75,
+        11,
+        11.25,
+        11.5625,
+        11.75,
+        12,
+        12.25,
+        12.5625,
+        12.75,
+        13,
+        13.25,
+        13.5625,
+        13.75,
+        14,
+        14.25,
+        14.5625,
+        14.75,
+        15,
+        15.25,
+        15.5625,
+        15.75
+      ],
+      "color": "#FF9498",
+      "shape": {
+        "body": "round",
+        "eyes": "dots",
+        "ears": "none",
+        "accessory": "glasses"
+      }
+    },
+    {
+      "id": "fair_drums_4",
+      "layer": "drums",
+      "loopFile": "fair_drums_4.m4a",
+      "onsets": [
+        0,
+        1.5625,
+        2.5625,
+        3,
+        4,
+        5.5625,
+        6.5625,
+        7,
+        8,
+        9.5625,
+        10.5625,
+        11,
+        12,
+        13.5625,
+        14.5625,
+        15,
+        15.25,
+        15.5625,
+        15.75
+      ],
+      "color": "#FFADB1",
+      "shape": {
+        "body": "round",
+        "eyes": "sleepy",
+        "ears": "round",
+        "accessory": "crown"
+      }
+    },
+    {
+      "id": "fair_bass_1",
+      "layer": "bass",
+      "loopFile": "fair_bass_1.m4a",
+      "onsets": [
+        0,
+        0.5625,
+        1,
+        1.5625,
+        2,
+        2.5625,
+        3,
+        3.5625,
+        4,
+        4.5625,
+        5,
+        5.5625,
+        6,
+        6.5625,
+        7,
+        7.5625,
+        8,
+        8.5625,
+        9,
+        9.5625,
+        10,
+        10.5625,
+        11,
+        11.5625,
+        12,
+        12.5625,
+        13,
+        13.5625,
+        14,
+        14.5625,
+        15,
+        15.5625
+      ],
+      "color": "#765BFF",
+      "shape": {
+        "body": "wide",
+        "eyes": "sparkle",
+        "ears": "round",
+        "accessory": "glasses"
+      }
+    },
+    {
+      "id": "fair_bass_2",
+      "layer": "bass",
+      "loopFile": "fair_bass_2.m4a",
+      "onsets": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "color": "#907AFF",
+      "shape": {
+        "body": "wide",
+        "eyes": "dots",
+        "ears": "pointy",
+        "accessory": "crown"
+      }
+    },
+    {
+      "id": "fair_bass_3",
+      "layer": "bass",
+      "loopFile": "fair_bass_3.m4a",
+      "onsets": [
+        0,
+        1.5625,
+        3,
+        3.5625,
+        4,
+        5.5625,
+        7,
+        7.5625,
+        8,
+        9.5625,
+        11,
+        11.5625,
+        12,
+        13.5625,
+        15,
+        15.5625
+      ],
+      "color": "#A594FF",
+      "shape": {
+        "body": "wide",
+        "eyes": "sleepy",
+        "ears": "antenna",
+        "accessory": "hat"
+      }
+    },
+    {
+      "id": "fair_bass_4",
+      "layer": "bass",
+      "loopFile": "fair_bass_4.m4a",
+      "onsets": [
+        0,
+        3.5625,
+        4,
+        7.5625,
+        8,
+        11.5625,
+        12,
+        15.5625
+      ],
+      "color": "#BBADFF",
+      "shape": {
+        "body": "wide",
+        "eyes": "big",
+        "ears": "none",
+        "accessory": "bow"
+      }
+    },
+    {
+      "id": "fair_melody_1",
+      "layer": "melody",
+      "loopFile": "fair_melody_1.m4a",
+      "onsets": [
+        0,
+        0.5625,
+        1,
+        1.5625,
+        2,
+        2.5625,
+        3,
+        3.5625,
+        4,
+        4.5625,
+        5,
+        5.5625,
+        6,
+        6.5625,
+        7,
+        7.5625,
+        8,
+        8.5625,
+        9,
+        9.5625,
+        10,
+        10.5625,
+        11,
+        11.5625,
+        12,
+        12.5625,
+        13,
+        13.5625,
+        14,
+        14.5625,
+        15,
+        15.5625
+      ],
+      "color": "#45D9DE",
+      "shape": {
+        "body": "tall",
+        "eyes": "dots",
+        "ears": "none",
+        "accessory": "hat"
+      }
+    },
+    {
+      "id": "fair_melody_2",
+      "layer": "melody",
+      "loopFile": "fair_melody_2.m4a",
+      "onsets": [
+        0,
+        0.75,
+        1.5625,
+        2.25,
+        3,
+        4,
+        4.75,
+        5.5625,
+        6.25,
+        7,
+        8,
+        8.75,
+        9.5625,
+        10.25,
+        11,
+        12,
+        12.75,
+        13.5625,
+        14.25,
+        15
+      ],
+      "color": "#5FDEE3",
+      "shape": {
+        "body": "tall",
+        "eyes": "sleepy",
+        "ears": "round",
+        "accessory": "bow"
+      }
+    },
+    {
+      "id": "fair_melody_3",
+      "layer": "melody",
+      "loopFile": "fair_melody_3.m4a",
+      "onsets": [
+        0,
+        2,
+        4,
+        6,
+        7.5625,
+        8,
+        10,
+        12,
+        14,
+        15.5625
+      ],
+      "color": "#75E3E7",
+      "shape": {
+        "body": "tall",
+        "eyes": "big",
+        "ears": "pointy",
+        "accessory": "glasses"
+      }
+    },
+    {
+      "id": "fair_melody_4",
+      "layer": "melody",
+      "loopFile": "fair_melody_4.m4a",
+      "onsets": [
+        0.5625,
+        1.5625,
+        2,
+        3,
+        4.5625,
+        5.5625,
+        6,
+        7,
+        8.5625,
+        9.5625,
+        10,
+        11,
+        12.5625,
+        13.5625,
+        14,
+        15
+      ],
+      "color": "#8AE7EB",
+      "shape": {
+        "body": "tall",
+        "eyes": "sparkle",
+        "ears": "antenna",
+        "accessory": "crown"
+      }
+    },
+    {
+      "id": "fair_voice_1",
+      "layer": "voice",
+      "loopFile": "fair_voice_1.m4a",
+      "onsets": [
+        0,
+        4,
+        6.5625,
+        8,
+        12,
+        14.5625
+      ],
+      "color": "#FFFA38",
+      "shape": {
+        "body": "small",
+        "eyes": "sleepy",
+        "ears": "antenna",
+        "accessory": "glasses"
+      }
+    },
+    {
+      "id": "fair_voice_2",
+      "layer": "voice",
+      "loopFile": "fair_voice_2.m4a",
+      "onsets": [
+        0.5625,
+        1.5625,
+        2.5625,
+        4.5625,
+        5.5625,
+        6.5625,
+        8.5625,
+        9.5625,
+        10.5625,
+        12.5625,
+        13.5625,
+        14.5625,
+        15.5625
+      ],
+      "color": "#FFFA57",
+      "shape": {
+        "body": "small",
+        "eyes": "big",
+        "ears": "none",
+        "accessory": "crown"
+      }
+    },
+    {
+      "id": "fair_voice_3",
+      "layer": "voice",
+      "loopFile": "fair_voice_3.m4a",
+      "onsets": [
+        0,
+        0.75,
+        1.5625,
+        4,
+        4.75,
+        5.5625,
+        8,
+        8.75,
+        9.5625,
+        12,
+        12.75,
+        13.5625
+      ],
+      "color": "#FFFB71",
+      "shape": {
+        "body": "small",
+        "eyes": "sparkle",
+        "ears": "round",
+        "accessory": "hat"
+      }
+    },
+    {
+      "id": "fair_voice_4",
+      "layer": "voice",
+      "loopFile": "fair_voice_4.m4a",
+      "onsets": [
+        1.5625,
+        3,
+        5.5625,
+        9.5625,
+        11,
+        13.5625
+      ],
+      "color": "#FFFC8A",
+      "shape": {
+        "body": "small",
+        "eyes": "dots",
+        "ears": "pointy",
+        "accessory": "bow"
+      }
+    }
+  ],
+  "combos": [
+    {
+      "id": "fair_combo_1",
+      "creatureIds": [
+        "fair_drums_1",
+        "fair_bass_2",
+        "fair_melody_3",
+        "fair_voice_4"
+      ],
+      "bonusLoopFile": "fair_bonus_1.m4a",
+      "celebrationId": "cel_fair_1"
+    },
+    {
+      "id": "fair_combo_2",
+      "creatureIds": [
+        "fair_drums_2",
+        "fair_bass_3",
+        "fair_melody_4",
+        "fair_voice_1"
+      ],
+      "bonusLoopFile": "fair_bonus_2.m4a",
+      "celebrationId": "cel_fair_2"
+    },
+    {
+      "id": "fair_combo_3",
+      "creatureIds": [
+        "fair_drums_3",
+        "fair_bass_4",
+        "fair_melody_1",
+        "fair_voice_2"
+      ],
+      "bonusLoopFile": "fair_bonus_3.m4a",
+      "celebrationId": "cel_fair_3"
+    }
+  ]
+}

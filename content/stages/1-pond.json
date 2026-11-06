@@ -1,0 +1,623 @@
+{
+  "id": "pond",
+  "nameKey": "stage.pond",
+  "bpm": 92,
+  "key": {
+    "root": "A",
+    "mode": "minor"
+  },
+  "timeSignature": "4/4",
+  "loopBars": 4,
+  "chordLoop": [
+    {
+      "bar": 0,
+      "root": "A",
+      "quality": "min"
+    },
+    {
+      "bar": 1,
+      "root": "F",
+      "quality": "maj"
+    },
+    {
+      "bar": 2,
+      "root": "C",
+      "quality": "maj"
+    },
+    {
+      "bar": 3,
+      "root": "G",
+      "quality": "maj"
+    }
+  ],
+  "palette": {
+    "sky": "#1B1340",
+    "floor": "#2A1F5C",
+    "glow": "#FFE8A3",
+    "accent": "#7A8CFF"
+  },
+  "creatures": [
+    {
+      "id": "pond_drums_1",
+      "layer": "drums",
+      "loopFile": "pond_drums_1.m4a",
+      "onsets": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        6.5,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        14.5,
+        15,
+        15.5,
+        15.75
+      ],
+      "color": "#FF5B94",
+      "shape": {
+        "body": "round",
+        "eyes": "dots",
+        "ears": "round",
+        "accessory": "flower"
+      }
+    },
+    {
+      "id": "pond_drums_2",
+      "layer": "drums",
+      "loopFile": "pond_drums_2.m4a",
+      "onsets": [
+        0,
+        0.5,
+        1,
+        1.5,
+        2,
+        2.5,
+        3,
+        3.5,
+        4,
+        4.5,
+        5,
+        5.5,
+        6,
+        6.5,
+        7,
+        7.5,
+        8,
+        8.5,
+        9,
+        9.5,
+        10,
+        10.5,
+        11,
+        11.5,
+        12,
+        12.5,
+        13,
+        13.5,
+        14,
+        14.5,
+        15,
+        15.5,
+        15.75
+      ],
+      "color": "#FF7AA8",
+      "shape": {
+        "body": "round",
+        "eyes": "big",
+        "ears": "none",
+        "accessory": "star"
+      }
+    },
+    {
+      "id": "pond_drums_3",
+      "layer": "drums",
+      "loopFile": "pond_drums_3.m4a",
+      "onsets": [
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1,
+        1.25,
+        1.5,
+        1.75,
+        2,
+        2.25,
+        2.5,
+        2.75,
+        3,
+        3.25,
+        3.5,
+        3.75,
+        4,
+        4.25,
+        4.5,
+        4.75,
+        5,
+        5.25,
+        5.5,
+        5.75,
+        6,
+        6.25,
+        6.5,
+        6.75,
+        7,
+        7.25,
+        7.5,
+        7.75,
+        8,
+        8.25,
+        8.5,
+        8.75,
+        9,
+        9.25,
+        9.5,
+        9.75,
+        10,
+        10.25,
+        10.5,
+        10.75,
+        11,
+        11.25,
+        11.5,
+        11.75,
+        12,
+        12.25,
+        12.5,
+        12.75,
+        13,
+        13.25,
+        13.5,
+        13.75,
+        14,
+        14.25,
+        14.5,
+        14.75,
+        15,
+        15.25,
+        15.5,
+        15.75
+      ],
+      "color": "#FF94B9",
+      "shape": {
+        "body": "round",
+        "eyes": "sleepy",
+        "ears": "floppy",
+        "accessory": "none"
+      }
+    },
+    {
+      "id": "pond_drums_4",
+      "layer": "drums",
+      "loopFile": "pond_drums_4.m4a",
+      "onsets": [
+        0,
+        1.5,
+        2.5,
+        3,
+        4,
+        5.5,
+        6.5,
+        7,
+        8,
+        9.5,
+        10.5,
+        11,
+        12,
+        13.5,
+        14.5,
+        15,
+        15.25,
+        15.5,
+        15.75
+      ],
+      "color": "#FFADC9",
+      "shape": {
+        "body": "round",
+        "eyes": "sparkle",
+        "ears": "antenna",
+        "accessory": "bow"
+      }
+    },
+    {
+      "id": "pond_bass_1",
+      "layer": "bass",
+      "loopFile": "pond_bass_1.m4a",
+      "onsets": [
+        0,
+        0.5,
+        1,
+        1.5,
+        2,
+        2.5,
+        3,
+        3.5,
+        4,
+        4.5,
+        5,
+        5.5,
+        6,
+        6.5,
+        7,
+        7.5,
+        8,
+        8.5,
+        9,
+        9.5,
+        10,
+        10.5,
+        11,
+        11.5,
+        12,
+        12.5,
+        13,
+        13.5,
+        14,
+        14.5,
+        15,
+        15.5
+      ],
+      "color": "#5B72FF",
+      "shape": {
+        "body": "wide",
+        "eyes": "big",
+        "ears": "antenna",
+        "accessory": "none"
+      }
+    },
+    {
+      "id": "pond_bass_2",
+      "layer": "bass",
+      "loopFile": "pond_bass_2.m4a",
+      "onsets": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "color": "#7A8CFF",
+      "shape": {
+        "body": "wide",
+        "eyes": "sleepy",
+        "ears": "round",
+        "accessory": "bow"
+      }
+    },
+    {
+      "id": "pond_bass_3",
+      "layer": "bass",
+      "loopFile": "pond_bass_3.m4a",
+      "onsets": [
+        0,
+        1.5,
+        3,
+        3.5,
+        4,
+        5.5,
+        7,
+        7.5,
+        8,
+        9.5,
+        11,
+        11.5,
+        12,
+        13.5,
+        15,
+        15.5
+      ],
+      "color": "#94A2FF",
+      "shape": {
+        "body": "wide",
+        "eyes": "sparkle",
+        "ears": "none",
+        "accessory": "flower"
+      }
+    },
+    {
+      "id": "pond_bass_4",
+      "layer": "bass",
+      "loopFile": "pond_bass_4.m4a",
+      "onsets": [
+        0,
+        3.5,
+        4,
+        7.5,
+        8,
+        11.5,
+        12,
+        15.5
+      ],
+      "color": "#ADB8FF",
+      "shape": {
+        "body": "wide",
+        "eyes": "dots",
+        "ears": "floppy",
+        "accessory": "star"
+      }
+    },
+    {
+      "id": "pond_melody_1",
+      "layer": "melody",
+      "loopFile": "pond_melody_1.m4a",
+      "onsets": [
+        0,
+        0.5,
+        1,
+        1.5,
+        2,
+        2.5,
+        3,
+        3.5,
+        4,
+        4.5,
+        5,
+        5.5,
+        6,
+        6.5,
+        7,
+        7.5,
+        8,
+        8.5,
+        9,
+        9.5,
+        10,
+        10.5,
+        11,
+        11.5,
+        12,
+        12.5,
+        13,
+        13.5,
+        14,
+        14.5,
+        15,
+        15.5
+      ],
+      "color": "#45DEB6",
+      "shape": {
+        "body": "tall",
+        "eyes": "sleepy",
+        "ears": "floppy",
+        "accessory": "flower"
+      }
+    },
+    {
+      "id": "pond_melody_2",
+      "layer": "melody",
+      "loopFile": "pond_melody_2.m4a",
+      "onsets": [
+        0,
+        0.75,
+        1.5,
+        2.25,
+        3,
+        4,
+        4.75,
+        5.5,
+        6.25,
+        7,
+        8,
+        8.75,
+        9.5,
+        10.25,
+        11,
+        12,
+        12.75,
+        13.5,
+        14.25,
+        15
+      ],
+      "color": "#5FE3C0",
+      "shape": {
+        "body": "tall",
+        "eyes": "sparkle",
+        "ears": "antenna",
+        "accessory": "star"
+      }
+    },
+    {
+      "id": "pond_melody_3",
+      "layer": "melody",
+      "loopFile": "pond_melody_3.m4a",
+      "onsets": [
+        0,
+        2,
+        4,
+        6,
+        7.5,
+        8,
+        10,
+        12,
+        14,
+        15.5
+      ],
+      "color": "#75E7C9",
+      "shape": {
+        "body": "tall",
+        "eyes": "dots",
+        "ears": "round",
+        "accessory": "none"
+      }
+    },
+    {
+      "id": "pond_melody_4",
+      "layer": "melody",
+      "loopFile": "pond_melody_4.m4a",
+      "onsets": [
+        0.5,
+        1.5,
+        2,
+        3,
+        4.5,
+        5.5,
+        6,
+        7,
+        8.5,
+        9.5,
+        10,
+        11,
+        12.5,
+        13.5,
+        14,
+        15
+      ],
+      "color": "#8AEBD1",
+      "shape": {
+        "body": "tall",
+        "eyes": "big",
+        "ears": "none",
+        "accessory": "bow"
+      }
+    },
+    {
+      "id": "pond_voice_1",
+      "layer": "voice",
+      "loopFile": "pond_voice_1.m4a",
+      "onsets": [
+        0,
+        4,
+        6.5,
+        8,
+        12,
+        14.5
+      ],
+      "color": "#FFBE38",
+      "shape": {
+        "body": "small",
+        "eyes": "sparkle",
+        "ears": "none",
+        "accessory": "none"
+      }
+    },
+    {
+      "id": "pond_voice_2",
+      "layer": "voice",
+      "loopFile": "pond_voice_2.m4a",
+      "onsets": [
+        0.5,
+        1.5,
+        2.5,
+        4.5,
+        5.5,
+        6.5,
+        8.5,
+        9.5,
+        10.5,
+        12.5,
+        13.5,
+        14.5,
+        15.5
+      ],
+      "color": "#FFC857",
+      "shape": {
+        "body": "small",
+        "eyes": "dots",
+        "ears": "floppy",
+        "accessory": "bow"
+      }
+    },
+    {
+      "id": "pond_voice_3",
+      "layer": "voice",
+      "loopFile": "pond_voice_3.m4a",
+      "onsets": [
+        0,
+        0.75,
+        1.5,
+        4,
+        4.75,
+        5.5,
+        8,
+        8.75,
+        9.5,
+        12,
+        12.75,
+        13.5
+      ],
+      "color": "#FFD071",
+      "shape": {
+        "body": "small",
+        "eyes": "big",
+        "ears": "antenna",
+        "accessory": "flower"
+      }
+    },
+    {
+      "id": "pond_voice_4",
+      "layer": "voice",
+      "loopFile": "pond_voice_4.m4a",
+      "onsets": [
+        1.5,
+        3,
+        5.5,
+        9.5,
+        11,
+        13.5
+      ],
+      "color": "#FFD98A",
+      "shape": {
+        "body": "small",
+        "eyes": "sleepy",
+        "ears": "round",
+        "accessory": "star"
+      }
+    }
+  ],
+  "combos": [
+    {
+      "id": "pond_combo_1",
+      "creatureIds": [
+        "pond_drums_1",
+        "pond_bass_2",
+        "pond_melody_3",
+        "pond_voice_4"
+      ],
+      "bonusLoopFile": "pond_bonus_1.m4a",
+      "celebrationId": "cel_pond_1"
+    },
+    {
+      "id": "pond_combo_2",
+      "creatureIds": [
+        "pond_drums_2",
+        "pond_bass_3",
+        "pond_melody_4",
+        "pond_voice_1"
+      ],
+      "bonusLoopFile": "pond_bonus_2.m4a",
+      "celebrationId": "cel_pond_2"
+    },
+    {
+      "id": "pond_combo_3",
+      "creatureIds": [
+        "pond_drums_3",
+        "pond_bass_4",
+        "pond_melody_1",
+        "pond_voice_2"
+      ],
+      "bonusLoopFile": "pond_bonus_3.m4a",
+      "celebrationId": "cel_pond_3"
+    }
+  ]
+}
