@@ -24,7 +24,7 @@ export function PlayerScreen({ song, onBack }: { song: Song; onBack: () => void 
   const { progress } = useProgress();
   const stage = useMemo(() => getStage(song.stageId), [song.stageId]);
   const engine = useMemo(() => getEngine(), []);
-  const layout = useMemo(() => computeLayout(width, height, 16, Math.max(insets.left, insets.right) + 8), [width, height, insets.left, insets.right]);
+  const layout = useMemo(() => computeLayout(width, height, undefined, Math.max(insets.left, insets.right) + 8), [width, height, insets.left, insets.right]);
   const sv = useSceneValues(stage, layout, progress.settings.reduceMotion);
   const [playing, setPlaying] = useState(false);
   const [ready, setReady] = useState(false);

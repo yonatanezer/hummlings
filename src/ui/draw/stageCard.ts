@@ -15,7 +15,7 @@ export function drawStageCard(sk: SkiaApi, c: Canvas, stage: Stage, w: number, h
   }
   c.drawOval(sk.XYWHRect(-w * 0.1, h * 0.62, w * 1.2, h * 0.7), gradientPaint(sk, 0, h * 0.62, 0, h, [mix(pal.floor, '#FFFFFF', 0.15), pal.floor]));
   const S = w * 0.3;
-  const picks = [0, 5, 10, 15].map((i) => stage.creatures[i]!);
+  const picks = [0, 7, 14, 21].map((i) => stage.creatures[i]!);
   picks.forEach((cr, i) => {
     const x = w * (0.17 + i * 0.22);
     drawCreature(sk, c, cr, x, h * (0.86 + (i % 2) * 0.05), S, locked ? { ...IDLE_POSE, sat: 0.35, alpha: 0.7 } : { ...IDLE_POSE, mouth: i % 2 ? 0.3 : 0 });

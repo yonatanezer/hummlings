@@ -51,7 +51,7 @@ STAGES.forEach((d, si) => {
   const base = { chordLoop: d.chords, key: d.key };
   stage.creatures.forEach((c, i) => {
     const layerIdx = ['drums', 'bass', 'melody', 'voice'].indexOf(c.layer);
-    const v = i % 4;
+    const v = i % TUNING.perLayer;
     const seed = seedOf(si, layerIdx, v);
     emit(c.loopFile, buildPattern({ stage: base, layer: c.layer, variant: v, seed, swing: d.swing, world: si }), c.layer, si, seed);
   });

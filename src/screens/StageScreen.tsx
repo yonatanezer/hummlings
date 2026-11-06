@@ -34,7 +34,7 @@ export function StageScreen({ stage, onBack, onSongs, onDebug }: Props) {
   const [sysReduce, setSysReduce] = useState(false);
   const reduceMotion = progress.settings.reduceMotion || sysReduce;
   const padX = Math.max(insets.left, insets.right) + 8;
-  const layout = useMemo(() => computeLayout(width, height, 16, padX), [width, height, padX]);
+  const layout = useMemo(() => computeLayout(width, height, undefined, padX), [width, height, padX]);
   const sv = useSceneValues(stage, layout, reduceMotion);
   const engine = useMemo(() => getEngine(), []);
   const [session] = useState(() => new Session(stage, engine, {}, progress.discoveredCombos));

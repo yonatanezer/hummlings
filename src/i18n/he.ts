@@ -46,7 +46,7 @@ export const he: Record<StringKey, string> = {
   'gate.wrong': 'נסו שוב',
 
   'unlock.title': 'פותחים את כל העולמות',
-  'unlock.body': 'עוד שני עולמות עם 32 יצורים ו־6 קומבואים סודיים. משלמים פעם אחת, שלכם לתמיד.',
+  'unlock.body': 'עוד שני עולמות עם 48 יצורים ו־8 קומבואים סודיים. משלמים פעם אחת, שלכם לתמיד.',
   'unlock.buy': 'פתיחה {price}',
   'unlock.restore': 'שחזור רכישות',
   'unlock.pending': 'ממתין לאישור…',

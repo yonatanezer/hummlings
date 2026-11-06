@@ -9,7 +9,7 @@ import { renderPng } from './render-lib';
 export async function renderClip(stage: Stage, out: string, opts: { seconds: number; celebrationAtBeat?: number; picks: number[]; fps?: number }): Promise<void> {
   const fps = opts.fps ?? 24;
   const W = 844, H = 390;
-  const layout = computeLayout(W, H, 16, 40);
+  const layout = computeLayout(W, H, undefined, 40);
   const dir = `scripts/out/frames_${Date.now()}`;
   mkdirSync(dir, { recursive: true });
   const ids = opts.picks.map((i) => stage.creatures[i]!.id);

@@ -63,7 +63,7 @@
         15.5,
         15.75
       ],
-      "color": "#FF5BBA",
+      "color": "#FF51B6",
       "shape": {
         "body": "round",
         "eyes": "sleepy",
@@ -110,11 +110,11 @@
         15.5,
         15.75
       ],
-      "color": "#FF7AC7",
+      "color": "#FF70C3",
       "shape": {
         "body": "round",
         "eyes": "dots",
-        "species": "cat",
+        "species": "axolotl",
         "accessory": "none"
       }
     },
@@ -188,11 +188,11 @@
         15.5,
         15.75
       ],
-      "color": "#FF94D2",
+      "color": "#FF8ED0",
       "shape": {
         "body": "round",
         "eyes": "sparkle",
-        "species": "bear",
+        "species": "cat",
         "accessory": "star"
       }
     },
@@ -225,8 +225,117 @@
       "shape": {
         "body": "round",
         "eyes": "big",
-        "species": "frog",
+        "species": "bunny",
         "accessory": "hat"
+      }
+    },
+    {
+      "id": "clouds_drums_5",
+      "layer": "drums",
+      "loopFile": "clouds_drums_5.m4a",
+      "onsets": [
+        0,
+        0.5,
+        1,
+        1.5,
+        2,
+        2.5,
+        3,
+        3.5,
+        4,
+        4.5,
+        5,
+        5.5,
+        6,
+        6.5,
+        7,
+        7.5,
+        8,
+        8.5,
+        9,
+        9.5,
+        10,
+        10.5,
+        11,
+        11.5,
+        12,
+        12.5,
+        13,
+        13.5,
+        14,
+        14.5,
+        15,
+        15.5
+      ],
+      "color": "#FF3DAD",
+      "shape": {
+        "body": "round",
+        "eyes": "sleepy",
+        "species": "bear",
+        "accessory": "scarf"
+      }
+    },
+    {
+      "id": "clouds_drums_6",
+      "layer": "drums",
+      "loopFile": "clouds_drums_6.m4a",
+      "onsets": [
+        0,
+        0.25,
+        0.75,
+        1.25,
+        1.5,
+        1.75,
+        2,
+        2.25,
+        2.75,
+        3,
+        3.25,
+        3.75,
+        4,
+        4.25,
+        4.75,
+        5.25,
+        5.5,
+        5.75,
+        6,
+        6.25,
+        6.75,
+        7,
+        7.25,
+        7.75,
+        8,
+        8.25,
+        8.75,
+        9.25,
+        9.5,
+        9.75,
+        10,
+        10.25,
+        10.75,
+        11,
+        11.25,
+        11.75,
+        12,
+        12.25,
+        12.75,
+        13.25,
+        13.5,
+        13.75,
+        14,
+        14.25,
+        14.75,
+        15,
+        15.25,
+        15.5,
+        15.75
+      ],
+      "color": "#FFB3DF",
+      "shape": {
+        "body": "round",
+        "eyes": "dots",
+        "species": "mouse",
+        "accessory": "none"
       }
     },
     {
@@ -267,11 +376,11 @@
         15,
         15.5
       ],
-      "color": "#5B98FF",
+      "color": "#5191FF",
       "shape": {
         "body": "wide",
         "eyes": "dots",
-        "species": "axolotl",
+        "species": "cat",
         "accessory": "star"
       }
     },
@@ -297,7 +406,7 @@
         14,
         15
       ],
-      "color": "#7AABFF",
+      "color": "#70A5FF",
       "shape": {
         "body": "wide",
         "eyes": "sparkle",
@@ -327,11 +436,11 @@
         15,
         15.5
       ],
-      "color": "#94BBFF",
+      "color": "#8EB8FF",
       "shape": {
         "body": "wide",
         "eyes": "big",
-        "species": "mouse",
+        "species": "bear",
         "accessory": "scarf"
       }
     },
@@ -353,8 +462,72 @@
       "shape": {
         "body": "wide",
         "eyes": "sleepy",
-        "species": "bird",
+        "species": "mouse",
         "accessory": "none"
+      }
+    },
+    {
+      "id": "clouds_bass_5",
+      "layer": "bass",
+      "loopFile": "clouds_bass_5.m4a",
+      "onsets": [
+        0,
+        0.75,
+        1.5,
+        2.5,
+        3,
+        4,
+        4.75,
+        5.5,
+        6.5,
+        7,
+        8,
+        8.75,
+        9.5,
+        10.5,
+        11,
+        12,
+        12.75,
+        13.5,
+        14.5,
+        15
+      ],
+      "color": "#3D84FF",
+      "shape": {
+        "body": "wide",
+        "eyes": "dots",
+        "species": "frog",
+        "accessory": "star"
+      }
+    },
+    {
+      "id": "clouds_bass_6",
+      "layer": "bass",
+      "loopFile": "clouds_bass_6.m4a",
+      "onsets": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "color": "#B3CFFF",
+      "shape": {
+        "body": "wide",
+        "eyes": "sparkle",
+        "species": "bird",
+        "accessory": "hat"
       }
     },
     {
@@ -395,11 +568,11 @@
         15,
         15.5
       ],
-      "color": "#45DE92",
+      "color": "#3CDD8D",
       "shape": {
         "body": "tall",
         "eyes": "sparkle",
-        "species": "cat",
+        "species": "bear",
         "accessory": "scarf"
       }
     },
@@ -429,11 +602,11 @@
         14,
         15.5
       ],
-      "color": "#5FE3A1",
+      "color": "#56E19C",
       "shape": {
         "body": "tall",
         "eyes": "big",
-        "species": "bear",
+        "species": "mouse",
         "accessory": "none"
       }
     },
@@ -453,7 +626,7 @@
         14,
         15.5
       ],
-      "color": "#75E7AE",
+      "color": "#70E6AB",
       "shape": {
         "body": "tall",
         "eyes": "sleepy",
@@ -491,8 +664,84 @@
       "shape": {
         "body": "tall",
         "eyes": "dots",
-        "species": "dino",
+        "species": "bird",
         "accessory": "hat"
+      }
+    },
+    {
+      "id": "clouds_melody_5",
+      "layer": "melody",
+      "loopFile": "clouds_melody_5.m4a",
+      "onsets": [
+        0,
+        0.75,
+        1.5,
+        2.25,
+        3.25,
+        4,
+        4.75,
+        5.5,
+        6.25,
+        7.25,
+        8,
+        8.75,
+        9.5,
+        10.25,
+        11.25,
+        12,
+        12.75,
+        13.5,
+        14.25,
+        15.25
+      ],
+      "color": "#2BDA83",
+      "shape": {
+        "body": "tall",
+        "eyes": "sparkle",
+        "species": "dino",
+        "accessory": "scarf"
+      }
+    },
+    {
+      "id": "clouds_melody_6",
+      "layer": "melody",
+      "loopFile": "clouds_melody_6.m4a",
+      "onsets": [
+        0,
+        0.5,
+        1,
+        1.5,
+        2,
+        2.5,
+        3,
+        4,
+        4.5,
+        5,
+        5.5,
+        6,
+        6.5,
+        7,
+        8,
+        8.5,
+        9,
+        9.5,
+        10,
+        10.5,
+        11,
+        12,
+        12.5,
+        13,
+        13.5,
+        14,
+        14.5,
+        15
+      ],
+      "color": "#A0EEC7",
+      "shape": {
+        "body": "tall",
+        "eyes": "big",
+        "species": "axolotl",
+        "accessory": "none"
       }
     },
     {
@@ -507,11 +756,11 @@
         12,
         14.5
       ],
-      "color": "#FF9038",
+      "color": "#FF8A2E",
       "shape": {
         "body": "small",
         "eyes": "big",
-        "species": "bunny",
+        "species": "frog",
         "accessory": "star"
       }
     },
@@ -534,11 +783,11 @@
         14.5,
         15.5
       ],
-      "color": "#FFA157",
+      "color": "#FF9B4D",
       "shape": {
         "body": "small",
         "eyes": "sleepy",
-        "species": "mouse",
+        "species": "bird",
         "accessory": "hat"
       }
     },
@@ -560,11 +809,11 @@
         12.75,
         13.5
       ],
-      "color": "#FFAF71",
+      "color": "#FFAC6B",
       "shape": {
         "body": "small",
         "eyes": "dots",
-        "species": "bird",
+        "species": "dino",
         "accessory": "scarf"
       }
     },
@@ -587,6 +836,58 @@
         "species": "axolotl",
         "accessory": "none"
       }
+    },
+    {
+      "id": "clouds_voice_5",
+      "layer": "voice",
+      "loopFile": "clouds_voice_5.m4a",
+      "onsets": [
+        0,
+        1,
+        2.5,
+        3,
+        4,
+        5,
+        6.5,
+        7,
+        8,
+        9,
+        10.5,
+        11,
+        12,
+        13,
+        14.5,
+        15
+      ],
+      "color": "#FF7E1A",
+      "shape": {
+        "body": "small",
+        "eyes": "big",
+        "species": "cat",
+        "accessory": "star"
+      }
+    },
+    {
+      "id": "clouds_voice_6",
+      "layer": "voice",
+      "loopFile": "clouds_voice_6.m4a",
+      "onsets": [
+        2,
+        3,
+        6,
+        7,
+        10,
+        11,
+        14,
+        15
+      ],
+      "color": "#FFCCA4",
+      "shape": {
+        "body": "small",
+        "eyes": "sleepy",
+        "species": "bunny",
+        "accessory": "hat"
+      }
     }
   ],
   "combos": [
@@ -607,7 +908,7 @@
         "clouds_drums_2",
         "clouds_bass_3",
         "clouds_melody_4",
-        "clouds_voice_1"
+        "clouds_voice_5"
       ],
       "bonusLoopFile": "clouds_bonus_2.m4a",
       "celebrationId": "cel_clouds_2"
@@ -617,11 +918,22 @@
       "creatureIds": [
         "clouds_drums_3",
         "clouds_bass_4",
-        "clouds_melody_1",
-        "clouds_voice_2"
+        "clouds_melody_5",
+        "clouds_voice_6"
       ],
       "bonusLoopFile": "clouds_bonus_3.m4a",
       "celebrationId": "cel_clouds_3"
+    },
+    {
+      "id": "clouds_combo_4",
+      "creatureIds": [
+        "clouds_drums_4",
+        "clouds_bass_5",
+        "clouds_melody_6",
+        "clouds_voice_1"
+      ],
+      "bonusLoopFile": "clouds_bonus_4.m4a",
+      "celebrationId": "cel_clouds_4"
     }
   ]
 }

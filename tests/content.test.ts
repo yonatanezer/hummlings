@@ -16,11 +16,11 @@ const stages: Stage[] = files.map((f) => {
 });
 
 describe('content audit (every stage, every creature, every combo)', () => {
-  it('has exactly 3 stages x 16 creatures x 3 combos with globally unique stable ids', () => {
+  it('has exactly 3 stages x 24 creatures x 4 combos with globally unique stable ids', () => {
     expect(stages).toHaveLength(3);
     const ids = stages.flatMap((s) => [...s.creatures.map((c) => c.id), ...s.combos.map((c) => c.id), ...s.combos.map((c) => c.celebrationId)]);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toHaveLength(3 * (16 + 3 + 3));
+    expect(ids).toHaveLength(3 * (24 + 4 + 4));
   });
   it('distinct tempo, key and palette per stage; tempos 84-112', () => {
     expect(new Set(stages.map((s) => s.bpm)).size).toBe(3);
@@ -40,7 +40,7 @@ describe('content audit (every stage, every creature, every combo)', () => {
   it('combos use four different layers and are all different sets', () => {
     for (const s of stages) {
       const sets = s.combos.map((c) => [...c.creatureIds].sort().join('|'));
-      expect(new Set(sets).size).toBe(3);
+      expect(new Set(sets).size).toBe(4);
       for (const c of s.combos) {
         const layers = c.creatureIds.map((id) => s.creatures.find((x) => x.id === id)!.layer);
         expect(new Set(layers).size).toBe(4);
@@ -51,7 +51,7 @@ describe('content audit (every stage, every creature, every combo)', () => {
     stages.forEach((s, si) => {
       const scale = scalePitchClasses(s.key);
       s.creatures.forEach((c, i) => {
-        const events = buildPattern({ stage: s, layer: c.layer, variant: i % 4, seed: seedOf(si, ['drums', 'bass', 'melody', 'voice'].indexOf(c.layer), i % 4), swing: DEFS[si]!.swing, world: si });
+        const events = buildPattern({ stage: s, layer: c.layer, variant: i % 6, seed: seedOf(si, ['drums', 'bass', 'melody', 'voice'].indexOf(c.layer), i % 6), swing: DEFS[si]!.swing, world: si });
         expect(events.length, c.id).toBeGreaterThan(0);
         expect(onsetsOf(events)).toEqual(c.onsets);
         if (c.layer === 'drums') return;
@@ -97,7 +97,7 @@ describe('melody variety', () => {
         count++;
       });
     });
-    expect(count).toBe(12);
-    expect(sigs.size).toBe(12);
+    expect(count).toBe(18);
+    expect(sigs.size).toBe(18);
   });
 });

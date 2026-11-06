@@ -3,7 +3,7 @@ import { GestureTracker, type World } from '../src/core/gestures';
 import { computeLayout, spotAt } from '../src/core/layout';
 
 const layout = computeLayout(844, 390);
-const ids = Array.from({ length: 16 }, (_, i) => `c${i}`);
+const ids = Array.from({ length: 24 }, (_, i) => `c${i}`);
 const world = (onStage: (string | null)[] = [null, null, null, null, null, null], scrollX = 0): World => ({ layout, scrollX, trayIds: ids, onStage });
 
 describe('layout', () => {
@@ -14,7 +14,7 @@ describe('layout', () => {
     const small = computeLayout(667, 375);
     expect(small.size).toBeGreaterThanOrEqual(56);
     expect(small.scrollMax).toBeGreaterThan(0); // phones scroll
-    expect(computeLayout(1180, 820).scrollMax).toBe(0); // tablets show all 16
+    expect(computeLayout(1180, 820).scrollMax).toBeLessThan(small.scrollMax); // tablets scroll less (24 creatures)
   });
   it('spotAt picks the closest spot and rejects far points', () => {
     const s = layout.spots[2]!;

@@ -43,8 +43,8 @@ export const stageSchema = z.object({
     )
     .length(TUNING.loopBars),
   palette: z.object({ sky: hex, floor: hex, glow: hex, accent: hex }),
-  creatures: z.array(creatureSchema).length(16),
-  combos: z.array(comboSchema).length(3),
+  creatures: z.array(creatureSchema).length(TUNING.creaturesPerStage),
+  combos: z.array(comboSchema).length(TUNING.combosPerStage),
 });
 
 /** Validates one stage and its cross-references. Returns a list of problems (empty = valid). */
@@ -62,7 +62,7 @@ export function validateStage(raw: unknown): { stage?: Stage; errors: string[] }
   }
   for (const layer of LAYERS) {
     const n = stage.creatures.filter((c) => c.layer === layer).length;
-    if (n !== 4) errors.push(`layer ${layer} has ${n} creatures, expected 4`);
+    if (n !== TUNING.perLayer) errors.push(`layer ${layer} has ${n} creatures, expected ${TUNING.perLayer}`);
   }
   const bars = new Set(stage.chordLoop.map((c) => c.bar));
   if (bars.size !== TUNING.loopBars) errors.push('chordLoop must cover each bar once');

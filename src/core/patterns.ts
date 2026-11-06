@@ -30,7 +30,7 @@ interface Ctx {
   chords: ChordSlot[];
   scale: number[];
   rand: () => number;
-  variant: number; // 0..3
+  variant: number; // 0..perLayer-1
   swing: number; // 0..0.3 of an 8th
   world: number; // stage index: selects the melodic contour family so each world has its own tunes
 }
@@ -83,10 +83,19 @@ function drums(c: Ctx): NoteEvent[] {
         for (let i = 0; i < 16; i++) add(o + i * 0.25, 'shaker', i % 4 === 0 ? 0.6 : 0.3, 0.12);
         if (bar % 2) add(o + 2.75, 'wood', 0.7);
         break;
-      default: // tom groove with a fill every 4th bar
+      case 3: // tom groove with a fill every 4th bar
         add(o, 'tom', 0.9, 0.4); add(o + 1.5, 'tom', 0.7, 0.3); add(o + 2.5, 'tom', 0.75, 0.3);
         if (last) { for (let i = 0; i < 4; i++) add(o + 3 + i * 0.25, 'tom', 0.6 + i * 0.1, 0.2); }
         else add(o + 3, 'wood', 0.5);
+        break;
+      case 4: // boom-bap: kick on 1 and the "and" of 2, snare on 3, ghost hats
+        add(o, 'kick', 1); add(o + 1.5, 'kick', 0.8); add(o + 2, 'snare', 0.9); if (bar % 2) add(o + 3.5, 'kick', 0.6);
+        for (let i = 0; i < 8; i++) add(o + i * 0.5, 'hat', i % 2 ? 0.25 : 0.5, 0.1);
+        break;
+      default: // latin pulse: 3-3-2 wood and shaker with a tom answer
+        for (const t of [0, 0.75, 1.5, 2.25, 3]) add(o + t, 'wood', t === 0 ? 0.8 : 0.6);
+        for (let i = 0; i < 8; i++) add(o + i * 0.5 + 0.25, 'shaker', 0.35, 0.1);
+        add(o + 2, 'tom', 0.7, 0.3); if (last) add(o + 3.5, 'tom', 0.8, 0.3);
         break;
     }
   }
@@ -109,7 +118,9 @@ function bass(c: Ctx): NoteEvent[] {
       case 0: for (let i = 0; i < 8; i++) add(i * 0.5, 0.45, i % 4 === 3 ? Math.min(hi, root + 12) : root, i % 2 ? 0.6 : 0.9); break;
       case 1: add(0, 0.9, root); add(1, 0.9, third); add(2, 0.9, fifth); add(3, 0.9, nearest(pool, root + 2), 0.7); break;
       case 2: add(0, 1.4, root); add(1.5, 1.4, root, 0.8); add(3, 0.9, fifth, 0.8); add(3.5, 0.5, root + 12 > hi ? root : root + 12, 0.6); break;
-      default: add(0, 3.6, root, 0.85); add(3.5, 0.5, fifth, 0.5); break;
+      case 3: add(0, 3.6, root, 0.85); add(3.5, 0.5, fifth, 0.5); break;
+      case 4: add(0, 0.9, root); add(0.75, 0.4, Math.min(hi, root + 12), 0.7); add(1.5, 0.9, root, 0.8); add(2.5, 0.4, Math.min(hi, root + 12), 0.7); add(3, 0.9, fifth, 0.8); break;
+      default: for (let i = 0; i < 4; i++) add(i, 0.95, [root, fifth, Math.min(hi, root + 12), fifth][i]!, i === 0 ? 0.9 : 0.7); break;
     }
   }
   return out;
@@ -144,12 +155,23 @@ function melody(c: Ctx): NoteEvent[] {
         if (bar % 2) add(3.5, 0.5, pool[1] ?? pool[0]!, 0.4);
         break;
       }
-      default: { // counter melody: composed tune with the syncopated rhythm cell, a third lower than the hook
+      case 3: { // counter melody: composed tune with the syncopated rhythm cell, a third lower than the hook
         const anchor = Math.floor(scalePool.length / 2) - 3;
         for (const [beat, dur, k] of tuneBar(c.world, 3, bar, anchor)) {
           const m = scalePool[Math.max(0, Math.min(scalePool.length - 1, k))]!;
           add(beat, dur * 0.85, bar === bars - 1 && beat >= 3 ? nearest(pool, m) : m, 0.72);
         }
+        break;
+      }
+      case 4: { // scale run: stepwise ascending bars, falling back on the last bar
+        const base = Math.floor(scalePool.length / 2) - 2 + (bar % 2) * 2;
+        for (let i = 0; i < 5; i++) add(i * 0.75 + (i > 3 ? 0.25 : 0), 0.65, scalePool[Math.max(0, Math.min(scalePool.length - 1, base + (bar === bars - 1 ? 4 - i : i)))]!, 0.7);
+        break;
+      }
+      default: { // pedal and hop: a repeated high note answered by chord-tone leaps
+        const top = pool[pool.length - 1]!;
+        for (const t of [0, 0.5, 1, 2, 2.5]) add(t, 0.4, top, 0.65);
+        add(1.5, 0.4, pool[0]!, 0.8); add(3, 0.9, pool[Math.min(1, pool.length - 1)]!, 0.8);
       }
     }
   }
@@ -174,7 +196,9 @@ function voice(c: Ctx): NoteEvent[] {
         for (let i = 0; i < 3; i++) { idx = Math.max(0, Math.min(scalePool.length - 1, idx + pick([-1, 1, 1, -2, 2], r))); add(i * 0.75, 0.6, scalePool[idx]!, 'la'); }
         break;
       }
-      default: add(1.5, 0.35, nearest(scalePool, pool[0]! + 5), 'hey', 0.9); if (bar % 2 === 0) add(3, 0.5, nearest(scalePool, pool[0]!), 'hey', 0.7); break;
+      case 3: add(1.5, 0.35, nearest(scalePool, pool[0]! + 5), 'hey', 0.9); if (bar % 2 === 0) add(3, 0.5, nearest(scalePool, pool[0]!), 'hey', 0.7); break;
+      case 4: add(0, 0.4, pool[0]!, 'doo', 0.8); add(1, 0.4, pool[1] ?? pool[0]!, 'doo', 0.7); add(2.5, 0.4, pool[0]!, 'doo', 0.8); add(3, 0.4, pool[2] ?? pool[0]!, 'doo', 0.7); break;
+      default: add(2, 0.4, nearest(scalePool, pool[0]! + 4), 'hey', 0.85); add(3, 0.6, nearest(scalePool, pool[0]! + 2), 'la', 0.75); break;
     }
   }
   return out;

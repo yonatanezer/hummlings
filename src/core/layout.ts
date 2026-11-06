@@ -12,7 +12,7 @@ export interface Layout {
   spots: Pt[]; // feet position of each of the 6 spots
   tray: Rect;
   slot: number; // tray slot size
-  slotPos: Pt[]; // centre of each of the 16 tray slots, before scrolling
+  slotPos: Pt[]; // centre of each tray slot, before scrolling
   trayContentW: number;
   scrollMax: number;
   topBar: number;
@@ -21,7 +21,7 @@ export interface Layout {
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
 /** Geometry of the stage screen (see LAYOUT.md). W x H = safe-area-reduced window in points. */
-export function computeLayout(W: number, H: number, creatureCount = 16, padX = 0): Layout {
+export function computeLayout(W: number, H: number, creatureCount = TUNING.creaturesPerStage, padX = 0): Layout {
   const u = clamp(Math.min(W / 844, H / 390), 0.8, 2.2);
   const stageH = 0.65 * H;
   const size = clamp(Math.min(0.32 * H, (0.8 * W) / TUNING.maxSpots), TUNING.minTouchPt, 200);
@@ -31,14 +31,15 @@ export function computeLayout(W: number, H: number, creatureCount = 16, padX = 0
   });
   const tray: Rect = { x: 0, y: stageH, w: W, h: H - stageH };
   const groupGap = 16 * u;
-  const groups = Math.ceil(creatureCount / 4);
+  const per = Math.max(1, Math.round(creatureCount / 4)); // one colour-coded group per layer
+  const groups = Math.ceil(creatureCount / per);
   const pad = Math.max(12 * u, padX);
-  const ideal = clamp(0.56 * tray.h, TUNING.minTouchPt, 112);
+  const ideal = clamp(0.56 * tray.h, TUNING.minTouchPt, 84);
   const fit = (W - pad * 2 - (groups - 1) * groupGap) / creatureCount; // slot size at which all creatures fit without scrolling
   const slot = fit >= TUNING.minTouchPt ? Math.min(ideal, fit) : ideal; // phones: keep it big and scroll
   const trayContentW = pad * 2 + creatureCount * slot + (groups - 1) * groupGap;
   const slotPos: Pt[] = Array.from({ length: creatureCount }, (_, i) => ({
-    x: pad + slot / 2 + i * slot + Math.floor(i / 4) * groupGap,
+    x: pad + slot / 2 + i * slot + Math.floor(i / per) * groupGap,
     y: tray.y + tray.h / 2,
   }));
   // When everything fits, centre the row.

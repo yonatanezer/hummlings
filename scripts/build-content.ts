@@ -1,12 +1,13 @@
 // Generates content/stages/*.json from scripts/stage-defs.ts. Run: npm run content
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { TUNING } from '../src/core/tuning';
 import { buildPattern, onsetsOf } from '../src/core/patterns';
 import { validateStage } from '../src/core/schema';
 import { LAYER_COLORS, SPECIES, type Creature, type Stage } from '../src/core/types';
 import { shade } from './colors';
 import { BODY_OF, LAYER_ORDER, STAGES } from './stage-defs';
 
-export const LIGHTNESS = [-0.06, 0, 0.05, 0.1];
+export const LIGHTNESS = [-0.08, -0.02, 0.04, 0.1, -0.12, 0.15]; // six shades per layer
 export const seedOf = (stageIdx: number, layerIdx: number, variant: number): number => 1000 * (stageIdx + 1) + 100 * layerIdx + variant;
 
 export function buildStage(stageIdx: number): Stage {
@@ -14,20 +15,20 @@ export function buildStage(stageIdx: number): Stage {
   const stageBase = { chordLoop: d.chords, key: d.key };
   const creatures: Creature[] = [];
   LAYER_ORDER.forEach((layer, li) => {
-    for (let v = 0; v < 4; v++) {
+    for (let v = 0; v < TUNING.perLayer; v++) {
       const id = `${d.id}_${layer}_${v + 1}`;
       const events = buildPattern({ stage: stageBase, layer, variant: v, seed: seedOf(stageIdx, li, v), swing: d.swing, world: stageIdx });
       creatures.push({
         id, layer, loopFile: `${id}.m4a`, onsets: onsetsOf(events),
         color: shade(LAYER_COLORS[layer], d.hueShift, LIGHTNESS[v]!),
-        shape: { body: BODY_OF[layer], eyes: d.eyes[(v + li) % 4]!, species: SPECIES[(v * 2 + li + stageIdx * 3) % 8]!, accessory: d.accessories[(v + li * 2) % 4]! },
+        shape: { body: BODY_OF[layer], eyes: d.eyes[(v + li) % 4]!, species: SPECIES[(v + li * 2 + stageIdx * 3) % 8]!, accessory: d.accessories[(v + li * 2) % 4]! },
       });
     }
   });
   const byLayer = (l: string) => creatures.filter((c) => c.layer === l);
-  const combos = [0, 1, 2].map((i) => ({
+  const combos = Array.from({ length: TUNING.combosPerStage }, (_, i) => ({
     id: `${d.id}_combo_${i + 1}`,
-    creatureIds: [byLayer('drums')[i]!.id, byLayer('bass')[(i + 1) % 4]!.id, byLayer('melody')[(i + 2) % 4]!.id, byLayer('voice')[(i + 3) % 4]!.id] as [string, string, string, string],
+    creatureIds: [byLayer('drums')[i]!.id, byLayer('bass')[(i + 1) % TUNING.perLayer]!.id, byLayer('melody')[(i + 2) % TUNING.perLayer]!.id, byLayer('voice')[(i + 3) % TUNING.perLayer]!.id] as [string, string, string, string],
     bonusLoopFile: `${d.id}_bonus_${i + 1}.m4a`,
     celebrationId: `cel_${d.id}_${i + 1}`,
   }));

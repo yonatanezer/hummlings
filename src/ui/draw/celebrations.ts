@@ -15,6 +15,9 @@ const SPECS: Record<string, Spec> = {
   cel_fair_3: { dance: 'spin', blocks: ['rings', 'confetti'], colors: ['#FFC857', '#FF7AA8', '#FFFFFF'] },
   cel_clouds_1: { dance: 'wave', blocks: ['bubbles', 'stars'], colors: ['#D6F0FF', '#5FE3C0', '#FFFFFF'] },
   cel_clouds_2: { dance: 'conga', blocks: ['beams', 'lanterns'], colors: ['#FFE8A3', '#D6F0FF', '#7A8CFF'] },
+  cel_pond_4: { dance: 'conga', blocks: ['beams', 'stars', 'confetti'], colors: ['#7A8CFF', '#FFE8A3', '#FF7AA8'] },
+  cel_fair_4: { dance: 'wave', blocks: ['rings', 'bubbles', 'lanterns'], colors: ['#FFD6E8', '#FFC857', '#5FE3C0'] },
+  cel_clouds_4: { dance: 'spin', blocks: ['stars', 'lanterns', 'bubbles'], colors: ['#D6F0FF', '#FFE8A3', '#FF7AA8'] },
   cel_clouds_3: { dance: 'jump', blocks: ['rings', 'bubbles', 'confetti'], colors: ['#5FE3C0', '#D6F0FF', '#FFC857'] },
 };
 

@@ -63,7 +63,7 @@
         15.5625,
         15.75
       ],
-      "color": "#FF5B63",
+      "color": "#FF5159",
       "shape": {
         "body": "round",
         "eyes": "big",
@@ -110,11 +110,11 @@
         15.5625,
         15.75
       ],
-      "color": "#FF7A80",
+      "color": "#FF7076",
       "shape": {
         "body": "round",
         "eyes": "sparkle",
-        "species": "bird",
+        "species": "frog",
         "accessory": "bow"
       }
     },
@@ -188,11 +188,11 @@
         15.5625,
         15.75
       ],
-      "color": "#FF9498",
+      "color": "#FF8E94",
       "shape": {
         "body": "round",
         "eyes": "dots",
-        "species": "axolotl",
+        "species": "bird",
         "accessory": "star"
       }
     },
@@ -225,8 +225,117 @@
       "shape": {
         "body": "round",
         "eyes": "sleepy",
-        "species": "bunny",
+        "species": "dino",
         "accessory": "crown"
+      }
+    },
+    {
+      "id": "fair_drums_5",
+      "layer": "drums",
+      "loopFile": "fair_drums_5.m4a",
+      "onsets": [
+        0,
+        0.5625,
+        1,
+        1.5625,
+        2,
+        2.5625,
+        3,
+        3.5625,
+        4,
+        4.5625,
+        5,
+        5.5625,
+        6,
+        6.5625,
+        7,
+        7.5625,
+        8,
+        8.5625,
+        9,
+        9.5625,
+        10,
+        10.5625,
+        11,
+        11.5625,
+        12,
+        12.5625,
+        13,
+        13.5625,
+        14,
+        14.5625,
+        15,
+        15.5625
+      ],
+      "color": "#FF3D46",
+      "shape": {
+        "body": "round",
+        "eyes": "big",
+        "species": "axolotl",
+        "accessory": "hat"
+      }
+    },
+    {
+      "id": "fair_drums_6",
+      "layer": "drums",
+      "loopFile": "fair_drums_6.m4a",
+      "onsets": [
+        0,
+        0.25,
+        0.75,
+        1.25,
+        1.5625,
+        1.75,
+        2,
+        2.25,
+        2.75,
+        3,
+        3.25,
+        3.75,
+        4,
+        4.25,
+        4.75,
+        5.25,
+        5.5625,
+        5.75,
+        6,
+        6.25,
+        6.75,
+        7,
+        7.25,
+        7.75,
+        8,
+        8.25,
+        8.75,
+        9.25,
+        9.5625,
+        9.75,
+        10,
+        10.25,
+        10.75,
+        11,
+        11.25,
+        11.75,
+        12,
+        12.25,
+        12.75,
+        13.25,
+        13.5625,
+        13.75,
+        14,
+        14.25,
+        14.75,
+        15,
+        15.25,
+        15.5625,
+        15.75
+      ],
+      "color": "#FFB3B6",
+      "shape": {
+        "body": "round",
+        "eyes": "sparkle",
+        "species": "cat",
+        "accessory": "bow"
       }
     },
     {
@@ -267,11 +376,11 @@
         15,
         15.5625
       ],
-      "color": "#765BFF",
+      "color": "#6E51FF",
       "shape": {
         "body": "wide",
         "eyes": "sparkle",
-        "species": "frog",
+        "species": "bird",
         "accessory": "star"
       }
     },
@@ -297,7 +406,7 @@
         14,
         15
       ],
-      "color": "#907AFF",
+      "color": "#8770FF",
       "shape": {
         "body": "wide",
         "eyes": "dots",
@@ -327,11 +436,11 @@
         15,
         15.5625
       ],
-      "color": "#A594FF",
+      "color": "#A18EFF",
       "shape": {
         "body": "wide",
         "eyes": "sleepy",
-        "species": "cat",
+        "species": "axolotl",
         "accessory": "hat"
       }
     },
@@ -353,8 +462,72 @@
       "shape": {
         "body": "wide",
         "eyes": "big",
-        "species": "bear",
+        "species": "cat",
         "accessory": "bow"
+      }
+    },
+    {
+      "id": "fair_bass_5",
+      "layer": "bass",
+      "loopFile": "fair_bass_5.m4a",
+      "onsets": [
+        0,
+        0.75,
+        1.5625,
+        2.5625,
+        3,
+        4,
+        4.75,
+        5.5625,
+        6.5625,
+        7,
+        8,
+        8.75,
+        9.5625,
+        10.5625,
+        11,
+        12,
+        12.75,
+        13.5625,
+        14.5625,
+        15
+      ],
+      "color": "#5D3DFF",
+      "shape": {
+        "body": "wide",
+        "eyes": "sparkle",
+        "species": "bunny",
+        "accessory": "star"
+      }
+    },
+    {
+      "id": "fair_bass_6",
+      "layer": "bass",
+      "loopFile": "fair_bass_6.m4a",
+      "onsets": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "color": "#BFB3FF",
+      "shape": {
+        "body": "wide",
+        "eyes": "dots",
+        "species": "bear",
+        "accessory": "crown"
       }
     },
     {
@@ -395,11 +568,11 @@
         15,
         15.5625
       ],
-      "color": "#45D9DE",
+      "color": "#3CD7DD",
       "shape": {
         "body": "tall",
         "eyes": "dots",
-        "species": "bird",
+        "species": "axolotl",
         "accessory": "hat"
       }
     },
@@ -429,11 +602,11 @@
         14,
         15.5625
       ],
-      "color": "#5FDEE3",
+      "color": "#56DDE1",
       "shape": {
         "body": "tall",
         "eyes": "sleepy",
-        "species": "axolotl",
+        "species": "cat",
         "accessory": "bow"
       }
     },
@@ -453,7 +626,7 @@
         14,
         15.5625
       ],
-      "color": "#75E3E7",
+      "color": "#70E2E6",
       "shape": {
         "body": "tall",
         "eyes": "big",
@@ -491,8 +664,84 @@
       "shape": {
         "body": "tall",
         "eyes": "sparkle",
-        "species": "mouse",
+        "species": "bear",
         "accessory": "crown"
+      }
+    },
+    {
+      "id": "fair_melody_5",
+      "layer": "melody",
+      "loopFile": "fair_melody_5.m4a",
+      "onsets": [
+        0,
+        0.75,
+        1.5625,
+        2.25,
+        3.25,
+        4,
+        4.75,
+        5.5625,
+        6.25,
+        7.25,
+        8,
+        8.75,
+        9.5625,
+        10.25,
+        11.25,
+        12,
+        12.75,
+        13.5625,
+        14.25,
+        15.25
+      ],
+      "color": "#2BD4DA",
+      "shape": {
+        "body": "tall",
+        "eyes": "dots",
+        "species": "mouse",
+        "accessory": "hat"
+      }
+    },
+    {
+      "id": "fair_melody_6",
+      "layer": "melody",
+      "loopFile": "fair_melody_6.m4a",
+      "onsets": [
+        0,
+        0.5625,
+        1,
+        1.5625,
+        2,
+        2.5625,
+        3,
+        4,
+        4.5625,
+        5,
+        5.5625,
+        6,
+        6.5625,
+        7,
+        8,
+        8.5625,
+        9,
+        9.5625,
+        10,
+        10.5625,
+        11,
+        12,
+        12.5625,
+        13,
+        13.5625,
+        14,
+        14.5625,
+        15
+      ],
+      "color": "#A0ECEE",
+      "shape": {
+        "body": "tall",
+        "eyes": "sleepy",
+        "species": "frog",
+        "accessory": "bow"
       }
     },
     {
@@ -507,11 +756,11 @@
         12,
         14.5625
       ],
-      "color": "#FFFA38",
+      "color": "#FFF92E",
       "shape": {
         "body": "small",
         "eyes": "sleepy",
-        "species": "dino",
+        "species": "bunny",
         "accessory": "star"
       }
     },
@@ -534,11 +783,11 @@
         14.5625,
         15.5625
       ],
-      "color": "#FFFA57",
+      "color": "#FFFA4D",
       "shape": {
         "body": "small",
         "eyes": "big",
-        "species": "cat",
+        "species": "bear",
         "accessory": "crown"
       }
     },
@@ -560,11 +809,11 @@
         12.75,
         13.5625
       ],
-      "color": "#FFFB71",
+      "color": "#FFFB6B",
       "shape": {
         "body": "small",
         "eyes": "sparkle",
-        "species": "bear",
+        "species": "mouse",
         "accessory": "hat"
       }
     },
@@ -587,6 +836,58 @@
         "species": "frog",
         "accessory": "bow"
       }
+    },
+    {
+      "id": "fair_voice_5",
+      "layer": "voice",
+      "loopFile": "fair_voice_5.m4a",
+      "onsets": [
+        0,
+        1,
+        2.5625,
+        3,
+        4,
+        5,
+        6.5625,
+        7,
+        8,
+        9,
+        10.5625,
+        11,
+        12,
+        13,
+        14.5625,
+        15
+      ],
+      "color": "#FFF91A",
+      "shape": {
+        "body": "small",
+        "eyes": "sleepy",
+        "species": "bird",
+        "accessory": "star"
+      }
+    },
+    {
+      "id": "fair_voice_6",
+      "layer": "voice",
+      "loopFile": "fair_voice_6.m4a",
+      "onsets": [
+        2,
+        3,
+        6,
+        7,
+        10,
+        11,
+        14,
+        15
+      ],
+      "color": "#FFFCA4",
+      "shape": {
+        "body": "small",
+        "eyes": "big",
+        "species": "dino",
+        "accessory": "crown"
+      }
     }
   ],
   "combos": [
@@ -607,7 +908,7 @@
         "fair_drums_2",
         "fair_bass_3",
         "fair_melody_4",
-        "fair_voice_1"
+        "fair_voice_5"
       ],
       "bonusLoopFile": "fair_bonus_2.m4a",
       "celebrationId": "cel_fair_2"
@@ -617,11 +918,22 @@
       "creatureIds": [
         "fair_drums_3",
         "fair_bass_4",
-        "fair_melody_1",
-        "fair_voice_2"
+        "fair_melody_5",
+        "fair_voice_6"
       ],
       "bonusLoopFile": "fair_bonus_3.m4a",
       "celebrationId": "cel_fair_3"
+    },
+    {
+      "id": "fair_combo_4",
+      "creatureIds": [
+        "fair_drums_4",
+        "fair_bass_5",
+        "fair_melody_6",
+        "fair_voice_1"
+      ],
+      "bonusLoopFile": "fair_bonus_4.m4a",
+      "celebrationId": "cel_fair_4"
     }
   ]
 }

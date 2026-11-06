@@ -25,7 +25,7 @@ const shots: { file: string; title: string; note?: string }[] = [];
 const save = (file: string, buf: Buffer, title: string, note?: string) => { writeFileSync(`${OUT}/${file}`, buf); shots.push({ file, title, note }); };
 
 function scene(stage: Stage, W: number, H: number, over: Partial<SceneInput> = {}, picks = [0, 5, 10, 14, 3, 8]): SceneInput {
-  const layout = computeLayout(W, H, 16, 40);
+  const layout = computeLayout(W, H, undefined, 40);
   const ids = picks.map((i) => stage.creatures[i]!.id);
   return {
     layout, stage, placed: ids.map((id, spot) => ({ id, spot, since: -5000, from: layout.slotPos[0]! })), muted: {}, solo: null, drags: [], returning: [],
@@ -71,7 +71,7 @@ async function main() {
   // 3. sizes
   for (const [W, H, name] of [[667, 375, 'iPhone SE'], [1180, 820, 'iPad']] as const) {
     const s = scene(pond, W, H);
-    save(`size_${W}.png`, await renderPng(W, H, (sk, c) => drawScene(sk, c, s), W > 900 ? 1 : 2), `Layout on ${name} (${W}x${H})`, name === 'iPad' ? 'All 16 fit in the tray without scrolling.' : 'Tray scrolls horizontally; every target >= 56 pt.');
+    save(`size_${W}.png`, await renderPng(W, H, (sk, c) => drawScene(sk, c, s), W > 900 ? 1 : 2), `Layout on ${name} (${W}x${H})`, name === 'iPad' ? 'Large tray; scrolls a little (24 creatures).' : 'Tray scrolls horizontally; every target >= 56 pt.');
   }
   // 4. stage select, splash, combo book
   const selW = 844, selH = 390;

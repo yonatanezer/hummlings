@@ -149,10 +149,10 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   // tray
   c.save();
   c.clipRect(sk.XYWHRect(0, l.tray.y + 2, l.W, l.tray.h), 1, true);
-  const groups = [0, 1, 2, 3];
-  groups.forEach((g) => {
-    const a = l.slotPos[g * 4]!, b = l.slotPos[g * 4 + 3]!;
-    const layer = stage.creatures[g * 4]!.layer;
+  const per = stage.creatures.length / 4;
+  [0, 1, 2, 3].forEach((g) => {
+    const a = l.slotPos[g * per]!, b = l.slotPos[g * per + per - 1]!;
+    const layer = stage.creatures[g * per]!.layer;
     c.drawRRect(sk.RRectXY(sk.XYWHRect(a.x - l.slot * 0.55 - s.scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84), 14, 14), paint(sk, LAYER_COLORS[layer], 0.11));
   });
   const trayS = Math.min(l.slot * 0.72, l.tray.h * 0.46);

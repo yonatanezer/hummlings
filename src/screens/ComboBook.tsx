@@ -19,7 +19,7 @@ interface Props {
 export function ComboBook({ stage, session, discovered, onClose, onReplay }: Props) {
   const { width, height } = useWindowDimensions();
   const w = width * 0.8;
-  const cardW = (w - 24 * 4) / 3;
+  const cardW = (w - 24 * 5) / stage.combos.length;
   const cardH = Math.min(height * 0.5, cardW * 0.75);
   return (
     <View style={styles.overlay} accessibilityLabel={t('combo.title')}>

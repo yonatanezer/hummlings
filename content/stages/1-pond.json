@@ -63,7 +63,7 @@
         15.5,
         15.75
       ],
-      "color": "#FF5B94",
+      "color": "#FF518D",
       "shape": {
         "body": "round",
         "eyes": "dots",
@@ -110,11 +110,11 @@
         15.5,
         15.75
       ],
-      "color": "#FF7AA8",
+      "color": "#FF70A1",
       "shape": {
         "body": "round",
         "eyes": "big",
-        "species": "bear",
+        "species": "bunny",
         "accessory": "star"
       }
     },
@@ -188,11 +188,11 @@
         15.5,
         15.75
       ],
-      "color": "#FF94B9",
+      "color": "#FF8EB5",
       "shape": {
         "body": "round",
         "eyes": "sleepy",
-        "species": "frog",
+        "species": "bear",
         "accessory": "none"
       }
     },
@@ -225,8 +225,117 @@
       "shape": {
         "body": "round",
         "eyes": "sparkle",
-        "species": "dino",
+        "species": "mouse",
         "accessory": "bow"
+      }
+    },
+    {
+      "id": "pond_drums_5",
+      "layer": "drums",
+      "loopFile": "pond_drums_5.m4a",
+      "onsets": [
+        0,
+        0.5,
+        1,
+        1.5,
+        2,
+        2.5,
+        3,
+        3.5,
+        4,
+        4.5,
+        5,
+        5.5,
+        6,
+        6.5,
+        7,
+        7.5,
+        8,
+        8.5,
+        9,
+        9.5,
+        10,
+        10.5,
+        11,
+        11.5,
+        12,
+        12.5,
+        13,
+        13.5,
+        14,
+        14.5,
+        15,
+        15.5
+      ],
+      "color": "#FF3D80",
+      "shape": {
+        "body": "round",
+        "eyes": "dots",
+        "species": "frog",
+        "accessory": "flower"
+      }
+    },
+    {
+      "id": "pond_drums_6",
+      "layer": "drums",
+      "loopFile": "pond_drums_6.m4a",
+      "onsets": [
+        0,
+        0.25,
+        0.75,
+        1.25,
+        1.5,
+        1.75,
+        2,
+        2.25,
+        2.75,
+        3,
+        3.25,
+        3.75,
+        4,
+        4.25,
+        4.75,
+        5.25,
+        5.5,
+        5.75,
+        6,
+        6.25,
+        6.75,
+        7,
+        7.25,
+        7.75,
+        8,
+        8.25,
+        8.75,
+        9.25,
+        9.5,
+        9.75,
+        10,
+        10.25,
+        10.75,
+        11,
+        11.25,
+        11.75,
+        12,
+        12.25,
+        12.75,
+        13.25,
+        13.5,
+        13.75,
+        14,
+        14.25,
+        14.75,
+        15,
+        15.25,
+        15.5,
+        15.75
+      ],
+      "color": "#FFB3CD",
+      "shape": {
+        "body": "round",
+        "eyes": "big",
+        "species": "bird",
+        "accessory": "star"
       }
     },
     {
@@ -267,11 +376,11 @@
         15,
         15.5
       ],
-      "color": "#5B72FF",
+      "color": "#5169FF",
       "shape": {
         "body": "wide",
         "eyes": "big",
-        "species": "bunny",
+        "species": "bear",
         "accessory": "none"
       }
     },
@@ -297,7 +406,7 @@
         14,
         15
       ],
-      "color": "#7A8CFF",
+      "color": "#7083FF",
       "shape": {
         "body": "wide",
         "eyes": "sleepy",
@@ -327,11 +436,11 @@
         15,
         15.5
       ],
-      "color": "#94A2FF",
+      "color": "#8E9EFF",
       "shape": {
         "body": "wide",
         "eyes": "sparkle",
-        "species": "bird",
+        "species": "frog",
         "accessory": "flower"
       }
     },
@@ -353,8 +462,72 @@
       "shape": {
         "body": "wide",
         "eyes": "dots",
-        "species": "axolotl",
+        "species": "bird",
         "accessory": "star"
+      }
+    },
+    {
+      "id": "pond_bass_5",
+      "layer": "bass",
+      "loopFile": "pond_bass_5.m4a",
+      "onsets": [
+        0,
+        0.75,
+        1.5,
+        2.5,
+        3,
+        4,
+        4.75,
+        5.5,
+        6.5,
+        7,
+        8,
+        8.75,
+        9.5,
+        10.5,
+        11,
+        12,
+        12.75,
+        13.5,
+        14.5,
+        15
+      ],
+      "color": "#3D57FF",
+      "shape": {
+        "body": "wide",
+        "eyes": "big",
+        "species": "dino",
+        "accessory": "none"
+      }
+    },
+    {
+      "id": "pond_bass_6",
+      "layer": "bass",
+      "loopFile": "pond_bass_6.m4a",
+      "onsets": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "color": "#B3BDFF",
+      "shape": {
+        "body": "wide",
+        "eyes": "sleepy",
+        "species": "axolotl",
+        "accessory": "bow"
       }
     },
     {
@@ -395,11 +568,11 @@
         15,
         15.5
       ],
-      "color": "#45DEB6",
+      "color": "#3CDDB2",
       "shape": {
         "body": "tall",
         "eyes": "sleepy",
-        "species": "bear",
+        "species": "frog",
         "accessory": "flower"
       }
     },
@@ -429,11 +602,11 @@
         14,
         15.5
       ],
-      "color": "#5FE3C0",
+      "color": "#56E1BD",
       "shape": {
         "body": "tall",
         "eyes": "sparkle",
-        "species": "frog",
+        "species": "bird",
         "accessory": "star"
       }
     },
@@ -453,7 +626,7 @@
         14,
         15.5
       ],
-      "color": "#75E7C9",
+      "color": "#70E6C7",
       "shape": {
         "body": "tall",
         "eyes": "dots",
@@ -491,8 +664,84 @@
       "shape": {
         "body": "tall",
         "eyes": "big",
-        "species": "cat",
+        "species": "axolotl",
         "accessory": "bow"
+      }
+    },
+    {
+      "id": "pond_melody_5",
+      "layer": "melody",
+      "loopFile": "pond_melody_5.m4a",
+      "onsets": [
+        0,
+        0.75,
+        1.5,
+        2.25,
+        3.25,
+        4,
+        4.75,
+        5.5,
+        6.25,
+        7.25,
+        8,
+        8.75,
+        9.5,
+        10.25,
+        11.25,
+        12,
+        12.75,
+        13.5,
+        14.25,
+        15.25
+      ],
+      "color": "#2BDAAB",
+      "shape": {
+        "body": "tall",
+        "eyes": "sleepy",
+        "species": "cat",
+        "accessory": "flower"
+      }
+    },
+    {
+      "id": "pond_melody_6",
+      "layer": "melody",
+      "loopFile": "pond_melody_6.m4a",
+      "onsets": [
+        0,
+        0.5,
+        1,
+        1.5,
+        2,
+        2.5,
+        3,
+        4,
+        4.5,
+        5,
+        5.5,
+        6,
+        6.5,
+        7,
+        8,
+        8.5,
+        9,
+        9.5,
+        10,
+        10.5,
+        11,
+        12,
+        12.5,
+        13,
+        13.5,
+        14,
+        14.5,
+        15
+      ],
+      "color": "#A0EEDA",
+      "shape": {
+        "body": "tall",
+        "eyes": "sparkle",
+        "species": "bunny",
+        "accessory": "star"
       }
     },
     {
@@ -507,11 +756,11 @@
         12,
         14.5
       ],
-      "color": "#FFBE38",
+      "color": "#FFBB2E",
       "shape": {
         "body": "small",
         "eyes": "sparkle",
-        "species": "mouse",
+        "species": "dino",
         "accessory": "none"
       }
     },
@@ -534,11 +783,11 @@
         14.5,
         15.5
       ],
-      "color": "#FFC857",
+      "color": "#FFC54D",
       "shape": {
         "body": "small",
         "eyes": "dots",
-        "species": "bird",
+        "species": "axolotl",
         "accessory": "bow"
       }
     },
@@ -560,11 +809,11 @@
         12.75,
         13.5
       ],
-      "color": "#FFD071",
+      "color": "#FFCF6B",
       "shape": {
         "body": "small",
         "eyes": "big",
-        "species": "axolotl",
+        "species": "cat",
         "accessory": "flower"
       }
     },
@@ -587,6 +836,58 @@
         "species": "bunny",
         "accessory": "star"
       }
+    },
+    {
+      "id": "pond_voice_5",
+      "layer": "voice",
+      "loopFile": "pond_voice_5.m4a",
+      "onsets": [
+        0,
+        1,
+        2.5,
+        3,
+        4,
+        5,
+        6.5,
+        7,
+        8,
+        9,
+        10.5,
+        11,
+        12,
+        13,
+        14.5,
+        15
+      ],
+      "color": "#FFB41A",
+      "shape": {
+        "body": "small",
+        "eyes": "sparkle",
+        "species": "bear",
+        "accessory": "none"
+      }
+    },
+    {
+      "id": "pond_voice_6",
+      "layer": "voice",
+      "loopFile": "pond_voice_6.m4a",
+      "onsets": [
+        2,
+        3,
+        6,
+        7,
+        10,
+        11,
+        14,
+        15
+      ],
+      "color": "#FFE1A4",
+      "shape": {
+        "body": "small",
+        "eyes": "dots",
+        "species": "mouse",
+        "accessory": "bow"
+      }
     }
   ],
   "combos": [
@@ -607,7 +908,7 @@
         "pond_drums_2",
         "pond_bass_3",
         "pond_melody_4",
-        "pond_voice_1"
+        "pond_voice_5"
       ],
       "bonusLoopFile": "pond_bonus_2.m4a",
       "celebrationId": "cel_pond_2"
@@ -617,11 +918,22 @@
       "creatureIds": [
         "pond_drums_3",
         "pond_bass_4",
-        "pond_melody_1",
-        "pond_voice_2"
+        "pond_melody_5",
+        "pond_voice_6"
       ],
       "bonusLoopFile": "pond_bonus_3.m4a",
       "celebrationId": "cel_pond_3"
+    },
+    {
+      "id": "pond_combo_4",
+      "creatureIds": [
+        "pond_drums_4",
+        "pond_bass_5",
+        "pond_melody_6",
+        "pond_voice_1"
+      ],
+      "bonusLoopFile": "pond_bonus_4.m4a",
+      "celebrationId": "cel_pond_4"
     }
   ]
 }

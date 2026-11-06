@@ -5,6 +5,9 @@ export const TUNING = {
   beatsPerBar: 4, // 4/4 everywhere, decided in the spec
   loopBars: 4, // every loop is 4 bars so combinations always re-align
   maxSpots: 6, // 6 spots on stage, spec
+  perLayer: 6, // creatures per layer per world (v1 was 4; widened so every world is rich from the first minute)
+  creaturesPerStage: 24, // 4 layers x perLayer
+  combosPerStage: 4, // secret combinations per world
   sampleRate: 48000, // loops are authored and decoded at 48 kHz
 
   // ---- Audio feel ----
@@ -53,7 +56,7 @@ export const TUNING = {
   unlockProductId: 'hummlings.unlock_all',
 
   // ---- Performance caps ----
-  maxBuffersDecoded: 60, // 3 stages x (16 loops + 3 bonus) + tick
+  maxBuffersDecoded: 40, // one world at a time: 24 loops + 4 bonus + tick
   targetFps: 60,
 } as const;
 
