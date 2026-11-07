@@ -45,7 +45,7 @@ function resize() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   layout = computeLayout(W, H, undefined, 12);
 }
-addEventListener('resize', resize);
+addEventListener('resize', () => { resize(); $('rotate').classList.toggle('hide', innerWidth >= innerHeight); });
 
 const rnd = (i: number) => { const x = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
 const hash = (s: string) => { let h = 7; for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) >>> 0; return h; };
@@ -72,6 +72,21 @@ function drawBackground(t: number) {
   ctx.strokeStyle = p.glow + '40'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(W / 2, fy + H * 0.055, W * 0.55, H * 0.25, 0, 0, 7); ctx.stroke();
   ctx.fillStyle = 'rgba(8,5,26,0.92)'; ctx.fillRect(0, layout.tray.y, W, layout.tray.h);
   ctx.fillStyle = p.glow + '40'; ctx.fillRect(0, layout.tray.y, W, 2);
+}
+
+function badge(x: number, y: number, r: number, muted: boolean) {
+  ctx.save();
+  ctx.fillStyle = muted ? '#1B1340f2' : '#FFC857'; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+  if (muted) {
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(x - r * 0.55, y - r * 0.22); ctx.lineTo(x - r * 0.2, y - r * 0.22); ctx.lineTo(x + r * 0.2, y - r * 0.55); ctx.lineTo(x + r * 0.2, y + r * 0.55); ctx.lineTo(x - r * 0.2, y + r * 0.22); ctx.lineTo(x - r * 0.55, y + r * 0.22); ctx.fill();
+    ctx.strokeStyle = '#FF6F91'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x - r * 0.6, y + r * 0.6); ctx.lineTo(x + r * 0.6, y - r * 0.6); ctx.stroke();
+  } else {
+    ctx.fillStyle = '#7A4A00'; ctx.beginPath();
+    for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, rr = k % 2 ? r * 0.35 : r * 0.7; ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 function poseIndex(cr: Creature, beat: number, t: number, muted: boolean): number {
@@ -121,7 +136,23 @@ function frame(t: number) {
   drawBackground(t);
   const st = session.state;
   const l = layout;
-  l.spots.forEach((p, i) => { ctx.strokeStyle = stage.palette.glow + (st.spots[i] ? '80' : '38'); ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x, p.y + 4, l.size * 0.42, l.size * 0.07, 0, 0, 7); ctx.stroke(); });
+  let target = -1;
+  if (drags.length) { const d = drags[drags.length - 1]!; let best = Infinity; l.spots.forEach((p, i) => { const dist = Math.hypot(d.x - p.x, d.y - (p.y - l.size * 0.5)); if (dist < l.size * 0.62 && dist < best) { best = dist; target = i; } }); }
+  const placedCount = st.spots.filter(Boolean).length;
+  l.spots.forEach((p, i) => {
+    if (i === target) {
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, l.size * 0.55); g.addColorStop(0, '#ffffffaa'); g.addColorStop(0.5, stage.palette.glow + '66'); g.addColorStop(1, '#00000000');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(p.x, p.y + 4, l.size * 0.55, l.size * 0.14, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p.x, p.y + 4, l.size * 0.5, l.size * 0.11, 0, 0, 7); ctx.stroke();
+      return;
+    }
+    ctx.strokeStyle = stage.palette.glow + (st.spots[i] ? '80' : '38'); ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x, p.y + 4, l.size * 0.42, l.size * 0.07, 0, 0, 7); ctx.stroke();
+    if (!st.spots[i] && placedCount < 3 && !drags.length) {
+      const a = 0.3 + 0.2 * Math.sin(t / 500 + i), cy = p.y - l.size * 0.32, r = l.size * 0.09;
+      ctx.strokeStyle = stage.palette.glow; ctx.globalAlpha = a; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(p.x - r, cy); ctx.lineTo(p.x + r, cy); ctx.moveTo(p.x, cy - r); ctx.lineTo(p.x, cy + r); ctx.stroke(); ctx.globalAlpha = 1;
+    }
+  });
   if (st.solo) {
     const i = st.spots.indexOf(st.solo);
     if (i >= 0) {
@@ -150,6 +181,7 @@ function frame(t: number) {
     }
     if (celebration && celebration.creatureIds.includes(id) && !reduceMotion) { const k = celebration.creatureIds.indexOf(id); lift += Math.abs(Math.sin(beat * Math.PI + k * 0.5)) * l.size * 0.3; tilt = Math.sin(beat * Math.PI + k) * 0.12; }
     sprite(cr, poseIndex(cr, beat, t, muted), x, y, l.size, { sx, sy, lift, tilt, alpha: dim ? TUNING.soloDimOpacity : muted ? 0.45 : 1 });
+    if (muted || st.solo === id) badge(x + l.size * 0.36, y - l.size * (cr.shape.body === 'tall' ? 1.1 : cr.shape.body === 'wide' ? 0.7 : 0.82), l.size * 0.12, muted);
   }
   // tray
   ctx.save(); ctx.beginPath(); ctx.rect(0, l.tray.y + 2, W, l.tray.h); ctx.clip();
@@ -159,12 +191,17 @@ function frame(t: number) {
     ctx.fillStyle = LAYER_COLORS[stage.creatures[g * per]!.layer] + '1c';
     rrect(a.x - l.slot * 0.55 - scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84, 14); ctx.fill();
   }
-  const trayS = Math.min(l.slot * 0.72, l.tray.h * 0.46);
+  const trayS = Math.min(l.slot * 0.85, l.tray.h * 0.56);
   stage.creatures.forEach((cr, i) => {
     const p = l.slotPos[i]!;
     const on = st.spots.includes(cr.id) || drags.some((d) => d.id === cr.id);
     sprite(cr, 0, p.x - scrollX, p.y + trayS * 0.55, trayS, { alpha: on ? 0.22 : 1, grey: on });
   });
+  if (l.scrollMax > 0) {
+    const fade = (x0: number, x1: number, a0: string, a1: string) => { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, a0); g.addColorStop(1, a1); ctx.fillStyle = g; ctx.fillRect(Math.min(x0, x1), l.tray.y + 2, 28, l.tray.h); };
+    if (scrollX < l.scrollMax - 4) fade(W - 28, W, '#08051a00', '#08051acc');
+    if (scrollX > 4) fade(28, 0, '#08051a00', '#08051acc');
+  }
   ctx.restore();
   for (const r of returning) {
     const i = stage.creatures.findIndex((c) => c.id === r.id);
@@ -186,8 +223,14 @@ function frame(t: number) {
 }
 
 let lastHud = '';
+let lastTip = -1;
+const TIPS = ['Drag a singer from the tray up onto a glowing spot.', 'Nice! Add more singers. They always sound good together.', 'Tap a singer to mute it. Hold it to hear it solo. Drag it off to remove.', ''];
 function updateHud() {
   if (!session) return;
+  const n = session.state.spots.filter(Boolean).length;
+  const tipIdx = n === 0 ? 0 : n < 3 ? 1 : n < 5 ? 2 : 3;
+  if (tipIdx !== lastTip) { lastTip = tipIdx; $('tip').textContent = TIPS[tipIdx]!; $('tip').classList.toggle('hide', tipIdx === 3); }
+  $('beat').style.transform = `scale(${1 + 0.6 * Math.max(0, 1 - ((engine.positionBeats() % 1) * 4))})`;
   const html = stage.combos.map((c) => {
     const on = new Set(session!.state.spots.filter((x): x is string => !!x).filter((x) => !session!.state.muted[x]));
     const n = session!.state.solo ? 0 : c.creatureIds.filter((id) => on.has(id)).length;
@@ -211,7 +254,7 @@ function apply(ev: GestureEvent, t: number) {
       if (old && old !== ev.creatureId) back(old, layout.spots[ev.spot]!);
       placedAnim.set(ev.creatureId, { since: t, from: { x: ev.p.x, y: ev.p.y + layout.size * 0.6 } });
       s.dispatch({ kind: 'drop', creatureId: ev.creatureId, spot: ev.spot });
-      if (hint) { hint = false; s.countIn = false; $('tip').classList.add('hide'); }
+      if (hint) { hint = false; s.countIn = false; }
       break;
     }
     case 'returnToTray': drop(ev.creatureId); back(ev.creatureId, { x: ev.p.x, y: ev.p.y + layout.size * 0.6 }); break;
@@ -249,7 +292,7 @@ async function openStage(i: number) {
   engine.stop();
   stageIdx = i; stage = STAGES[i]!;
   placedAnim.clear(); drags = []; returning = []; celebration = null; scrollX = 0; hint = true;
-  $('tip').classList.remove('hide');
+  lastTip = -1;
   document.querySelectorAll('#worlds button').forEach((b, k) => b.classList.toggle('on', k === i));
   await engine.init();
   await Promise.all([engine.loadStage(stage), loadAtlas(stage.id)]);
@@ -263,11 +306,12 @@ async function openStage(i: number) {
   $('loading').classList.add('hide');
 }
 
-$('worlds').innerHTML = NAMES.map((n, i) => `<button data-i="${i}">${n}</button>`).join('');
+$('worlds').innerHTML = NAMES.map((n, i) => `<button data-i="${i}"><i class="wd" style="background:${STAGES[i]!.palette.accent}"></i><span class="long">${n}</span><span class="short">${n.split(' ')[0] === 'Sleepy' ? 'Clouds' : n.split(' ')[0] === 'Moonlit' ? 'Pond' : 'Fair'}</span></button>`).join('');
 $('worlds').addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button'); if (b) void openStage(Number(b.dataset.i)); });
 $('clear').addEventListener('click', () => { if (!session) return; session.state.spots.forEach((id, s) => { if (id) returning.push({ id, since: performance.now(), from: layout.spots[s]! }); }); session.dispatch({ kind: 'clear' }); });
 $('start').addEventListener('click', () => { $('splash').classList.add('hide'); void openStage(0); });
-$('mute').addEventListener('click', () => { if (engine.state === 'running') { engine.pause(); $('mute').textContent = 'Resume'; } else { engine.resume(); $('mute').textContent = 'Pause'; } });
+$('mute').addEventListener('click', () => { const on = engine.state === 'running'; if (on) engine.pause(); else engine.resume(); $('mute').setAttribute('aria-pressed', String(on)); $('mute').classList.toggle('off', on); });
 resize();
+$('rotate').classList.toggle('hide', innerWidth >= innerHeight);
 requestAnimationFrame(frame);
 void stageIdx;

@@ -111,8 +111,26 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   for (const cr of stage.creatures) byId[cr.id] = cr;
   const danceIds = s.celebration ? s.celebration.creatureIds : [];
 
-  // spot rings
-  l.spots.forEach((p, i) => spotRing(sk, c, p.x, p.y, l.size, stage.palette.glow, s.placed.some((q) => q.spot === i)));
+  // spot rings; the spot a carried creature would land on lights up (drop target), empty spots show a "+" while the stage is young
+  let target = -1;
+  if (s.drags.length) {
+    const d = s.drags[s.drags.length - 1]!;
+    let best = Infinity;
+    l.spots.forEach((p, i) => { const dist = Math.hypot(d.x - p.x, d.y - (p.y - l.size * 0.5)); if (dist < l.size * 0.62 && dist < best) { best = dist; target = i; } });
+  }
+  l.spots.forEach((p, i) => {
+    const occupied = s.placed.some((q) => q.spot === i);
+    if (i === target) {
+      c.drawOval(sk.XYWHRect(p.x - l.size * 0.55, p.y - l.size * 0.12, l.size * 1.1, l.size * 0.28), radialPaint(sk, p.x, p.y, l.size * 0.55, ['#FFFFFF', stage.palette.glow, '#00000000'], 0.6));
+      c.drawOval(sk.XYWHRect(p.x - l.size * 0.5, p.y - l.size * 0.09, l.size, l.size * 0.22), paint(sk, '#FFFFFF', 0.95, STROKE, 3));
+    } else spotRing(sk, c, p.x, p.y, l.size, stage.palette.glow, occupied);
+    if (!occupied && s.placed.length < 3 && !s.drags.length && !s.reduceMotion) {
+      const a = 0.3 + 0.2 * Math.sin(s.timeMs / 500 + i);
+      const cx = p.x, cy = p.y - l.size * 0.32, r = l.size * 0.09;
+      c.drawLine(cx - r, cy, cx + r, cy, paint(sk, stage.palette.glow, a, STROKE, 3));
+      c.drawLine(cx, cy - r, cx, cy + r, paint(sk, stage.palette.glow, a, STROKE, 3));
+    }
+  });
 
   // solo spotlight cone
   if (s.solo) {
@@ -144,6 +162,24 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
     const pose = poseFor(cr, s, { lift: dance.dy, tilt: dance.tilt }, age >= TUNING.hopMs);
     pose.sx *= pos.sx; pose.sy *= pos.sy;
     drawCreature(sk, c, cr, pos.x + dance.dx, pos.y, l.size, pose);
+    // state badges: muted = speaker with a slash, solo = star
+    const isMuted = s.muted[pl.id] === true, isSolo = s.solo === pl.id;
+    if (isMuted || isSolo) {
+      const bx = pos.x + l.size * 0.36, by = pos.y - bodyDims(cr.shape.body).h * l.size - l.size * 0.02, r = l.size * 0.12;
+      c.drawCircle(bx, by, r, paint(sk, isSolo ? '#FFC857' : '#1B1340', 0.95));
+      c.drawCircle(bx, by, r, paint(sk, '#FFFFFF', 0.9, STROKE, 2));
+      if (isMuted) {
+        const q = sk.PathBuilder.Make();
+        q.moveTo(bx - r * 0.55, by - r * 0.22); q.lineTo(bx - r * 0.2, by - r * 0.22); q.lineTo(bx + r * 0.2, by - r * 0.55); q.lineTo(bx + r * 0.2, by + r * 0.55); q.lineTo(bx - r * 0.2, by + r * 0.22); q.lineTo(bx - r * 0.55, by + r * 0.22); q.close();
+        c.drawPath(q.build(), paint(sk, '#FFFFFF'));
+        c.drawLine(bx - r * 0.6, by + r * 0.6, bx + r * 0.6, by - r * 0.6, paint(sk, '#FF6F91', 1, STROKE, 2.5));
+      } else {
+        const q = sk.PathBuilder.Make();
+        for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, rr = k % 2 ? r * 0.35 : r * 0.7; if (k === 0) q.moveTo(bx + Math.cos(a) * rr, by + Math.sin(a) * rr); else q.lineTo(bx + Math.cos(a) * rr, by + Math.sin(a) * rr); }
+        q.close();
+        c.drawPath(q.build(), paint(sk, '#7A4A00'));
+      }
+    }
   }
 
   // tray
