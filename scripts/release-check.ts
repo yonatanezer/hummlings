@@ -40,8 +40,7 @@ async function main() {
   for (const f of ['STORE_LISTING.md', 'STORE_ANSWERS.md', 'LESSONS.md', 'TODO_FOR_YONATAN.md', 'docs/ORIGINALITY.md', 'pages/hummlings/privacy.html', 'pages/hummlings/support.html']) check(`file exists: ${f}`, existsSync(f));
   // 6. published pages (needs network)
   for (const url of [PRIVACY_URL, SUPPORT_URL]) {
-    let ok = false;
-    try { ok = (await fetch(url, { signal: AbortSignal.timeout(8000) })).ok; } catch { ok = false; }
+    const ok = await fetch(url, { signal: AbortSignal.timeout(8000) }).then((r) => r.ok, () => false);
     check(`page is live: ${url}`, ok, ok ? undefined : 'merge https://github.com/yonatanezer/app-pages/pull/1');
   }
   // 7. device test confirmed by the owner
