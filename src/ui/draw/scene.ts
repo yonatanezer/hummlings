@@ -29,6 +29,7 @@ export interface SceneInput {
   hint: boolean; // first-run animated hand
   recordingBeat: number | null; // for the REC pulse (null = not recording)
   hintSlot: number;
+  trayK?: number; // 1 = singer menu shown, 0 = slid away (animated by the screen)
   popup?: { spot: number; creatureId: string; volume: number; solo: boolean } | null; // volume popup after a long press
   volumes?: Record<string, number>;
 }
@@ -65,9 +66,6 @@ export function drawBackground(sk: SkiaApi, c: Canvas, st: Stage, l: Layout, tim
   const fr = sk.XYWHRect(-W * 0.05, floorY - l.H * 0.2, W * 1.1, l.H * 0.5);
   c.drawOval(fr, gradientPaint(sk, 0, floorY - l.H * 0.2, 0, floorY + l.H * 0.1, [mix(pal.floor, '#FFFFFF', 0.12), pal.floor]));
   c.drawOval(fr, paint(sk, pal.glow, 0.25, STROKE, 2));
-  // tray panel
-  c.drawRect(sk.XYWHRect(0, l.tray.y, W, l.tray.h), paint(sk, mix(pal.sky, '#000000', 0.55), 0.92));
-  c.drawRect(sk.XYWHRect(0, l.tray.y, W, 2), paint(sk, pal.glow, 0.25));
 }
 
 function spotRing(sk: SkiaApi, c: Canvas, x: number, y: number, S: number, glow: string, hot: boolean) {
@@ -188,7 +186,14 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
 
   if (s.popup) drawVolumePopup(sk, c, s);
 
-  // tray
+  // tray (singer menu): slides down out of view on a swipe; a handle tab at the bottom edge brings it back
+  const trayK = s.trayK ?? 1;
+  const trayDy = (1 - trayK) * (l.tray.h + 6);
+  c.save();
+  c.translate(0, trayDy);
+  c.drawRect(sk.XYWHRect(0, l.tray.y, l.W, l.tray.h + 6), paint(sk, mix(stage.palette.sky, '#000000', 0.55), 0.94));
+  c.drawRect(sk.XYWHRect(0, l.tray.y, l.W, 2), paint(sk, stage.palette.glow, 0.25));
+  c.drawRRect(sk.RRectXY(sk.XYWHRect(l.W / 2 - 24, l.tray.y + 5, 48, 5), 2.5, 2.5), paint(sk, '#FFFFFF', 0.35)); // grab bar
   c.save();
   c.clipRect(sk.XYWHRect(0, l.tray.y + 2, l.W, l.tray.h), 1, true);
   const per = stage.creatures.length / 4;
@@ -208,13 +213,22 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
     drawCreature(sk, c, cr, p.x - s.scrollX, p.y + trayS * 0.55, trayS, pose);
   });
   c.restore();
+  c.restore(); // end of the sliding tray
+  if (trayK < 0.98) {
+    const hy = l.H - 34 * (1 - trayK);
+    c.drawRRect(sk.RRectXY(sk.XYWHRect(l.W / 2 - 42, hy, 84, 40), 14, 14), paint(sk, '#1B1340', 0.95));
+    c.drawRRect(sk.RRectXY(sk.XYWHRect(l.W / 2 - 42, hy, 84, 40), 14, 14), paint(sk, '#FFFFFF', 0.5, STROKE, 2));
+    const q = sk.PathBuilder.Make();
+    q.moveTo(l.W / 2 - 12, hy + 20); q.lineTo(l.W / 2, hy + 10); q.lineTo(l.W / 2 + 12, hy + 20);
+    c.drawPath(q.build(), paint(sk, '#FFFFFF', 1, STROKE, 3.2));
+  }
 
   // creatures returning to the tray
   for (const r of s.returning) {
     const cr = byId[r.id];
     if (!cr) continue;
     const i = stage.creatures.indexOf(cr);
-    const to = { x: l.slotPos[i]!.x - s.scrollX, y: l.slotPos[i]!.y + Math.min(l.slot * 0.72, l.tray.h * 0.46) * 0.55 };
+    const to = { x: l.slotPos[i]!.x - s.scrollX, y: l.slotPos[i]!.y + Math.min(l.slot * 0.72, l.tray.h * 0.46) * 0.55 + trayDy };
     const q = hop(r.from, to, (s.timeMs - r.since) / TUNING.hopMs, l.size * 0.4);
     drawCreature(sk, c, cr, q.x, q.y, l.size * (1 - 0.25 * Math.min(1, (s.timeMs - r.since) / TUNING.hopMs)), { ...IDLE_POSE, ...{} });
   }

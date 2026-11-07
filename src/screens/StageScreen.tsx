@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, AppState, StyleSheet, Text, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
+import { Easing, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getEngine } from '../audio';
 import { GestureTracker, type GestureEvent, type World } from '../core/gestures';
@@ -44,6 +45,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
   const tracker = useRef(new GestureTracker()).current;
   const anim = useRef(new Map<string, { since: number; from: { x: number; y: number } }>()).current;
   const [ready, setReady] = useState(false);
+  const trayOpen = useRef(true);
   const [paused, setPaused] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recBars, setRecBars] = useState(0);
@@ -140,7 +142,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
     setRecording(true);
   };
 
-  const world = (): World => ({ layout: layoutRef.current, scrollX: sv.scrollX.value, trayIds: stage.creatures.map((c) => c.id), onStage: session.state.spots, popup: sv.popup.value ? { spot: sv.popup.value.spot, creatureId: sv.popup.value.creatureId } : null, volumeOf: (id) => session.state.volume[id] ?? 1 });
+  const world = (): World => ({ layout: layoutRef.current, scrollX: sv.scrollX.value, trayIds: stage.creatures.map((c) => c.id), onStage: session.state.spots, popup: sv.popup.value ? { spot: sv.popup.value.spot, creatureId: sv.popup.value.creatureId } : null, volumeOf: (id) => session.state.volume[id] ?? 1, trayHidden: !trayOpen.current });
 
   const apply = (ev: GestureEvent) => {
     const l = layoutRef.current;
@@ -209,6 +211,11 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
         break;
       case 'popupClose':
         sv.popup.value = null;
+        break;
+      case 'trayHide':
+      case 'trayShow':
+        trayOpen.current = ev.type === 'trayShow';
+        sv.trayK.value = withTiming(trayOpen.current ? 1 : 0, { duration: 260, easing: Easing.out(Easing.cubic) });
         break;
       case 'tapEmpty':
         session.dispatch({ kind: 'endSolo' });

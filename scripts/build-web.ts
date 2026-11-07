@@ -76,7 +76,10 @@ button.on{background:#7A8CFF;border-color:#fff}
 @keyframes nud{50%{transform:translateY(-4px)}}
 .dd{display:inline-flex;gap:3px}.dd i{width:11px;height:11px;border-radius:50%;display:block}
 .goal{display:flex!important;align-items:center;gap:12px;grid-template-columns:none}.goal .gp{display:inline-flex;gap:3px;align-items:center;min-width:140px}.goal .dd{margin-left:auto}
-.hd{display:flex;justify-content:center;margin-bottom:10px;color:var(--accent)}.fnd{display:inline-flex;gap:2px;align-items:center}
+.hd{display:flex;justify-content:center;align-items:center;gap:10px;margin-bottom:6px;color:var(--accent)}.hd h2{margin:0;color:var(--fg)}
+.goal .gt{display:grid;gap:1px;flex:1;min-width:0}.goal .gt b{font-size:15px}.goal .gt small{color:var(--dim);font-size:13px}
+#toast{display:flex;align-items:center;gap:8px;font-size:17px}
+.fnd small{font-size:13px;font-weight:700;color:var(--dim);margin-right:4px}.fnd{display:inline-flex;gap:2px;align-items:center}
 #beat{width:10px;height:10px;border-radius:50%;background:#FF7AA8;display:block}
 button{flex:none}
 button.ic{min-width:52px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
@@ -98,19 +101,18 @@ button.ic svg{width:26px;height:26px;flex:none}button.ic .off{display:none}butto
 </style>
 <div id="wrap"><canvas id="game" aria-label="Hummlings stage"></canvas></div>
 <div id="bar"><div id="worlds" role="group" aria-label="Worlds"></div>
-<button id="clear" class="ic lb" aria-label="Clear the stage" title="Clear the stage"><svg viewBox="0 0 24 24"><path d="M19 3l-7 8"/><path d="M9.5 10.5l4 4-3 6.5H3l2-5z" fill="currentColor" stroke="none"/></svg></button>
-<button id="mute" class="ic lb" aria-label="Pause the music" title="Pause / resume" aria-pressed="false"><svg class="on" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z" class="fill"/><path d="M17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11"/></svg><svg class="off" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z" class="fill"/><path d="M17 9l5 6M22 9l-5 6"/></svg></button>
-<button id="bookBtn" class="ic lb" aria-label="Combo book" title="Combo book"><svg viewBox="0 0 24 24"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg></button>
-<button id="helpBtn" class="ic lb pulse" aria-label="How to play" title="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8M12 17.2v.3"/></svg></button>
+<button id="clear" class="ic lb" aria-label="Clear the stage" title="Clear the stage"><svg viewBox="0 0 24 24"><path d="M19 3l-7 8"/><path d="M9.5 10.5l4 4-3 6.5H3l2-5z" fill="currentColor" stroke="none"/></svg><span>Clear</span></button>
+<button id="mute" class="ic lb" aria-label="Pause the music" title="Pause / resume" aria-pressed="false"><svg class="on" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z" class="fill"/><path d="M17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11"/></svg><svg class="off" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z" class="fill"/><path d="M17 9l5 6M22 9l-5 6"/></svg><span>Sound</span></button>
+<button id="bookBtn" class="ic lb" aria-label="Combo book" title="Combo book"><svg viewBox="0 0 24 24"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg><span>Combos</span></button>
+<button id="helpBtn" class="ic lb pulse" aria-label="How to play" title="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8M12 17.2v.3"/></svg><span>Help</span></button>
 <div id="band" aria-label="Band: layers playing"></div>
 <div id="combos-wrap"><span class="lbl"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg></span><div id="combos" aria-label="Secret combos: a dot lights up for each matching singer on stage"></div></div><i id="beat" aria-hidden="true"></i></div>
-<div id="tip"></div>
 <div id="toast"></div>
-<div id="book" class="ov hide" role="dialog" aria-label="Combo book"><div class="sheet"><button class="ic x" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div class="hd"><svg viewBox="0 0 24 24" width="30" height="30"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg></div><div id="cards"></div></div></div>
-<div id="help" class="ov hide" role="dialog" aria-label="How to play"><div class="sheet"><button class="ic x" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><video id="helpVid" muted loop playsinline autoplay width="560" height="308"></video><div class="nav"><button id="hPrev" class="ic" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span id="hDots"></span><button id="hNext" class="ic" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></div></div></div>
+<div id="book" class="ov hide" role="dialog" aria-label="Combo book"><div class="sheet"><button class="ic x" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div class="hd"><svg viewBox="0 0 24 24" width="30" height="30"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg><h2>Secret combos</h2></div><p class="sub">Dots light up for each matching singer on stage. Put all four together and keep them for two loops.</p><div id="cards"></div></div></div>
+<div id="help" class="ov hide" role="dialog" aria-label="How to play"><div class="sheet"><button class="ic x" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2>How to play</h2><video id="helpVid" muted loop playsinline autoplay width="560" height="308"></video><p id="helpTxt"></p><div class="nav"><button id="hPrev" class="ic" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span id="hDots"></span><button id="hNext" class="ic" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></div></div></div>
 <div id="rotate" class="hide"><svg viewBox="0 0 24 24" width="84" height="84"><rect x="8" y="3" width="8" height="14" rx="2"/><path d="M4 14a8 8 0 0 0 5 7M20 10a8 8 0 0 0-5-7M9 21l-3-.5.5-3M15 3l3 .5-.5 3"/></svg></div>
 <div id="loading" class="hide"><p>Loading music…</p></div>
-<div id="splash"><h1>Hummlings</h1><button id="start" aria-label="Play"><svg viewBox="0 0 24 24" width="44" height="44"><path d="M7 4.5l13 7.5-13 7.5z" fill="currentColor" stroke="none"/></svg></button></div>
+<div id="splash"><h1>Hummlings</h1><p>Make music with tiny singers</p><button id="start" aria-label="Play"><svg viewBox="0 0 24 24" width="44" height="44"><path d="M7 4.5l13 7.5-13 7.5z" fill="currentColor" stroke="none"/></svg></button><p>Sound starts when you press play</p></div>
 <script src="game.js"></script>`);
   console.log('web demo ready');
 }

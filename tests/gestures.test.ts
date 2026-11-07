@@ -140,3 +140,28 @@ describe('swipe to close the volume menu', () => {
     expect(g.move(3, { x: r.panel.x - 60, y: r.panel.y + 4 }, 210, wp())).toEqual([{ type: 'popupClose' }]);
   });
 });
+
+describe('hide and show the singer menu', () => {
+  it('a downward swipe on the tray hides it (also from a singer); a hidden tray ignores slots; swipe up or tap on the handle shows it', () => {
+    const g = new GestureTracker();
+    const slot = layout.slotPos[2]!;
+    g.start(1, slot, 0, world());
+    expect(g.move(1, { x: slot.x + 3, y: slot.y + 40 }, 20, world())).toEqual([{ type: 'trayHide' }]);
+    expect(g.end(1, { x: slot.x, y: slot.y + 60 }, 40, world())).toEqual([]);
+    const hidden = (): World => ({ ...world(), trayHidden: true });
+    g.start(2, slot, 100, hidden()); // where the tray used to be: now empty stage
+    expect(g.end(2, slot, 120, hidden())).toEqual([{ type: 'tapEmpty', p: slot }]);
+    const handle = { x: layout.W / 2, y: layout.H - 10 };
+    g.start(3, handle, 200, hidden());
+    expect(g.move(3, { x: handle.x, y: handle.y - 30 }, 210, hidden())).toEqual([{ type: 'trayShow' }]);
+    expect(g.end(3, handle, 220, hidden())).toEqual([]);
+    g.start(4, handle, 300, hidden());
+    expect(g.end(4, handle, 310, hidden())).toEqual([{ type: 'trayShow' }]);
+  });
+  it('an upward drag from a singer still picks it up', () => {
+    const g = new GestureTracker();
+    const slot = layout.slotPos[1]!;
+    g.start(1, slot, 0, world());
+    expect(g.move(1, { x: slot.x, y: slot.y - 40 }, 10, world())[0]).toMatchObject({ type: 'pickup' });
+  });
+});

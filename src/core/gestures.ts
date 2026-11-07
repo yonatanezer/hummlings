@@ -12,6 +12,8 @@ export type GestureEvent =
   | { type: 'volumeSet'; creatureId: string; value: number } // slider or hold-and-drag
   | { type: 'popupSolo'; creatureId: string }
   | { type: 'popupClose' }
+  | { type: 'trayHide' } // swipe down on the singer menu
+  | { type: 'trayShow' } // swipe up or tap the handle
   | { type: 'tapEmpty'; p: Pt }
   | { type: 'scroll'; scrollX: number };
 
@@ -23,6 +25,7 @@ export interface World {
   onStage: readonly (string | null)[]; // creature id per spot
   popup?: { spot: number; creatureId: string } | null; // volume popup currently open
   volumeOf?: (id: string) => number;
+  trayHidden?: boolean; // the singer menu is slid away; only its handle strip at the bottom edge reacts
 }
 
 type Touch =
@@ -34,8 +37,10 @@ type Touch =
   | { kind: 'hold'; id: string; startY: number; startVol: number } // long press fired: dragging changes the volume
   | { kind: 'slider'; id: string; start: Pt }
   | { kind: 'popupSolo'; id: string; start: Pt }
-  | { kind: 'swallow'; start: Pt; closed?: boolean };
+  | { kind: 'swallow'; start: Pt; closed?: boolean }
+  | { kind: 'handle'; start: Pt; done?: boolean };
 
+export const TRAY_HANDLE_H = 40; // touch strip at the bottom edge while the menu is hidden
 const SLOP = 10; // px of movement before a touch stops being a tap
 
 export class GestureTracker {
@@ -58,7 +63,11 @@ export class GestureTracker {
       lead.push({ type: 'popupClose' }); // a touch anywhere else closes it and then behaves normally
     }
     this.scrollX = Math.min(w.layout.scrollMax, Math.max(0, w.scrollX));
-    if (p.y >= w.layout.tray.y) {
+    if (w.trayHidden && p.y >= w.layout.H - TRAY_HANDLE_H) {
+      this.touches.set(touch, { kind: 'handle', start: p });
+      return lead;
+    }
+    if (!w.trayHidden && p.y >= w.layout.tray.y) {
       const slot = slotAt(w.layout, p, this.scrollX);
       const id = slot >= 0 ? w.trayIds[slot]! : null;
       const free = id !== null && !w.onStage.includes(id);
@@ -85,9 +94,15 @@ export class GestureTracker {
           return [{ type: 'pickup', touch, creatureId: s.id, from: 'stage', p }];
         }
         return [];
+      case 'handle': {
+        if (s.done) return [];
+        if (s.start.y - p.y > SLOP * 1.5) { this.touches.set(touch, { ...s, done: true }); return [{ type: 'trayShow' }]; }
+        return [];
+      }
       case 'pendingTray': {
         if (dist(s.start) <= SLOP) return [];
         const dx = p.x - s.start.x, dy = p.y - s.start.y;
+        if (dy > 0 && dy > Math.abs(dx) * 1.2) { this.touches.delete(touch); return [{ type: 'trayHide' }]; } // a downward swipe tucks the menu away
         const horizontal = Math.abs(dx) > Math.abs(dy) * 1.2;
         if (s.id && !(horizontal && w.layout.scrollMax > 0 && dy > -SLOP * 2)) {
           this.touches.set(touch, { kind: 'drag', id: s.id, from: 'tray', last: p, lastT: t, vy: 0 });
@@ -134,6 +149,7 @@ export class GestureTracker {
     switch (s.kind) {
       case 'pendingStage': return s.fired ? [] : [{ type: 'tap', creatureId: s.id }];
       case 'pendingEmpty': return [{ type: 'tapEmpty', p }];
+      case 'handle': return s.done ? [] : [{ type: 'trayShow' }];
       case 'popupSolo': {
         if (!w.popup) return [];
         return inRect(popupRects(w.layout, w.popup.spot).solo, p) ? [{ type: 'popupSolo', creatureId: s.id }] : [];

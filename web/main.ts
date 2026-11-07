@@ -44,6 +44,8 @@ const spawn = (p: Particle) => { if (particles.length < 160) particles.push(p); 
 const ripples2: { x: number; y: number; t: number }[] = [];
 const ripples: { x: number; y: number; t: number }[] = [];
 let popup: { spot: number; creatureId: string } | null = null;
+let trayOpen = true;
+let trayK = 1; // 1 = shown, 0 = tucked away (animated)
 let ready = false;
 let hint = true;
 const store = { get: (k: string): string[] => { try { return JSON.parse(localStorage.getItem(k) ?? '[]') as string[]; } catch { return []; } }, set: (k: string, v: string[]) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } } };
@@ -84,8 +86,6 @@ function drawBackground(t: number) {
   ctx.fillStyle = '#ffffff1f'; ctx.beginPath(); ctx.ellipse(W / 2, fy + H * 0.05, W * 0.55, H * 0.25, 0, 0, 7); ctx.fill();
   ctx.fillStyle = p.floor; ctx.beginPath(); ctx.ellipse(W / 2, fy + H * 0.055, W * 0.55, H * 0.25, 0, 0, 7); ctx.fill();
   ctx.strokeStyle = p.glow + '40'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(W / 2, fy + H * 0.055, W * 0.55, H * 0.25, 0, 0, 7); ctx.stroke();
-  ctx.fillStyle = 'rgba(8,5,26,0.92)'; ctx.fillRect(0, layout.tray.y, W, layout.tray.h);
-  ctx.fillStyle = p.glow + '40'; ctx.fillRect(0, layout.tray.y, W, 2);
 }
 
 function badge(x: number, y: number, r: number, muted: boolean) {
@@ -326,7 +326,14 @@ function frame(t: number) {
     sprite(cr, poseIndex(cr, beat, t, muted), x, y, l.size, { sx, sy, lift, tilt, level: st.volume[id], alpha: dim ? TUNING.soloDimOpacity : muted ? 0.45 : 1 });
     if (muted || st.solo === id) badge(x + l.size * 0.36, y - l.size * (cr.shape.body === 'tall' ? 1.1 : cr.shape.body === 'wide' ? 0.7 : 0.82), l.size * 0.12, muted);
   }
-  // tray
+  // tray (the singer menu): slides down out of view on a downward swipe, and back with the handle
+  trayK += ((trayOpen ? 1 : 0) - trayK) * 0.22;
+  if (Math.abs((trayOpen ? 1 : 0) - trayK) < 0.002) trayK = trayOpen ? 1 : 0;
+  const trayDy = (1 - trayK) * (l.tray.h + 6);
+  ctx.save(); ctx.translate(0, trayDy);
+  ctx.fillStyle = 'rgba(8,5,26,0.94)'; ctx.fillRect(0, l.tray.y, W, l.tray.h + 6);
+  ctx.fillStyle = stage.palette.glow + '40'; ctx.fillRect(0, l.tray.y, W, 2);
+  ctx.fillStyle = '#ffffff55'; ctx.beginPath(); ctx.roundRect(W / 2 - 24, l.tray.y + 5, 48, 5, 2.5); ctx.fill(); // grab bar: swipe down to tuck the menu away
   ctx.save(); ctx.beginPath(); ctx.rect(0, l.tray.y + 2, W, l.tray.h); ctx.clip();
   const per = stage.creatures.length / 4;
   for (let g = 0; g < 4; g++) {
@@ -336,7 +343,9 @@ function frame(t: number) {
   }
   for (let g = 0; g < 4; g++) {
     const a = l.slotPos[g * per]!, layer = stage.creatures[g * per]!.layer;
-    trayGlyph(layer, Math.max(a.x - l.slot * 0.45 - scrollX, 0) + 18, l.tray.y + l.tray.h * 0.08 + 16, LAYER_COLORS[layer]);
+    const gx = Math.max(a.x - l.slot * 0.45 - scrollX, 0) + 18, gy = l.tray.y + l.tray.h * 0.08 + 16;
+    trayGlyph(layer, gx, gy, LAYER_COLORS[layer]);
+    ctx.font = '700 14px system-ui, sans-serif'; ctx.textBaseline = 'middle'; ctx.fillStyle = LAYER_COLORS[layer]; ctx.fillText(LAYER_NAMES[layer].toUpperCase(), gx + 20, gy);
   }
   const trayS = Math.min(l.slot * 0.85, l.tray.h * 0.56);
   stage.creatures.forEach((cr, i) => {
@@ -350,9 +359,16 @@ function frame(t: number) {
     if (scrollX > 4) fade(28, 0, '#08051a00', '#08051acc');
   }
   ctx.restore();
+  ctx.restore(); // end of the sliding tray
+  if (trayK < 0.98) { // handle tab at the bottom edge while the menu is hidden
+    const hw = 84, hy = H - 34 * (1 - trayK);
+    ctx.fillStyle = '#1B1340f2'; ctx.beginPath(); ctx.roundRect(W / 2 - hw / 2, hy, hw, 40, 14); ctx.fill();
+    ctx.strokeStyle = '#ffffff80'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3.2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(W / 2 - 12, hy + 20); ctx.lineTo(W / 2, hy + 10); ctx.lineTo(W / 2 + 12, hy + 20); ctx.stroke();
+  }
   for (const r of returning) {
     const i = stage.creatures.findIndex((c) => c.id === r.id);
-    const to = { x: l.slotPos[i]!.x - scrollX, y: l.slotPos[i]!.y + trayS * 0.55 };
+    const to = { x: l.slotPos[i]!.x - scrollX, y: l.slotPos[i]!.y + trayS * 0.55 + trayDy };
     const k = Math.min(1, (t - r.since) / TUNING.hopMs), q = hop(r.from, to, k, l.size * 0.4);
     sprite(stage.creatures[i]!, 1, q.x, q.y, l.size * (1 - 0.25 * k), {});
   }
@@ -384,13 +400,7 @@ function frame(t: number) {
 }
 
 let lastHud = '';
-let lastTip = -1;
-const TIP_HTML = [
-  `<span class="tp">${P.hand(34)}${P.arrowUp()}<b class="glow">${P.plus(18)}</b></span>`,
-  `<span class="tp"><b class="glow">${P.plus(18)}</b><b class="glow">${P.plus(18)}</b><b class="glow">${P.plus(18)}</b></span>`,
-  `<span class="tp"><span class="grp">${P.hand(26)}${P.tapRing()}${P.speakerOff()}</span><span class="grp">${P.hand(26)}${P.holdRing()}${P.slider()}</span><span class="grp">${P.hand(26)}${P.swipe()}${P.arrowOut()}</span></span>`,
-  '',
-];
+
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 function toast(html: string) { const el = $('toast'); el.innerHTML = html; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600); }
@@ -415,25 +425,22 @@ const GLYPH = {
 let lastBand = '';
 function updateHud() {
   if (!session) return;
-  const n = session.state.spots.filter(Boolean).length;
-  const tipIdx = n === 0 ? 0 : n < 3 ? 1 : n < 5 ? 2 : 3;
-  if (tipIdx !== lastTip) { lastTip = tipIdx; $('tip').innerHTML = TIP_HTML[tipIdx]!; $('tip').classList.toggle('hide', tipIdx === 3); }
   $('beat').style.transform = `scale(${1 + 0.6 * Math.max(0, 1 - ((engine.positionBeats() % 1) * 4))})`;
   const live = new Set(session.state.solo ? [session.state.solo] : session.state.spots.filter((x): x is string => !!x && !session!.state.muted[x]));
   const band = LAYER_ORDER.map((l) => (stage.creatures.some((c) => c.layer === l && live.has(c.id)) ? '1' : '0')).join('');
-  if (band !== lastBand) { lastBand = band; $('band').innerHTML = LAYER_ORDER.map((l, i) => `<b class="${band[i] === '1' ? 'on' : ''}" style="--c:${LAYER_COLORS[l]}" title="${LAYER_NAMES[l]}: ${band[i] === '1' ? 'playing' : 'not playing'}"><i>${GLYPH[l]}</i></b>`).join(''); }
+  if (band !== lastBand) { lastBand = band; $('band').innerHTML = LAYER_ORDER.map((l, i) => `<b class="${band[i] === '1' ? 'on' : ''}" style="--c:${LAYER_COLORS[l]}" title="${LAYER_NAMES[l]}: ${band[i] === '1' ? 'playing' : 'not playing'}"><i>${GLYPH[l]}</i>${LAYER_NAMES[l]}</b>`).join(''); }
   const on = new Set(session.state.spots.filter((x): x is string => !!x).filter((x) => !session!.state.muted[x] && (session!.state.volume[x] ?? 1) >= 0.03));
   const cnt = (c: (typeof stage.combos)[number]) => (session!.state.solo ? 0 : c.creatureIds.filter((id) => on.has(id)).length);
   const open = stage.combos.filter((c) => !found.has(c.id));
   const best = open.sort((x, y) => cnt(y) - cnt(x))[0];
   const nFound = stage.combos.length - open.length;
   const html = best
-    ? `<span class="combo" title="Closest secret combo">${[0, 1, 2, 3].map((i) => `<i class="${i < cnt(best) ? 'lit' : ''}"></i>`).join('')}</span><span class="fnd" title="Combos found">${Array.from({ length: stage.combos.length }, (_, i) => P.star(16, i < nFound ? '#FFE066' : '#ffffff33')).join('')}</span>`
+    ? `<span class="combo" title="Closest secret combo">${[0, 1, 2, 3].map((i) => `<i class="${i < cnt(best) ? 'lit' : ''}"></i>`).join('')}</span><span class="fnd" title="Combos found"><small>${nFound}/${stage.combos.length}</small>${Array.from({ length: stage.combos.length }, (_, i) => P.star(16, i < nFound ? '#FFE066' : '#ffffff33')).join('')}</span>`
     : `<span class="fnd">${Array.from({ length: stage.combos.length }, () => P.star(18)).join('')}</span>`;
   if (html !== lastHud) { $('combos').innerHTML = html; lastHud = html; }
 }
 
-function world(): World { return { layout, scrollX, trayIds: stage.creatures.map((c) => c.id), onStage: session!.state.spots, popup, volumeOf: (id) => session!.state.volume[id] ?? 1 }; }
+function world(): World { return { layout, scrollX, trayIds: stage.creatures.map((c) => c.id), onStage: session!.state.spots, popup, volumeOf: (id) => session!.state.volume[id] ?? 1, trayHidden: !trayOpen }; }
 function apply(ev: GestureEvent, t: number) {
   const s = session!;
   const drop = (id: string) => (drags = drags.filter((d) => d.id !== id));
@@ -459,6 +466,8 @@ function apply(ev: GestureEvent, t: number) {
     case 'volumeSet': s.dispatch({ kind: 'volume', creatureId: ev.creatureId, value: ev.value }); break;
     case 'popupSolo': s.dispatch({ kind: 'solo', creatureId: ev.creatureId }); engine.playSfx('pop', 1.5); break;
     case 'popupClose': popup = null; break;
+    case 'trayHide': trayOpen = false; break;
+    case 'trayShow': trayOpen = true; break;
     case 'tapEmpty': {
       s.dispatch({ kind: 'endSolo' });
       if (ev.p.y < layout.stageH) { // the world's own toy: tapping the scenery plays a note of the scale
@@ -503,14 +512,13 @@ async function openStage(i: number) {
   engine.stop();
   stageIdx = i; stage = STAGES[i]!;
   placedAnim.clear(); drags = []; returning = []; celebration = null; scrollX = 0; hint = true;
-  lastTip = -1;
   document.querySelectorAll('#worlds button').forEach((b, k) => b.classList.toggle('on', k === i));
   await engine.init();
   await Promise.all([engine.loadStage(stage), loadAtlas(stage.id)]);
   session = new Session(stage, engine, {
-    onCelebration: (id, bar) => { const c = stage.combos.find((q) => q.id === id)!; celebration = { comboId: id, creatureIds: [...c.creatureIds], startBeat: bar * 4 }; found.add(id); store.set('hum.combos', [...found]); engine.playSfx('combo'); toast(`${P.star(34)}${P.book(34)}${P.star(34)}`); },
+    onCelebration: (id, bar) => { const c = stage.combos.find((q) => q.id === id)!; celebration = { comboId: id, creatureIds: [...c.creatureIds], startBeat: bar * 4 }; found.add(id); store.set('hum.combos', [...found]); engine.playSfx('combo'); toast(`${P.star(30)}${P.book(30)}<span>Secret combo!</span>`); },
     onCelebrationEnd: () => { celebration = null; },
-    onGoal: (key) => { stickers.add(key); store.set('hum.goals', [...stickers]); engine.playSfx('goal'); toast(`${P.sticker(34)}${GOAL_PICTO[key.split(':')[1]!]?.(26) ?? ''}`); burst(W / 2, H * 0.3, ['#FFC857', '#FFFFFF', '#5FE3C0'], 16, 'star', performance.now(), 220); },
+    onGoal: (key) => { stickers.add(key); store.set('hum.goals', [...stickers]); engine.playSfx('goal'); toast(`${P.sticker(30)}${GOAL_PICTO[key.split(':')[1]!]?.(24) ?? ''}<span>${(en as Record<string, string>)['goal.' + key.split(':')[1]]}</span>`); burst(W / 2, H * 0.3, ['#FFC857', '#FFFFFF', '#5FE3C0'], 16, 'star', performance.now(), 220); },
   }, [...found], [...stickers]);
   session.countIn = true;
   session.start();
@@ -518,7 +526,7 @@ async function openStage(i: number) {
   $('loading').classList.add('hide');
 }
 
-$('worlds').innerHTML = NAMES.map((n, i) => `<button data-i="${i}" aria-label="${n}" title="${n}"><span class="wi">${worldIconSvg(STAGES[i]!.id, 36)}</span></button>`).join('');
+$('worlds').innerHTML = NAMES.map((n, i) => `<button data-i="${i}" aria-label="${n}" title="${n}"><span class="wi">${worldIconSvg(STAGES[i]!.id, 32)}</span><span class="long">${n}</span><span class="short">${n.split(' ')[0] === 'Sleepy' ? 'Clouds' : n.split(' ')[0] === 'Moonlit' ? 'Pond' : 'Fair'}</span></button>`).join('');
 $('worlds').addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button'); if (b) void openStage(Number(b.dataset.i)); });
 $('clear').addEventListener('click', () => { if (!session) return; session.state.spots.forEach((id, s) => { if (id) returning.push({ id, since: performance.now(), from: layout.spots[s]! }); }); session.dispatch({ kind: 'clear' }); });
 $('start').addEventListener('click', () => { $('splash').classList.add('hide'); void openStage(0); });
@@ -555,9 +563,9 @@ function openBook() {
     cardsEl.append(card);
   });
   const gs = document.createElement('div'); gs.className = 'goals';
-  gs.innerHTML = `<h3>${P.sticker(26)}</h3>` + s.goals.progress(s.state, s.discoveredInStage).map((g) => {
+  gs.innerHTML = `<h3>${P.sticker(26)} ${(en as Record<string, string>)['goal.title']}</h3>` + s.goals.progress(s.state, s.discoveredInStage).map((g) => {
     const d = stickers.has(`${stage.id}:${g.id}`);
-    return `<div class="goal${d ? ' done' : ''}" title="${(en as Record<string, string>)['goal.' + g.id]}"><span class="gp">${GOAL_PICTO[g.id]!(30)}</span>${P.dots(d ? g.total : g.n, g.total)}${d ? P.star(24) : ''}</div>`;
+    return `<div class="goal${d ? ' done' : ''}"><span class="gp">${GOAL_PICTO[g.id]!(30)}</span><span class="gt"><b>${(en as Record<string, string>)['goal.' + g.id]}</b><small>${(en as Record<string, string>)['goal.' + g.id + '.desc']}</small></span>${P.dots(d ? g.total : g.n, g.total)}${d ? P.star(24) : ''}</div>`;
   }).join('');
   cardsEl.append(gs);
   $('book').classList.remove('hide');
@@ -569,6 +577,7 @@ function showHelp() {
   const v = $('helpVid') as HTMLVideoElement;
   v.src = `help/${helpStep + 1}.mp4`;
   void v.play().catch(() => { /* autoplay may need a tap */ });
+  $('helpTxt').textContent = (en as Record<string, string>)[`help.step${helpStep + 1}`]!;
   $('hDots').innerHTML = Array.from({ length: 7 }, (_, i) => `<i class="${i === helpStep ? 'on' : ''}"></i>`).join('');
 }
 $('helpBtn').addEventListener('click', () => { $('helpBtn').classList.remove('pulse'); helpStep = 0; showHelp(); $('help').classList.remove('hide'); });
