@@ -3,7 +3,9 @@ import { TUNING } from '../src/core/tuning';
 import { auditStageMixes, decodeLoop, loadStages, loopLufs } from './qa-lib';
 
 let failed = false;
+const only = process.argv[2];
 for (const stage of loadStages()) {
+  if (only && stage.id !== only) continue;
   const bank: Record<string, Float32Array> = {};
   for (const c of stage.creatures) bank[c.loopFile] = decodeLoop(c.loopFile);
   for (const c of stage.creatures) {

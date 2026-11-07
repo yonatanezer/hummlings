@@ -15,7 +15,7 @@ export const TUNING = {
   fadeOutMs: 40, // removal / mute fade-out
   masterLimiterDb: -1, // soft limiter ceiling (dBFS)
   maxGainReductionDb: 6, // audit fails if the limiter works harder than this
-  masterTrimDb: -6, // headroom before the limiter: six loops at -20 LUFS peak ~10 dB over the ceiling without it
+  masterTrimDb: -7, // headroom before the limiter: six loops at -20 LUFS peak ~10 dB over the ceiling without it
   targetLufs: -20, // each loop is normalised to this loudness
   lufsTolerance: 1, // +/- LU allowed by the audit
   sfxGain: 0.5, // UI sounds sit under the music
