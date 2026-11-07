@@ -247,14 +247,14 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
         <View style={{ flex: 1 }} />
         <View style={{ flexDirection: row, gap: 10, alignItems: 'center' }}>
           {recording && <Text style={styles.rec} accessibilityLabel={`${recBars}`}>{recBars}</Text>}
-          <IconButton icon={recording ? 'stop' : 'record'} label={recording ? t('a11y.stopRecord') : t('a11y.record')} color={recording ? '#FFFFFF' : COLORS.rec} bg={recording ? COLORS.rec : undefined} onPress={onRecord} />
-          <IconButton icon="book" label={t('a11y.comboBook')} onPress={() => setBook(true)} />
-          <IconButton icon="note" label={t('a11y.songs')} onPress={onSongs} />
-          <IconButton icon="help" label={t('a11y.help')} onPress={onHelp} />
+          <IconButton icon={recording ? 'stop' : 'record'} label={recording ? t('a11y.stopRecord') : t('a11y.record')} caption={recording ? t('ui.stop') : t('ui.record')} color={recording ? '#FFFFFF' : COLORS.rec} bg={recording ? COLORS.rec : undefined} onPress={onRecord} />
+          <IconButton icon="book" label={t('a11y.comboBook')} caption={t('ui.combos')} onPress={() => setBook(true)} />
+          <IconButton icon="note" label={t('a11y.songs')} caption={t('ui.songs')} onPress={onSongs} />
+          <IconButton icon="help" label={t('a11y.help')} caption={t('ui.help')} onPress={onHelp} />
         </View>
       </View>
       <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 14, top: layout.stageH - 70 }]}>
-        {onStageCount > 0 && <IconButton icon="sweep" label={t('a11y.clear')} onPress={() => {
+        {onStageCount > 0 && <IconButton icon="sweep" label={t('a11y.clear')} caption={t('ui.clear')} onPress={() => {
           const l = layoutRef.current;
           for (const id of session.state.spots) if (id) { const s = session.state.spots.indexOf(id); goBackAll(id, l.spots[s]!); }
           session.dispatch({ kind: 'clear' });

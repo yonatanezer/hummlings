@@ -21,11 +21,11 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
   return (
     <View style={styles.root}>
       <View style={[styles.top, { top: insets.top + 6, left: insets.left + 10, right: insets.right + 10, flexDirection: row }]}>
-        <IconButton icon="note" label={t('a11y.songs')} onPress={onSongs} />
+        <IconButton icon="note" label={t('a11y.songs')} caption={t('ui.songs')} onPress={onSongs} />
         <View style={{ flex: 1 }} />
         <View style={{ flexDirection: row, gap: 10 }}>
-        <IconButton icon="help" label={t('a11y.help')} onPress={onHelp} badge={!progress.helpSeen} />
-        <IconButton icon="gear" label={t('a11y.settings')} onPress={onSettings} />
+        <IconButton icon="help" label={t('a11y.help')} caption={t('ui.help')} onPress={onHelp} badge={!progress.helpSeen} />
+        <IconButton icon="gear" label={t('a11y.settings')} caption={t('ui.settings')} onPress={onSettings} />
         </View>
       </View>
       <View style={[styles.cards, { flexDirection: 'row' }]}>

@@ -150,6 +150,7 @@ function drawVolumeUi() {
   ctx.fillStyle = '#ffffff2e'; ctx.beginPath(); ctx.roundRect(tx, r.slider.y, tw, r.slider.h, tw / 2); ctx.fill();
   ctx.fillStyle = LAYER_COLORS[cr.layer]; ctx.beginPath(); ctx.roundRect(tx, r.slider.y + r.slider.h - fh, tw, fh, tw / 2); ctx.fill();
   ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(r.slider.x + r.slider.w / 2, r.slider.y + r.slider.h - fh, r.slider.w * 0.3, 0, 7); ctx.fill();
+  ctx.font = '800 15px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = '#FFE8A3'; ctx.fillText(`${Math.round(vol * 100)}%`, r.panel.x + r.panel.w / 2, r.panel.y + r.panel.h + 6); ctx.textAlign = 'start';
 }
 
 function drawParticles(t: number) {
@@ -321,6 +322,11 @@ function frame(t: number) {
     ctx.fillStyle = LAYER_COLORS[stage.creatures[g * per]!.layer] + '1c';
     rrect(a.x - l.slot * 0.55 - scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84, 14); ctx.fill();
   }
+  for (let g = 0; g < 4; g++) {
+    const a = l.slotPos[g * per]!, layer = stage.creatures[g * per]!.layer;
+    ctx.font = '700 14px system-ui, sans-serif'; ctx.textBaseline = 'middle'; ctx.fillStyle = LAYER_COLORS[layer];
+    ctx.fillText(LAYER_NAMES[layer].toUpperCase(), Math.max(a.x - l.slot * 0.45 - scrollX, 8 - 0), l.tray.y + l.tray.h * 0.08 + 14);
+  }
   const trayS = Math.min(l.slot * 0.85, l.tray.h * 0.56);
   stage.creatures.forEach((cr, i) => {
     const p = l.slotPos[i]!;
@@ -372,6 +378,13 @@ const TIPS = ['Drag a singer from the tray up onto a glowing spot.', 'Nice! Add 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 function toast(msg: string) { const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600); }
 const LAYER_ORDER = ['drums', 'bass', 'melody', 'voice'] as const;
+const LAYER_NAMES = { drums: 'Drums', bass: 'Bass', melody: 'Melody', voice: 'Voice' } as const;
+const GLYPH = {
+  drums: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="13" rx="8" ry="4"/><path d="M4 13v4c0 2 3.6 3.5 8 3.5s8-1.5 8-3.5v-4M8 4l4 6M16 4l-4 6"/></svg>',
+  bass: '<svg viewBox="0 0 24 24"><path d="M3 12c3-6 6 6 9 0s6 6 9 0"/></svg>',
+  melody: '<svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="16" r="2.5"/></svg>',
+  voice: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="13" rx="7" ry="5.5"/><path d="M9 11.5h.01M15 11.5h.01"/><ellipse cx="12" cy="16" rx="2.6" ry="1.8"/></svg>',
+} as const;
 let lastBand = '';
 function updateHud() {
   if (!session) return;
@@ -381,13 +394,15 @@ function updateHud() {
   $('beat').style.transform = `scale(${1 + 0.6 * Math.max(0, 1 - ((engine.positionBeats() % 1) * 4))})`;
   const live = new Set(session.state.solo ? [session.state.solo] : session.state.spots.filter((x): x is string => !!x && !session!.state.muted[x]));
   const band = LAYER_ORDER.map((l) => (stage.creatures.some((c) => c.layer === l && live.has(c.id)) ? '1' : '0')).join('');
-  if (band !== lastBand) { lastBand = band; $('band').innerHTML = LAYER_ORDER.map((l, i) => `<i class="${band[i] === '1' ? 'on' : ''}" style="--c:${LAYER_COLORS[l]}" title="${l}"></i>`).join(''); }
-  const html = stage.combos.map((c) => {
-    const on = new Set(session!.state.spots.filter((x): x is string => !!x).filter((x) => !session!.state.muted[x]));
-    const n = session!.state.solo ? 0 : c.creatureIds.filter((id) => on.has(id)).length;
-    const f = found.has(c.id);
-    return `<span class="combo${f ? ' found' : ''}">${[0, 1, 2, 3].map((i) => `<i class="${f || i < n ? 'lit' : ''}"></i>`).join('')}</span>`;
-  }).join('');
+  if (band !== lastBand) { lastBand = band; $('band').innerHTML = LAYER_ORDER.map((l, i) => `<b class="${band[i] === '1' ? 'on' : ''}" style="--c:${LAYER_COLORS[l]}" title="${LAYER_NAMES[l]}: ${band[i] === '1' ? 'playing' : 'not playing'}"><i>${GLYPH[l]}</i>${LAYER_NAMES[l]}</b>`).join(''); }
+  const on = new Set(session.state.spots.filter((x): x is string => !!x).filter((x) => !session!.state.muted[x] && (session!.state.volume[x] ?? 1) >= 0.03));
+  const cnt = (c: (typeof stage.combos)[number]) => (session!.state.solo ? 0 : c.creatureIds.filter((id) => on.has(id)).length);
+  const open = stage.combos.filter((c) => !found.has(c.id));
+  const best = open.sort((x, y) => cnt(y) - cnt(x))[0];
+  const nFound = stage.combos.length - open.length;
+  const html = best
+    ? `<span class="combo" title="The closest secret combo: a dot lights up for each matching singer on stage">${[0, 1, 2, 3].map((i) => `<i class="${i < cnt(best) ? 'lit' : ''}"></i>`).join('')}</span><small>${nFound}/${stage.combos.length} found</small>`
+    : `<small>All ${stage.combos.length} combos found!</small>`;
   if (html !== lastHud) { $('combos').innerHTML = html; lastHud = html; }
 }
 
@@ -528,7 +543,7 @@ function showHelp() {
   $('helpTxt').textContent = (en as Record<string, string>)[`help.step${helpStep + 1}`]!;
   $('hDots').innerHTML = Array.from({ length: 7 }, (_, i) => `<i class="${i === helpStep ? 'on' : ''}"></i>`).join('');
 }
-$('helpBtn').addEventListener('click', () => { helpStep = 0; showHelp(); $('help').classList.remove('hide'); });
+$('helpBtn').addEventListener('click', () => { $('helpBtn').classList.remove('pulse'); helpStep = 0; showHelp(); $('help').classList.remove('hide'); });
 $('hPrev').addEventListener('click', () => { helpStep = Math.max(0, helpStep - 1); showHelp(); });
 $('hNext').addEventListener('click', () => { if (helpStep === 6) $('help').classList.add('hide'); else { helpStep++; showHelp(); } });
 $('help').addEventListener('click', (e) => { if (e.target === $('help') || (e.target as HTMLElement).closest('.x')) $('help').classList.add('hide'); });

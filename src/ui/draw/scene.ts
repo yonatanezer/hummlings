@@ -195,7 +195,8 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   [0, 1, 2, 3].forEach((g) => {
     const a = l.slotPos[g * per]!, b = l.slotPos[g * per + per - 1]!;
     const layer = stage.creatures[g * per]!.layer;
-    c.drawRRect(sk.RRectXY(sk.XYWHRect(a.x - l.slot * 0.55 - s.scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84), 14, 14), paint(sk, LAYER_COLORS[layer], 0.11));
+    c.drawRRect(sk.RRectXY(sk.XYWHRect(a.x - l.slot * 0.55 - s.scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84), 14, 14), paint(sk, LAYER_COLORS[layer], 0.16));
+    layerGlyph(sk, c, layer, Math.max(a.x - l.slot * 0.55 - s.scrollX, 0) + 16, l.tray.y + l.tray.h * 0.08 + 14, LAYER_COLORS[layer]);
   });
   const trayS = Math.min(l.slot * 0.72, l.tray.h * 0.46);
   stage.creatures.forEach((cr, i) => {
@@ -227,6 +228,16 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   }
 
   if (s.hint && s.drags.length === 0) drawHintHand(sk, c, s, byId);
+}
+
+/** Small icon marking each colour group in the tray: drum, bass wave, note, mouth. Readable without text. */
+function layerGlyph(sk: SkiaApi, c: Canvas, layer: string, x: number, y: number, color: string) {
+  'worklet';
+  const p = paint(sk, color, 1, STROKE, 2.4);
+  if (layer === 'drums') { c.drawOval(sk.XYWHRect(x - 9, y - 3, 18, 9), p); c.drawLine(x - 7, y - 10, x - 1, y - 2, p); c.drawLine(x + 7, y - 10, x + 1, y - 2, p); }
+  else if (layer === 'bass') { const q = sk.PathBuilder.Make(); q.moveTo(x - 10, y); q.cubicTo(x - 6, y - 10, x - 2, y + 8, x + 1, y); q.cubicTo(x + 4, y - 8, x + 8, y + 8, x + 11, y); c.drawPath(q.build(), p); }
+  else if (layer === 'melody') { c.drawCircle(x - 4, y + 5, 4, paint(sk, color)); c.drawLine(x, y + 5, x, y - 9, p); c.drawLine(x, y - 9, x + 8, y - 6, p); }
+  else { c.drawOval(sk.XYWHRect(x - 10, y - 6, 20, 14), p); c.drawOval(sk.XYWHRect(x - 4, y, 8, 5), paint(sk, color)); }
 }
 
 function drawVolumePopup(sk: SkiaApi, c: Canvas, s: SceneInput) {
