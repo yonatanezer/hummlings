@@ -1,13 +1,13 @@
 # PROGRESS
-Resume: read CLAUDE.md, DECISIONS.md, this file; run `npm run check` (lint+typecheck+tests). Branch: claude/hummlings-build.
+Resume: read CLAUDE.md, DECISIONS.md, TODO_FOR_YONATAN.md, this file; run `npm run check`. Branch claude/hummlings-build (draft PR #1).
 
 | Milestone | Status |
 |---|---|
-| M0 Setup | DONE: core logic, schema, 3 stages x 16 creatures (JSON), 57 synthesised loops, strings en/he, tuning, audits, check |
-| M1 Core experience | next: audio engine interface+mock, Skia creatures/stage, drag/tap/solo, look sheet artifact |
-| M2 Full v1 | todo |
-| M3 Money + store kit | todo |
-| M4 Polish + release | todo |
+| M0 Setup | DONE |
+| M1 Core + look approved | DONE (look approved by owner; playable web demo is the review tool) |
+| M2 Full v1 | DONE in code: all screens, save/load, settings, help, stickers, volume popup. Not run on a device. |
+| M3 Money + store kit | DONE in repo: expo-iap behind interface, eas.json, icons, pages, store texts. Needs owner: accounts, products, publish pages. |
+| M4 Polish + release | Partial: sampled mix audit in `check`, full audit `npm run qa:audit`, `npm run release:check` (currently NOT READY: LESSONS final, live pages, device check). |
 
-Known gaps: no UI yet; audio engine not written; celebrations not designed.
-Commands: `npm run content` (JSON+asset map), `npm run sounds` (loops), `npm run qa:audit` (full 8,008-combo audit).
+Known gaps: never run on a device; scenery and tap-toy only in web demo; guide leaves the stage; store screenshots need a real build; m4a loop-gap unverified.
+Commands: `npm run check`, `npm run content`, `npm run sounds`, `npm run qa:audit`, `npm run release:check`, `npx tsx scripts/build-web.ts` (demo), `npx tsx scripts/look-sheet.ts`, `npx tsx scripts/build-icons.ts`.
