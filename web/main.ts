@@ -13,6 +13,7 @@ import { WebEngine } from './engine';
 import { en } from '../src/i18n/en';
 import { popRate } from '../src/core/sfx';
 import { worldIconSvg } from '../src/core/worldIcons';
+import { P } from './pictos';
 
 const STAGES: Stage[] = [pond, fair, clouds].map((r) => validateStage(r).stage!);
 const NAMES = ['Moonlit Pond', 'Candy Fair', 'Sleepy Cloud Town'];
@@ -131,6 +132,16 @@ function sprite(cr: Creature, pose: number, x: number, y: number, S: number, o: 
   ctx.rotate(o.tilt ?? 0);
   ctx.scale((o.sx ?? 1) * k, (o.sy ?? 1) * k);
   ctx.drawImage(atlas, pose * CELL_W, i * CELL_H, CELL_W, CELL_H, -FEET_X, -FEET_Y, CELL_W, CELL_H);
+  ctx.restore();
+}
+
+function trayGlyph(layer: string, x: number, y: number, color: string) {
+  ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (layer === 'drums') { ctx.ellipse(x, y + 1, 10, 5, 0, 0, 7); ctx.moveTo(x - 7, y - 10); ctx.lineTo(x - 1, y - 2); ctx.moveTo(x + 7, y - 10); ctx.lineTo(x + 1, y - 2); ctx.stroke(); }
+  else if (layer === 'bass') { ctx.moveTo(x - 11, y); ctx.bezierCurveTo(x - 7, y - 11, x - 2, y + 9, x + 1, y); ctx.bezierCurveTo(x + 4, y - 9, x + 8, y + 9, x + 12, y); ctx.stroke(); }
+  else if (layer === 'melody') { ctx.arc(x - 4, y + 5, 4.5, 0, 7); ctx.fill(); ctx.beginPath(); ctx.moveTo(x + 0.5, y + 5); ctx.lineTo(x + 0.5, y - 10); ctx.lineTo(x + 9, y - 6); ctx.stroke(); }
+  else { ctx.ellipse(x, y, 11, 8, 0, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.ellipse(x, y + 3, 5, 3.4, 0, 0, 7); ctx.fill(); }
   ctx.restore();
 }
 
@@ -325,8 +336,7 @@ function frame(t: number) {
   }
   for (let g = 0; g < 4; g++) {
     const a = l.slotPos[g * per]!, layer = stage.creatures[g * per]!.layer;
-    ctx.font = '700 14px system-ui, sans-serif'; ctx.textBaseline = 'middle'; ctx.fillStyle = LAYER_COLORS[layer];
-    ctx.fillText(LAYER_NAMES[layer].toUpperCase(), Math.max(a.x - l.slot * 0.45 - scrollX, 8 - 0), l.tray.y + l.tray.h * 0.08 + 14);
+    trayGlyph(layer, Math.max(a.x - l.slot * 0.45 - scrollX, 0) + 18, l.tray.y + l.tray.h * 0.08 + 16, LAYER_COLORS[layer]);
   }
   const trayS = Math.min(l.slot * 0.85, l.tray.h * 0.56);
   stage.creatures.forEach((cr, i) => {
@@ -375,9 +385,25 @@ function frame(t: number) {
 
 let lastHud = '';
 let lastTip = -1;
-const TIPS = ['Drag a singer from the tray up onto a glowing spot.', 'Nice! Add more singers. They always sound good together.', 'Tap a singer to mute it. Hold it to change its volume (the star is solo). Drag it off to remove.', ''];
+const TIP_HTML = [
+  `<span class="tp">${P.hand(34)}${P.arrowUp()}<b class="glow">${P.plus(18)}</b></span>`,
+  `<span class="tp"><b class="glow">${P.plus(18)}</b><b class="glow">${P.plus(18)}</b><b class="glow">${P.plus(18)}</b></span>`,
+  `<span class="tp"><span class="grp">${P.hand(26)}${P.tapRing()}${P.speakerOff()}</span><span class="grp">${P.hand(26)}${P.holdRing()}${P.slider()}</span><span class="grp">${P.hand(26)}${P.swipe()}${P.arrowOut()}</span></span>`,
+  '',
+];
+
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
-function toast(msg: string) { const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600); }
+function toast(html: string) { const el = $('toast'); el.innerHTML = html; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600); }
+const GOAL_PICTO: Record<string, (s: number) => string> = {
+  fullBand: (s) => (['drums', 'bass', 'melody', 'voice'] as const).map((l) => `<span style="color:${LAYER_COLORS[l]}">${GLYPH[l].replace('<svg ', `<svg width="${s}" height="${s}" `)}</span>`).join(''),
+  drumCircle: (s) => [0, 1, 2].map(() => `<span style="color:${LAYER_COLORS.drums}">${GLYPH.drums.replace('<svg ', `<svg width="${s}" height="${s}" `)}</span>`).join(''),
+  choir: (s) => [0, 1, 2].map(() => `<span style="color:${LAYER_COLORS.voice}">${GLYPH.voice.replace('<svg ', `<svg width="${s}" height="${s}" `)}</span>`).join(''),
+  fullStage: (s) => `<span class="dd">${Array.from({ length: 6 }, () => `<i style="background:#fff;width:${s * 0.45}px;height:${s * 0.45}px"></i>`).join('')}</span>`,
+  soloist: (s) => `${P.star(s)}${(['drums', 'bass', 'melody', 'voice'] as const).map((l) => `<span style="color:${LAYER_COLORS[l]}">${GLYPH[l].replace('<svg ', `<svg width="${s * 0.8}" height="${s * 0.8}" `)}</span>`).join('')}`,
+  mixMaster: (s) => `${P.speakerOff(s)}${P.speaker(s)}${P.speakerOff(s)}`,
+  swapper: (s) => P.swipe(s),
+  twoCombos: (s) => `${P.book(s)}${P.star(s * 0.8)}${P.star(s * 0.8)}`,
+};
 const LAYER_ORDER = ['drums', 'bass', 'melody', 'voice'] as const;
 const LAYER_NAMES = { drums: 'Drums', bass: 'Bass', melody: 'Melody', voice: 'Voice' } as const;
 const GLYPH = {
@@ -391,19 +417,19 @@ function updateHud() {
   if (!session) return;
   const n = session.state.spots.filter(Boolean).length;
   const tipIdx = n === 0 ? 0 : n < 3 ? 1 : n < 5 ? 2 : 3;
-  if (tipIdx !== lastTip) { lastTip = tipIdx; $('tip').textContent = TIPS[tipIdx]!; $('tip').classList.toggle('hide', tipIdx === 3); }
+  if (tipIdx !== lastTip) { lastTip = tipIdx; $('tip').innerHTML = TIP_HTML[tipIdx]!; $('tip').classList.toggle('hide', tipIdx === 3); }
   $('beat').style.transform = `scale(${1 + 0.6 * Math.max(0, 1 - ((engine.positionBeats() % 1) * 4))})`;
   const live = new Set(session.state.solo ? [session.state.solo] : session.state.spots.filter((x): x is string => !!x && !session!.state.muted[x]));
   const band = LAYER_ORDER.map((l) => (stage.creatures.some((c) => c.layer === l && live.has(c.id)) ? '1' : '0')).join('');
-  if (band !== lastBand) { lastBand = band; $('band').innerHTML = LAYER_ORDER.map((l, i) => `<b class="${band[i] === '1' ? 'on' : ''}" style="--c:${LAYER_COLORS[l]}" title="${LAYER_NAMES[l]}: ${band[i] === '1' ? 'playing' : 'not playing'}"><i>${GLYPH[l]}</i>${LAYER_NAMES[l]}</b>`).join(''); }
+  if (band !== lastBand) { lastBand = band; $('band').innerHTML = LAYER_ORDER.map((l, i) => `<b class="${band[i] === '1' ? 'on' : ''}" style="--c:${LAYER_COLORS[l]}" title="${LAYER_NAMES[l]}: ${band[i] === '1' ? 'playing' : 'not playing'}"><i>${GLYPH[l]}</i></b>`).join(''); }
   const on = new Set(session.state.spots.filter((x): x is string => !!x).filter((x) => !session!.state.muted[x] && (session!.state.volume[x] ?? 1) >= 0.03));
   const cnt = (c: (typeof stage.combos)[number]) => (session!.state.solo ? 0 : c.creatureIds.filter((id) => on.has(id)).length);
   const open = stage.combos.filter((c) => !found.has(c.id));
   const best = open.sort((x, y) => cnt(y) - cnt(x))[0];
   const nFound = stage.combos.length - open.length;
   const html = best
-    ? `<span class="combo" title="The closest secret combo: a dot lights up for each matching singer on stage">${[0, 1, 2, 3].map((i) => `<i class="${i < cnt(best) ? 'lit' : ''}"></i>`).join('')}</span><small>${nFound}/${stage.combos.length} found</small>`
-    : `<small>All ${stage.combos.length} combos found!</small>`;
+    ? `<span class="combo" title="Closest secret combo">${[0, 1, 2, 3].map((i) => `<i class="${i < cnt(best) ? 'lit' : ''}"></i>`).join('')}</span><span class="fnd" title="Combos found">${Array.from({ length: stage.combos.length }, (_, i) => P.star(16, i < nFound ? '#FFE066' : '#ffffff33')).join('')}</span>`
+    : `<span class="fnd">${Array.from({ length: stage.combos.length }, () => P.star(18)).join('')}</span>`;
   if (html !== lastHud) { $('combos').innerHTML = html; lastHud = html; }
 }
 
@@ -472,7 +498,7 @@ async function loadAtlas(id: string) {
 async function openStage(i: number) {
   ready = false;
   session = null; // the frame loop pauses until the new world is ready
-  $('loading').innerHTML = `${worldIconSvg(STAGES[i]!.id, 72)}<p>${NAMES[i]}…</p>`;
+  $('loading').innerHTML = `${worldIconSvg(STAGES[i]!.id, 84)}<span class="spin"></span>`;
   $('loading').classList.remove('hide');
   engine.stop();
   stageIdx = i; stage = STAGES[i]!;
@@ -482,9 +508,9 @@ async function openStage(i: number) {
   await engine.init();
   await Promise.all([engine.loadStage(stage), loadAtlas(stage.id)]);
   session = new Session(stage, engine, {
-    onCelebration: (id, bar) => { const c = stage.combos.find((q) => q.id === id)!; celebration = { comboId: id, creatureIds: [...c.creatureIds], startBeat: bar * 4 }; found.add(id); store.set('hum.combos', [...found]); engine.playSfx('combo'); toast('Secret combo found!'); },
+    onCelebration: (id, bar) => { const c = stage.combos.find((q) => q.id === id)!; celebration = { comboId: id, creatureIds: [...c.creatureIds], startBeat: bar * 4 }; found.add(id); store.set('hum.combos', [...found]); engine.playSfx('combo'); toast(`${P.star(34)}${P.book(34)}${P.star(34)}`); },
     onCelebrationEnd: () => { celebration = null; },
-    onGoal: (key) => { stickers.add(key); store.set('hum.goals', [...stickers]); engine.playSfx('goal'); toast(`${(en as Record<string, string>)['goal.earned']} ${(en as Record<string, string>)['goal.' + key.split(':')[1]]}`); burst(W / 2, H * 0.3, ['#FFC857', '#FFFFFF', '#5FE3C0'], 16, 'star', performance.now(), 220); },
+    onGoal: (key) => { stickers.add(key); store.set('hum.goals', [...stickers]); engine.playSfx('goal'); toast(`${P.sticker(34)}${GOAL_PICTO[key.split(':')[1]!]?.(26) ?? ''}`); burst(W / 2, H * 0.3, ['#FFC857', '#FFFFFF', '#5FE3C0'], 16, 'star', performance.now(), 220); },
   }, [...found], [...stickers]);
   session.countIn = true;
   session.start();
@@ -492,7 +518,7 @@ async function openStage(i: number) {
   $('loading').classList.add('hide');
 }
 
-$('worlds').innerHTML = NAMES.map((n, i) => `<button data-i="${i}"><span class="wi">${worldIconSvg(STAGES[i]!.id, 28)}</span><span class="long">${n}</span><span class="short">${n.split(' ')[0] === 'Sleepy' ? 'Clouds' : n.split(' ')[0] === 'Moonlit' ? 'Pond' : 'Fair'}</span></button>`).join('');
+$('worlds').innerHTML = NAMES.map((n, i) => `<button data-i="${i}" aria-label="${n}" title="${n}"><span class="wi">${worldIconSvg(STAGES[i]!.id, 36)}</span></button>`).join('');
 $('worlds').addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button'); if (b) void openStage(Number(b.dataset.i)); });
 $('clear').addEventListener('click', () => { if (!session) return; session.state.spots.forEach((id, s) => { if (id) returning.push({ id, since: performance.now(), from: layout.spots[s]! }); }); session.dispatch({ kind: 'clear' }); });
 $('start').addEventListener('click', () => { $('splash').classList.add('hide'); void openStage(0); });
@@ -529,10 +555,9 @@ function openBook() {
     cardsEl.append(card);
   });
   const gs = document.createElement('div'); gs.className = 'goals';
-  gs.innerHTML = `<h3>${(en as Record<string, string>)['goal.title']}</h3>` + s.goals.progress(s.state, s.discoveredInStage).map((g) => {
+  gs.innerHTML = `<h3>${P.sticker(26)}</h3>` + s.goals.progress(s.state, s.discoveredInStage).map((g) => {
     const d = stickers.has(`${stage.id}:${g.id}`);
-    const name = (en as Record<string, string>)[`goal.${g.id}`], desc = (en as Record<string, string>)[`goal.${g.id}.desc`];
-    return `<div class="goal${d ? ' done' : ''}"><b>${d ? '★ ' : ''}${name}</b><span>${desc}</span><em style="--p:${d ? 100 : Math.round((g.n / g.total) * 100)}%"></em></div>`;
+    return `<div class="goal${d ? ' done' : ''}" title="${(en as Record<string, string>)['goal.' + g.id]}"><span class="gp">${GOAL_PICTO[g.id]!(30)}</span>${P.dots(d ? g.total : g.n, g.total)}${d ? P.star(24) : ''}</div>`;
   }).join('');
   cardsEl.append(gs);
   $('book').classList.remove('hide');
@@ -541,8 +566,9 @@ $('bookBtn').addEventListener('click', openBook);
 $('book').addEventListener('click', (e) => { if (e.target === $('book') || (e.target as HTMLElement).closest('.x')) $('book').classList.add('hide'); });
 let helpStep = 0;
 function showHelp() {
-  ($('helpImg') as HTMLImageElement).src = `help/${helpStep + 1}.png`;
-  $('helpTxt').textContent = (en as Record<string, string>)[`help.step${helpStep + 1}`]!;
+  const v = $('helpVid') as HTMLVideoElement;
+  v.src = `help/${helpStep + 1}.mp4`;
+  void v.play().catch(() => { /* autoplay may need a tap */ });
   $('hDots').innerHTML = Array.from({ length: 7 }, (_, i) => `<i class="${i === helpStep ? 'on' : ''}"></i>`).join('');
 }
 $('helpBtn').addEventListener('click', () => { $('helpBtn').classList.remove('pulse'); helpStep = 0; showHelp(); $('help').classList.remove('hide'); });

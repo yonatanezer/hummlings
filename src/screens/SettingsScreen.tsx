@@ -6,6 +6,7 @@ import { getPurchases } from '../app/purchases';
 import { useProgress } from '../app/progress';
 import { t } from '../i18n';
 import { useLang } from '../i18n/useLang';
+import { Icon, type IconName } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
 import { ParentalGate } from '../ui/ParentalGate';
 import { Slider } from '../ui/Slider';
@@ -21,8 +22,8 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
   const [note, setNote] = useState('');
   const align = rtl ? 'row-reverse' : 'row';
 
-  const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <View style={[styles.row, { flexDirection: align }]}><Text style={styles.label}>{label}</Text>{children}</View>
+  const Row = ({ label, icon, children }: { label: string; icon: IconName; children: React.ReactNode }) => (
+    <View style={[styles.row, { flexDirection: align }]}><View style={{ flexDirection: align, alignItems: 'center', gap: 12 }}><Icon name={icon} size={30} color="#FFE8A3" /><Text style={styles.label}>{label}</Text></View>{children}</View>
   );
   const langs: Settings['language'][] = ['system', 'en', 'he'];
 
@@ -44,10 +45,10 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
         <Text style={styles.title} accessibilityRole="header">{t('settings.title')}</Text>
       </View>
       <ScrollView contentContainerStyle={styles.body}>
-        <Row label={t('settings.volume')}><View style={{ flex: 1, maxWidth: 320 }}><Slider label={t('settings.volume')} value={s.musicVolume} onChange={(v) => setSetting('musicVolume', v)} /></View></Row>
-        <Row label={t('settings.haptics')}><Switch accessibilityLabel={t('settings.haptics')} value={s.haptics} onValueChange={(v) => setSetting('haptics', v)} /></Row>
-        <Row label={t('settings.reduceMotion')}><Switch accessibilityLabel={t('settings.reduceMotion')} value={s.reduceMotion} onValueChange={(v) => setSetting('reduceMotion', v)} /></Row>
-        <Row label={t('settings.language')}>
+        <Row label={t('settings.volume')} icon="volume"><View style={{ flex: 1, maxWidth: 320 }}><Slider label={t('settings.volume')} value={s.musicVolume} onChange={(v) => setSetting('musicVolume', v)} /></View></Row>
+        <Row label={t('settings.haptics')} icon="vibrate"><Switch accessibilityLabel={t('settings.haptics')} value={s.haptics} onValueChange={(v) => setSetting('haptics', v)} /></Row>
+        <Row label={t('settings.reduceMotion')} icon="motion"><Switch accessibilityLabel={t('settings.reduceMotion')} value={s.reduceMotion} onValueChange={(v) => setSetting('reduceMotion', v)} /></Row>
+        <Row label={t('settings.language')} icon="globe">
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {langs.map((l) => (
               <Pressable key={l} accessibilityRole="button" accessibilityState={{ selected: s.language === l }} onPress={() => setSetting('language', l)} style={[styles.seg, s.language === l && styles.segOn]}>
@@ -56,9 +57,9 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
             ))}
           </View>
         </Row>
-        <Row label={t('settings.restore')}><IconButton icon="restore" label={t('settings.restore')} onPress={() => setGate('restore')} /></Row>
-        <Row label={t('settings.privacy')}><IconButton icon="info" label={t('settings.privacy')} onPress={() => setGate('privacy')} /></Row>
-        <Row label={t('settings.reset')}><IconButton icon="trash" label={t('settings.reset')} color={COLORS.danger} onPress={() => Alert.alert(t('settings.reset'), t('settings.resetConfirm'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.confirm'), style: 'destructive', onPress: reset }])} /></Row>
+        <Row label={t('settings.restore')} icon="restore"><IconButton icon="restore" label={t('settings.restore')} onPress={() => setGate('restore')} /></Row>
+        <Row label={t('settings.privacy')} icon="info"><IconButton icon="info" label={t('settings.privacy')} onPress={() => setGate('privacy')} /></Row>
+        <Row label={t('settings.reset')} icon="trash"><IconButton icon="trash" label={t('settings.reset')} color={COLORS.danger} onPress={() => Alert.alert(t('settings.reset'), t('settings.resetConfirm'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.confirm'), style: 'destructive', onPress: reset }])} /></Row>
         {note ? <Text style={styles.note}>{note}</Text> : null}
         <View style={styles.about}>
           <Text style={styles.label}>{t('settings.about')}</Text>

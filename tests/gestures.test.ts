@@ -120,3 +120,23 @@ describe('volume popup', () => {
     for (let i = 0; i < 6; i++) { const r = popupRects(layout, i); expect(r.panel.x).toBeGreaterThanOrEqual(0); expect(r.panel.x + r.panel.w).toBeLessThanOrEqual(layout.W); expect(r.solo.w).toBeGreaterThanOrEqual(52); expect(r.panel.y).toBeGreaterThanOrEqual(0); }
   });
 });
+
+describe('swipe to close the volume menu', () => {
+  const stage = [null, 'c1', null, null, null, null];
+  const popup = { spot: 1, creatureId: 'c1' };
+  const wp = (): World => ({ ...world(stage), popup, volumeOf: () => 1 });
+  it('a sideways swipe on the panel closes it; vertical drags still set the level; no solo after a swipe', () => {
+    const r = popupRects(layout, 1);
+    const g = new GestureTracker();
+    g.start(1, { x: r.slider.x + 8, y: r.slider.y + 20 }, 0, wp());
+    expect(g.move(1, { x: r.slider.x + 12, y: r.slider.y + 60 }, 10, wp())[0]).toMatchObject({ type: 'volumeSet' });
+    const sw = g.move(1, { x: r.slider.x + 90, y: r.slider.y + 64 }, 20, wp());
+    expect(sw).toEqual([{ type: 'popupClose' }]);
+    expect(g.move(1, { x: r.slider.x + 140, y: r.slider.y + 64 }, 30, wp())).toEqual([]); // only once
+    g.start(2, { x: r.solo.x + 5, y: r.solo.y + 5 }, 100, wp());
+    g.move(2, { x: r.solo.x + 80, y: r.solo.y + 6 }, 110, wp());
+    expect(g.end(2, { x: r.solo.x + 5, y: r.solo.y + 5 }, 120, wp())).toEqual([]);
+    g.start(3, { x: r.panel.x + 2, y: r.panel.y + 2 }, 200, wp()); // panel padding
+    expect(g.move(3, { x: r.panel.x - 60, y: r.panel.y + 4 }, 210, wp())).toEqual([{ type: 'popupClose' }]);
+  });
+});

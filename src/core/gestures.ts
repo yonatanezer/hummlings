@@ -32,9 +32,9 @@ type Touch =
   | { kind: 'drag'; id: string; from: 'tray' | 'stage'; last: Pt; lastT: number; vy: number }
   | { kind: 'scroll'; start: Pt; scrollStart: number }
   | { kind: 'hold'; id: string; startY: number; startVol: number } // long press fired: dragging changes the volume
-  | { kind: 'slider'; id: string }
-  | { kind: 'popupSolo'; id: string }
-  | { kind: 'swallow' };
+  | { kind: 'slider'; id: string; start: Pt }
+  | { kind: 'popupSolo'; id: string; start: Pt }
+  | { kind: 'swallow'; start: Pt; closed?: boolean };
 
 const SLOP = 10; // px of movement before a touch stops being a tap
 
@@ -48,11 +48,11 @@ export class GestureTracker {
     if (w.popup) {
       const r = popupRects(w.layout, w.popup.spot);
       if (inRect(r.panel, p)) {
-        if (inRect(r.solo, p)) this.touches.set(touch, { kind: 'popupSolo', id: w.popup.creatureId });
+        if (inRect(r.solo, p)) this.touches.set(touch, { kind: 'popupSolo', id: w.popup.creatureId, start: p });
         else if (inRect(r.slider, p)) {
-          this.touches.set(touch, { kind: 'slider', id: w.popup.creatureId });
+          this.touches.set(touch, { kind: 'slider', id: w.popup.creatureId, start: p });
           return [{ type: 'volumeSet', creatureId: w.popup.creatureId, value: this.sliderValue(w, p) }];
-        } else this.touches.set(touch, { kind: 'swallow' });
+        } else this.touches.set(touch, { kind: 'swallow', start: p });
         return [];
       }
       lead.push({ type: 'popupClose' }); // a touch anywhere else closes it and then behaves normally
@@ -99,8 +99,17 @@ export class GestureTracker {
         }
         return [];
       }
-      case 'slider':
+      case 'popupSolo':
+      case 'swallow': {
+        if (s.kind === 'swallow' && s.closed) return [];
+        if (this.isCloseSwipe(s.start, p)) { this.touches.set(touch, { kind: 'swallow', start: s.start, closed: true }); return [{ type: 'popupClose' }]; }
+        return [];
+      }
+      case 'slider': {
+        // a sideways swipe across the menu dismisses it; mostly vertical movement is the slider
+        if (this.isCloseSwipe(s.start, p)) { this.touches.set(touch, { kind: 'swallow', start: s.start, closed: true }); return [{ type: 'popupClose' }]; }
         return [{ type: 'volumeSet', creatureId: s.id, value: this.sliderValue(w, p) }];
+      }
       case 'hold': {
         if (Math.abs(p.y - s.startY) < SLOP) return [];
         return [{ type: 'volumeSet', creatureId: s.id, value: Math.min(1, Math.max(0, s.startVol - (p.y - s.startY) / w.layout.size)) }];
@@ -165,6 +174,12 @@ export class GestureTracker {
   get hasPendingLongPress(): boolean {
     for (const s of this.touches.values()) if (s.kind === 'pendingStage' && !s.fired) return true;
     return false;
+  }
+
+  /** Horizontal swipe (at least 40 px and clearly more sideways than vertical). */
+  private isCloseSwipe(a: Pt, b: Pt): boolean {
+    const dx = Math.abs(b.x - a.x), dy = Math.abs(b.y - a.y);
+    return dx >= 40 && dx > dy * 1.5;
   }
 
   private sliderValue(w: World, p: Pt): number {
