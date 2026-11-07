@@ -18,6 +18,14 @@ const SPECS: Record<string, Spec> = {
   cel_pond_4: { dance: 'conga', blocks: ['beams', 'stars', 'confetti'], colors: ['#7A8CFF', '#FFE8A3', '#FF7AA8'] },
   cel_fair_4: { dance: 'wave', blocks: ['rings', 'bubbles', 'lanterns'], colors: ['#FFD6E8', '#FFC857', '#5FE3C0'] },
   cel_clouds_4: { dance: 'spin', blocks: ['stars', 'lanterns', 'bubbles'], colors: ['#D6F0FF', '#FFE8A3', '#FF7AA8'] },
+  cel_neon_1: { dance: 'jump', blocks: ['beams', 'rings'], colors: ['#FF4DD2', '#7DF9FF', '#FFE066'] },
+  cel_neon_2: { dance: 'conga', blocks: ['stars', 'beams', 'confetti'], colors: ['#7DF9FF', '#FF4DD2', '#FFFFFF'] },
+  cel_neon_3: { dance: 'spin', blocks: ['rings', 'lanterns'], colors: ['#FFE066', '#FF4DD2', '#7DF9FF'] },
+  cel_neon_4: { dance: 'wave', blocks: ['beams', 'bubbles', 'stars'], colors: ['#7DF9FF', '#C8B6FF', '#FF4DD2'] },
+  cel_frost_1: { dance: 'wave', blocks: ['stars', 'bubbles'], colors: ['#E8F6FF', '#9AD7FF', '#FFFFFF'] },
+  cel_frost_2: { dance: 'spin', blocks: ['stars', 'rings'], colors: ['#5FE3C0', '#9AD7FF', '#E8F6FF'] },
+  cel_frost_3: { dance: 'jump', blocks: ['confetti', 'bubbles'], colors: ['#FFFFFF', '#9AD7FF', '#FFC857'] },
+  cel_frost_4: { dance: 'conga', blocks: ['beams', 'lanterns', 'stars'], colors: ['#5FE3C0', '#C8B6FF', '#E8F6FF'] },
   cel_clouds_3: { dance: 'jump', blocks: ['rings', 'bubbles', 'confetti'], colors: ['#5FE3C0', '#D6F0FF', '#FFC857'] },
 };
 

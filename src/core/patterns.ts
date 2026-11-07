@@ -49,11 +49,13 @@ const CONTOURS: number[][][] = [
   [[0, 1, 2, 1, 0], [2, 3, 2, 1, 2], [0, 1, 3, 2, 1], [3, 2, 1, 0, -1]], // rising question, falling answer
   [[2, 2, 3, 2, 0], [1, 1, 2, 1, -1], [2, 3, 4, 3, 2], [3, 1, 2, 0, 0]], // repeated notes with leaps
   [[0, 2, 1, 3, 2], [4, 3, 2, 1, 2], [0, 2, 4, 3, 1], [2, 1, 0, 1, 0]], // wide skips, gentle landing
+  [[4, 3, 2, 3, 4], [2, 1, 2, 3, 1], [3, 4, 2, 3, 0], [1, 0, -1, 0, 1]], // arches that lean downward
+  [[0, 0, 2, 2, 1], [3, 3, 1, 1, 0], [1, 2, 3, 4, 3], [2, 1, 0, -1, 0]], // paired notes, like a chant
 ];
 /** Notes of one bar of the composed tune: [beat, duration, pool index]. */
 export function tuneBar(world: number, variant: number, bar: number, anchor: number): [number, number, number][] {
   const cell = RHYTHMS[variant % 4]!;
-  const steps = CONTOURS[world % 3]![bar % 4]!;
+  const steps = CONTOURS[world % CONTOURS.length]![bar % 4]!;
   return cell.map(([b, d], i) => [b, d, anchor + steps[i % steps.length]!]);
 }
 

@@ -293,7 +293,25 @@ export function drawCreature(sk: SkiaApi, c: Canvas, cr: Creature, x: number, y:
       c.drawCircle(Math.cos(a) * (w * S) * 0.5, -h * S * 0.5 - S * 0.02 + Math.sin(a) * (h * S) * 0.5, S * 0.085, paint(sk, mix(color, '#FFFFFF', 0.45)));
     }
   }
-  drawBody(gradientPaint(sk, 0, -h * S, 0, 0, look === 'cloud' ? [mix(color, '#FFFFFF', 0.55), mix(color, '#FFFFFF', 0.28), mix(color, '#FFFFFF', 0.08)] : [mix(color, '#FFFFFF', 0.3), color, deep]));
+  drawBody(gradientPaint(sk, 0, -h * S, 0, 0,
+    look === 'cloud' ? [mix(color, '#FFFFFF', 0.55), mix(color, '#FFFFFF', 0.28), mix(color, '#FFFFFF', 0.08)]
+    : look === 'neon' ? [mix(color, '#0B1020', 0.5), mix(color, '#0B1020', 0.68), mix(color, '#0B1020', 0.8)]
+    : look === 'frost' ? [mix(color, '#FFFFFF', 0.78), mix(color, '#D6F0FF', 0.45), mix(color, '#8CC4F0', 0.2)]
+    : [mix(color, '#FFFFFF', 0.3), color, deep]));
+  if (look === 'neon' || look === 'frost') { // surface detail clipped to the body: scanlines + circuit (neon) or ice facets + sparkles (frost)
+    c.save();
+    c.clipRRect(sk.RRectXY(sk.XYWHRect(-(w * S) / 2, -h * S - S * 0.02, w * S, h * S), (w * S) / 2, cr.shape.body === 'tall' ? (w * S) / 2 : (h * S) / 2), 1, true);
+    if (look === 'neon') {
+      for (let k = 0; k < 9; k++) c.drawLine(-w * S, -h * S + k * h * S * 0.12, w * S, -h * S + k * h * S * 0.12, paint(sk, color, 0.14, STROKE, 1.5));
+      c.drawLine(-w * S * 0.4, -h * S * 0.18, -w * S * 0.15, -h * S * 0.18, paint(sk, color, 0.9, STROKE, 2));
+      c.drawLine(-w * S * 0.15, -h * S * 0.18, -w * S * 0.05, -h * S * 0.3, paint(sk, color, 0.9, STROKE, 2));
+      c.drawCircle(-w * S * 0.05, -h * S * 0.3, 3, paint(sk, color));
+    } else {
+      for (const [x0, y0, x1, y1] of [[-0.35, -0.9, 0.1, -0.35], [0.05, -0.95, 0.4, -0.5], [-0.4, -0.5, -0.05, -0.1]] as const) c.drawLine(x0 * w * S, y0 * h * S, x1 * w * S, y1 * h * S, paint(sk, '#FFFFFF', 0.45, STROKE, 2));
+      for (const [px, py, r] of [[0.28, -0.75, 4], [-0.32, -0.32, 3], [0.18, -0.2, 3]] as const) { c.drawLine(px * w * S - r, py * h * S, px * w * S + r, py * h * S, paint(sk, '#FFFFFF', 0.9, STROKE, 1.6)); c.drawLine(px * w * S, py * h * S - r, px * w * S, py * h * S + r, paint(sk, '#FFFFFF', 0.9, STROKE, 1.6)); }
+    }
+    c.restore();
+  }
   if (look === 'candy') { // hard candy: diagonal stripes and sprinkles
     c.save();
     c.clipRRect(sk.RRectXY(sk.XYWHRect(-(w * S) / 2, -h * S - S * 0.02, w * S, h * S), cr.shape.body === 'tall' ? (w * S) / 2 : (w * S) / 2, cr.shape.body === 'tall' ? (w * S) / 2 : (h * S) / 2), 1, true);
@@ -314,12 +332,14 @@ export function drawCreature(sk: SkiaApi, c: Canvas, cr: Creature, x: number, y:
     }
     c.restore();
   }
-  c.drawOval(oval(sk, 0, -h * S * 0.26, w * S * 0.3, h * S * 0.2), paint(sk, light, 0.4)); // light belly
-  if (look !== 'cloud') drawBody(paint(sk, mix(color, '#FFFFFF', look === 'candy' ? 0.9 : 0.7), look === 'candy' ? 0.7 : 0.45, STROKE, S * (look === 'candy' ? 0.03 : 0.02)));
+  c.drawOval(oval(sk, 0, -h * S * 0.26, w * S * 0.3, h * S * 0.2), paint(sk, look === 'neon' ? color : light, look === 'neon' ? 0.1 : 0.4)); // light belly
+  if (look === 'neon') { drawBody(paint(sk, color, 0.28, STROKE, S * 0.09)); drawBody(paint(sk, mix(color, '#FFFFFF', 0.35), 1, STROKE, S * 0.035)); }
+  else if (look === 'frost') drawBody(paint(sk, '#FFFFFF', 0.85, STROKE, S * 0.03));
+  else if (look !== 'cloud') drawBody(paint(sk, mix(color, '#FFFFFF', look === 'candy' ? 0.9 : 0.7), look === 'candy' ? 0.7 : 0.45, STROKE, S * (look === 'candy' ? 0.03 : 0.02)));
   c.save();
   c.translate(-w * S * 0.22, -h * S * 0.86);
   c.rotate(-28, 0, 0);
-  c.drawOval(oval(sk, 0, 0, w * S * 0.16, h * S * 0.07), paint(sk, '#FFFFFF', look === 'cloud' ? 0.3 : look === 'candy' ? 0.8 : 0.6));
+  c.drawOval(oval(sk, 0, 0, w * S * 0.16, h * S * 0.07), paint(sk, '#FFFFFF', look === 'cloud' ? 0.3 : look === 'neon' ? 0.2 : look === 'candy' ? 0.8 : 0.6));
   c.restore();
   c.drawCircle(-w * S * 0.36, -h * S * 0.68, S * 0.016, paint(sk, '#FFFFFF', 0.7));
 

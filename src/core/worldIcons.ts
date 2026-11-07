@@ -30,6 +30,19 @@ export const WORLD_ICONS: Record<string, IconShape[]> = {
     { d: 'M8 17.6h8.6', stroke: '#B9D8F0', width: 1.4 },
     { d: 'M5 4.5l.7 1.5 1.6.2-1.2 1.1.3 1.6L5 8l-1.4.9.3-1.6L2.7 6.2 4.3 6z', fill: '#FFFFFF' },
   ],
+  // Neon City: skyline with glowing windows and a neon moon
+  neon: [
+    { d: 'M17.5 3.5a3.4 3.4 0 1 0 0.01 0z', stroke: '#FF4DD2', width: 1.7 },
+    { d: 'M3 21V12h4.5v9M8.5 21V6.5H14V21M15 21v-7h5.5v7M2 21h20', stroke: '#7DF9FF', width: 1.7 },
+    { d: 'M10 9.5h2M10 13h2M10 16.5h2M17 16.5h1.5', stroke: '#FFE066', width: 1.6 },
+  ],
+  // Frosty Peaks: mountain with a snow cap, snowflake and aurora ribbon
+  frost: [
+    { d: 'M2 20l7-12 4 6 2.5-3.5L22 20z', fill: '#BFE3FF' },
+    { d: 'M9 8l-2.2 3.8 2.2-1.2 1.6 1.4 0.4-2z', fill: '#FFFFFF' },
+    { d: 'M17 4v5M14.8 6.5h4.4M15.4 4.9l3.2 3.2M18.6 4.9l-3.2 3.2', stroke: '#E8F6FF', width: 1.3 },
+    { d: 'M3 7c3-3 5 1 8-1.5', stroke: '#5FE3C0', width: 1.5 },
+  ],
 };
 
 export const worldIcon = (stageId: string): IconShape[] => WORLD_ICONS[stageId] ?? WORLD_ICONS['pond']!;

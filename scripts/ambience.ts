@@ -55,6 +55,33 @@ export function renderAmbience(d: StageDef): Float32Array {
           add(t0, Math.round(0.3 * SR), (t) => { let x = 0; for (let h = 1; h <= 9; h += 2) x += Math.sin(TAU * f * h * t) / h; return x * Math.exp(-t * 9) * Math.min(1, t * 200) * 0.07; });
         }
       });
+    } else if (d.id === 'neon') {
+      // neon city: a soft sixteenth-note synth arpeggio and a distant traffic hush
+      d.chords.forEach((ch, b) => {
+        const tones = notesIn(chordPitchClasses(ch), 55, 79);
+        for (let i = 0; i < 16; i++) {
+          const m = tones[(i * 3 + b) % tones.length]!;
+          const f = midiHz(m);
+          const t0 = off + Math.round((b * 4 + i * 0.25) * beatSec(d.bpm) * SR);
+          add(t0, Math.round(0.16 * SR), (t) => { let x = 0; for (let h = 1; h <= 7; h += 2) x += Math.sin(TAU * f * h * t) / h; return x * Math.exp(-t * 14) * Math.min(1, t * 400) * 0.05; });
+        }
+      });
+      let lp = 0;
+      for (let i = 0; i < loop; i++) { const t = i / SR; lp += 0.01 * ((r() * 2 - 1) - lp); buf[off + i]! += lp * 6 * (0.6 + 0.4 * Math.sin(TAU * t / (bar * 2))) * 0.4; }
+    } else if (d.id === 'frost') {
+      // frosty peaks: thin wind and high glassy chimes with long tails
+      let lp = 0, lp2 = 0;
+      for (let i = 0; i < loop; i++) {
+        const t = i / SR, n = r() * 2 - 1;
+        lp += 0.03 * (n - lp); lp2 += 0.06 * (lp - lp2);
+        buf[off + i]! += lp2 * 7 * (0.4 + 0.6 * Math.sin(TAU * (t / (bar * 3)) + 0.5) ** 2) * 0.5;
+      }
+      for (let k = 0; k < 8; k++) {
+        const t0 = off + Math.round(((k + r() * 0.5) / 8) * loop);
+        const m = notesIn(scale, 79, 91)[Math.floor(r() * 6) % 6] ?? 84;
+        const f = midiHz(m);
+        add(t0, Math.round(2.2 * SR), (t) => (Math.sin(TAU * f * t) + 0.25 * Math.sin(TAU * f * 3 * t)) * Math.exp(-t * 2.2) * Math.min(1, t * 500) * 0.07);
+      }
     } else {
       // clouds: a slow breath of wind and wind chimes
       let lp = 0, lp2 = 0;

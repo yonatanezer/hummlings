@@ -6,6 +6,8 @@ export const en = {
   'stage.pond': 'Moonlit Pond',
   'stage.fair': 'Candy Fair',
   'stage.clouds': 'Sleepy Cloud Town',
+  'stage.neon': 'Neon City',
+  'stage.frost': 'Frosty Peaks',
 
   'select.locked': 'Locked',
 
@@ -44,7 +46,7 @@ export const en = {
   'gate.wrong': 'Try again',
 
   'unlock.title': 'Unlock all worlds',
-  'unlock.body': 'Two more worlds with 48 creatures and 8 secret combos. Pay once, keep forever.',
+  'unlock.body': 'Four more worlds with 96 creatures and 16 secret combos. Pay once, keep forever.',
   'unlock.buy': 'Unlock {price}',
   'unlock.restore': 'Restore purchases',
   'unlock.pending': 'Waiting for approval…',

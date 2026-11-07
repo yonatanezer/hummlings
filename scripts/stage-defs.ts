@@ -11,12 +11,12 @@ export interface StageDef {
   palette: Stage['palette'];
   swing: number;
   /** Per-layer timbre names understood by scripts/synth.ts */
-  timbre: { melody: 'pluck' | 'bell' | 'flute'; voiceBrightness: number; bass: 'round' | 'fat' | 'soft'; kit: 'lofi' | 'bouncy' | 'soft' };
+  timbre: { melody: 'pluck' | 'bell' | 'flute'; voiceBrightness: number; bass: 'round' | 'fat' | 'soft'; kit: 'lofi' | 'bouncy' | 'soft' | 'electro' | 'glass' };
   accessories: Accessory[]; // 4 flavour accessories for this world
   eyes: EyeStyle[];
   look: Look;
   species: Species[]; // 6 per world, rotated across layers
-  kit: 'lofi' | 'bouncy' | 'soft'; // drum character
+  kit: 'lofi' | 'bouncy' | 'soft' | 'electro' | 'glass'; // drum character
   hueShift: number; // degrees applied to creature colours so worlds feel different but layers stay recognisable
 }
 
@@ -49,6 +49,24 @@ export const STAGES: StageDef[] = [
     accessories: ['scarf', 'star', 'none', 'scarf'], eyes: ['sleepy', 'dots', 'sparkle', 'big'],
     look: 'cloud', species: ['sheep', 'bunny', 'bird', 'bear', 'cat', 'axolotl'], kit: 'soft',
     hueShift: -10,
+  },
+  {
+    id: 'neon', nameKey: 'stage.neon', bpm: 100, key: { root: 'E', mode: 'minor' },
+    chords: [ch(0, 'E', 'min'), ch(1, 'C', 'maj'), ch(2, 'G', 'maj'), ch(3, 'D', 'maj')],
+    palette: { sky: '#0B1020', floor: '#15244C', glow: '#7DF9FF', accent: '#FF4DD2' },
+    swing: 0, timbre: { melody: 'pluck', voiceBrightness: 0.7, bass: 'fat', kit: 'electro' },
+    accessories: ['crown', 'star', 'hat', 'bow'], eyes: ['sparkle', 'big', 'dots', 'sleepy'],
+    look: 'neon', species: ['cat', 'fox', 'bunny', 'dino', 'mouse', 'frog'], kit: 'electro',
+    hueShift: 0,
+  },
+  {
+    id: 'frost', nameKey: 'stage.frost', bpm: 88, key: { root: 'F', mode: 'major' },
+    chords: [ch(0, 'F', 'maj7'), ch(1, 'D', 'min7'), ch(2, 'A#', 'maj7'), ch(3, 'C', 'dom7')],
+    palette: { sky: '#0F2A44', floor: '#7FA9D0', glow: '#E8F6FF', accent: '#9AD7FF' },
+    swing: 0.03, timbre: { melody: 'bell', voiceBrightness: 0.35, bass: 'soft', kit: 'glass' },
+    accessories: ['scarf', 'hat', 'star', 'scarf'], eyes: ['dots', 'sleepy', 'big', 'sparkle'],
+    look: 'frost', species: ['bear', 'bird', 'bunny', 'fox', 'sheep', 'mouse'], kit: 'glass',
+    hueShift: -4,
   },
 ];
 

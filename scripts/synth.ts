@@ -30,7 +30,7 @@ class Biquad {
 const noise = (r: () => number) => r() * 2 - 1;
 const env = (t: number, a: number, d: number): number => (t < a ? t / a : Math.exp(-(t - a) / d));
 
-export interface Timbre { melody: 'pluck' | 'bell' | 'flute'; voiceBrightness: number; bass: 'round' | 'fat' | 'soft'; kit: 'lofi' | 'bouncy' | 'soft' }
+export interface Timbre { melody: 'pluck' | 'bell' | 'flute'; voiceBrightness: number; bass: 'round' | 'fat' | 'soft'; kit: 'lofi' | 'bouncy' | 'soft' | 'electro' | 'glass' }
 
 type Voice = (n: NoteEvent, bps: number, r: () => number) => { start: number; samples: Float32Array };
 
@@ -39,7 +39,7 @@ function drumVoice(n: NoteEvent, bps: number, r: () => number, kit: Timbre['kit'
   const o = new Float32Array(len);
   const v = n.vel;
   // Drum character per world: lofi = round and dusty, bouncy = snappy and bright, soft = brushed and gentle.
-  const K = { lofi: { kf: 0.85, kd: 8, sf: 0.75, sd: 20, hf: 0.9, hamp: 0.7, lp: 4800 }, bouncy: { kf: 1.2, kd: 11, sf: 1.3, sd: 24, hf: 1.15, hamp: 1.05, lp: 8000 }, soft: { kf: 0.7, kd: 6, sf: 0.65, sd: 12, hf: 0.8, hamp: 0.55, lp: 3600 } }[kit];
+  const K = { lofi: { kf: 0.85, kd: 8, sf: 0.75, sd: 20, hf: 0.9, hamp: 0.7, lp: 4800 }, bouncy: { kf: 1.2, kd: 11, sf: 1.3, sd: 24, hf: 1.15, hamp: 1.05, lp: 8000 }, soft: { kf: 0.7, kd: 6, sf: 0.65, sd: 12, hf: 0.8, hamp: 0.55, lp: 3600 }, electro: { kf: 1.0, kd: 14, sf: 1.5, sd: 27, hf: 1.3, hamp: 1.15, lp: 8000 }, glass: { kf: 0.9, kd: 10, sf: 1.4, sd: 32, hf: 1.5, hamp: 0.85, lp: 8000 } }[kit];
   switch (n.drum) {
     case 'kick': { let ph = 0; for (let i = 0; i < len; i++) { const t = i / SR; const f = (45 + 90 * Math.exp(-t * 28)) * K.kf; ph += (TAU * f) / SR; o[i] = Math.sin(ph) * Math.exp(-t * K.kd) * 0.95 * v; } break; }
     case 'tom': { let ph = 0; for (let i = 0; i < len; i++) { const t = i / SR; const f = 110 + 90 * Math.exp(-t * 18); ph += (TAU * f) / SR; o[i] = Math.sin(ph) * Math.exp(-t * 11) * 0.8 * v; } break; }

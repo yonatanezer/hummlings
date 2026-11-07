@@ -8,6 +8,8 @@ export const he: Record<StringKey, string> = {
   'stage.pond': 'ברכת הירח',
   'stage.fair': 'יריד הסוכריות',
   'stage.clouds': 'עיירת הענן הנרדם',
+  'stage.neon': 'עיר הניאון',
+  'stage.frost': 'פסגות הכפור',
 
   'select.locked': 'נעול',
 
@@ -46,7 +48,7 @@ export const he: Record<StringKey, string> = {
   'gate.wrong': 'נסו שוב',
 
   'unlock.title': 'פותחים את כל העולמות',
-  'unlock.body': 'עוד שני עולמות עם 48 יצורים ו־8 קומבואים סודיים. משלמים פעם אחת, שלכם לתמיד.',
+  'unlock.body': 'עוד ארבעה עולמות עם 96 יצורים ו־16 קומבואים סודיים. משלמים פעם אחת, שלכם לתמיד.',
   'unlock.buy': 'פתיחה {price}',
   'unlock.restore': 'שחזור רכישות',
   'unlock.pending': 'ממתין לאישור…',

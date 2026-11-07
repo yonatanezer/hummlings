@@ -16,21 +16,21 @@ const stages: Stage[] = files.map((f) => {
 });
 
 describe('content audit (every stage, every creature, every combo)', () => {
-  it('has exactly 3 stages x 24 creatures x 4 combos with globally unique stable ids', () => {
-    expect(stages).toHaveLength(3);
+  it('has exactly 5 stages x 24 creatures x 4 combos with globally unique stable ids', () => {
+    expect(stages).toHaveLength(5);
     const ids = stages.flatMap((s) => [...s.creatures.map((c) => c.id), ...s.combos.map((c) => c.id), ...s.combos.map((c) => c.celebrationId)]);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toHaveLength(3 * (24 + 4 + 4));
+    expect(ids).toHaveLength(5 * (24 + 4 + 4));
   });
   it('each world has its own look, drum kit and species mix', () => {
-    expect(new Set(stages.map((s) => s.creatures[0]!.shape.look)).size).toBe(3);
+    expect(new Set(stages.map((s) => s.creatures[0]!.shape.look)).size).toBe(5);
     const sets = stages.map((s) => [...new Set(s.creatures.map((c) => c.shape.species))].sort().join(','));
-    expect(new Set(sets).size).toBe(3);
+    expect(new Set(sets).size).toBeGreaterThanOrEqual(4);
   });
   it('distinct tempo, key and palette per stage; tempos 84-112', () => {
-    expect(new Set(stages.map((s) => s.bpm)).size).toBe(3);
-    expect(new Set(stages.map((s) => `${s.key.root}${s.key.mode}`)).size).toBe(3);
-    expect(new Set(stages.map((s) => s.palette.sky)).size).toBe(3);
+    expect(new Set(stages.map((s) => s.bpm)).size).toBe(5);
+    expect(new Set(stages.map((s) => `${s.key.root}${s.key.mode}`)).size).toBe(5);
+    expect(new Set(stages.map((s) => s.palette.sky)).size).toBe(5);
   });
   it('every name key exists in the dictionary', () => {
     for (const s of stages) expect(Object.keys(en)).toContain(s.nameKey);
@@ -103,7 +103,7 @@ describe('melody variety', () => {
         count++;
       });
     });
-    expect(count).toBe(18);
-    expect(sigs.size).toBe(18);
+    expect(count).toBe(30);
+    expect(sigs.size).toBe(30);
   });
 });

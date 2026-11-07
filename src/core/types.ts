@@ -14,7 +14,7 @@ export type EyeStyle = 'dots' | 'big' | 'sleepy' | 'sparkle';
 export type Species = 'cat' | 'bunny' | 'bear' | 'mouse' | 'frog' | 'bird' | 'dino' | 'axolotl' | 'sheep' | 'fox';
 export const SPECIES: readonly Species[] = ['cat', 'bunny', 'bear', 'mouse', 'frog', 'bird', 'dino', 'axolotl', 'sheep', 'fox'];
 /** Material of a world's creatures: glossy gummy, striped sprinkle candy, or soft fluffy cloud. */
-export type Look = 'gummy' | 'candy' | 'cloud';
+export type Look = 'gummy' | 'candy' | 'cloud' | 'neon' | 'frost';
 export type Accessory = 'none' | 'bow' | 'hat' | 'crown' | 'flower' | 'scarf' | 'star';
 
 export interface ShapeParams {
