@@ -76,24 +76,26 @@ function bassVoice(kind: Timbre['bass']): Voice {
 function melodyVoice(kind: Timbre['melody']): Voice {
   return (n, bps) => {
     const dur = n.dur / bps;
-    const tail = kind === 'bell' ? 1.2 : 0.5;
+    const tail = kind === 'bell' ? 1.0 : 0.5;
     const len = Math.floor(SR * (dur + tail));
     const o = new Float32Array(len);
     const f = midiHz(n.midi!);
-    const lp = Biquad.make('lp', 6500);
+    // Warm, rounded tones: harmonic FM (no metallic inharmonic partials), soft attack, and a low-pass that removes the shrill top end.
+    const lp = Biquad.make('lp', kind === 'flute' ? 3300 : kind === 'bell' ? 2800 : 2600, 0.6);
+    const lp2 = Biquad.make('lp', 3800, 0.5);
     for (let i = 0; i < len; i++) {
       const t = i / SR;
       let s: number;
       if (kind === 'bell') {
-        const mod = Math.sin(TAU * f * 3.5 * t) * 1.6 * Math.exp(-t * 4);
-        s = Math.sin(TAU * f * t + mod) * Math.exp(-t * 2.4) + 0.25 * Math.sin(TAU * f * 2 * t) * Math.exp(-t * 5);
+        const mod = Math.sin(TAU * f * 2 * t) * 0.7 * Math.exp(-t * 9);
+        s = Math.sin(TAU * f * t + mod) * Math.exp(-t * 2.8) + 0.18 * Math.sin(TAU * f * 2 * t) * Math.exp(-t * 6);
       } else if (kind === 'pluck') {
-        s = Math.sin(TAU * f * t) * Math.exp(-t * 6) + 0.4 * Math.sin(TAU * f * 2 * t) * Math.exp(-t * 11) + 0.15 * Math.sin(TAU * f * 3 * t) * Math.exp(-t * 16);
+        s = Math.sin(TAU * f * t) * Math.exp(-t * 5.5) + 0.22 * Math.sin(TAU * f * 2 * t) * Math.exp(-t * 11);
       } else {
-        const vib = Math.sin(TAU * 5.2 * t) * 0.004 * Math.min(1, t / 0.25);
-        s = (Math.sin(TAU * f * t * (1 + vib)) + 0.12 * Math.sin(TAU * f * 2 * t)) * Math.min(1, t / 0.04) * (t < dur ? 1 : Math.exp(-(t - dur) / 0.12));
+        const vib = Math.sin(TAU * 5 * t) * 0.003 * Math.min(1, t / 0.3);
+        s = (Math.sin(TAU * f * t * (1 + vib)) + 0.07 * Math.sin(TAU * f * 2 * t)) * Math.min(1, t / 0.05) * (t < dur ? 1 : Math.exp(-(t - dur) / 0.14));
       }
-      o[i] = lp.p(s) * 0.55 * n.vel;
+      o[i] = lp2.p(lp.p(s * Math.min(1, t / 0.006))) * 0.6 * n.vel;
     }
     return { start: 0, samples: o };
   };

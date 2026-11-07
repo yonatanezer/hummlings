@@ -230,9 +230,9 @@ export function buildBonusPattern(stage: Pick<Stage, 'chordLoop' | 'key'>, index
   const r = rng(seed);
   const out: NoteEvent[] = [];
   const scale = scalePitchClasses(stage.key);
-  const pool = notesIn(scale, 79, 96);
+  const pool = notesIn(scale, 74, 86);
   for (let bar = 0; bar < bars; bar++) {
-    const tones = notesIn(chordPitchClasses(chords[bar]!).filter((p) => scale.includes(p)), 79, 96);
+    const tones = notesIn(chordPitchClasses(chords[bar]!).filter((p) => scale.includes(p)), 74, 86);
     const o = bar * B;
     const step = [0.5, 0.25, 1 / 3][index % 3]!;
     for (let t = 0; t < B; t += step) {

@@ -27,5 +27,5 @@ export function notesIn(pcs: readonly number[], lo: number, hi: number): number[
 export const REGISTER: Record<Exclude<Layer, 'drums'>, { lo: number; hi: number }> = {
   bass: { lo: 28, hi: 58 }, // E1 (41 Hz) .. A#3 (233 Hz)
   voice: { lo: 60, hi: 71 }, // C4 (262 Hz) .. B4 (494 Hz)
-  melody: { lo: 72, hi: 91 }, // C5 (523 Hz) .. G6 (1568 Hz)
+  melody: { lo: 72, hi: 84 }, // C5 (523 Hz) .. C6 (1047 Hz): kept below the shrill range
 };
