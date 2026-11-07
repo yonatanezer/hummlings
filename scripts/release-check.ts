@@ -42,7 +42,7 @@ async function main() {
   for (const url of [PRIVACY_URL, SUPPORT_URL]) {
     let ok = false;
     try { ok = (await fetch(url, { signal: AbortSignal.timeout(8000) })).ok; } catch { ok = false; }
-    check(`page is live: ${url}`, ok, ok ? undefined : 'copy pages/hummlings to the app-pages repo and enable GitHub Pages');
+    check(`page is live: ${url}`, ok, ok ? undefined : 'merge https://github.com/yonatanezer/app-pages/pull/1');
   }
   // 7. device test confirmed by the owner
   check('device checklist passed (docs/DEVICE_CHECK_PASSED.txt)', existsSync('docs/DEVICE_CHECK_PASSED.txt'), 'run the checklist in TODO_FOR_YONATAN.md on a phone, then create this file');

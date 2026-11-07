@@ -23,8 +23,8 @@ Needs Node 22+, and Xcode (iPhone) or Android Studio + USB debugging (Android). 
 - [ ] Smooth (60 fps) with 6 singers and a celebration
 When all pass, create the file `docs/DEVICE_CHECK_PASSED.txt` (any text inside) and tell me what failed otherwise.
 
-## 2. Publish the privacy and support pages
-Copy `pages/hummlings/` into your shared repo `yonatanezer/app-pages` (folder `hummlings/`), commit, enable GitHub Pages (Settings > Pages > main). Check:
+## 2. Publish the privacy and support pages (one click)
+I added them to your shared repo as a draft pull request: https://github.com/yonatanezer/app-pages/pull/1 . Open it, press "Ready for review", then "Merge". The existing Pages workflow publishes them. Check:
 https://yonatanezer.github.io/app-pages/hummlings/privacy.html and .../support.html
 
 ## 3. Store accounts and products (costs money, needs you)
