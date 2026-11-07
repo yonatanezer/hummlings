@@ -15,8 +15,9 @@ export interface Pose {
   glow: number; // 0..1 spotlight / celebration glow
   arms: number; // -1..1 swing
   time: number; // ms, drives ear/tail/gill wiggle and eye glances (0 = still)
+  level: number; // 0..1 volume: colour fills the body up to this height, the rest drains to grey
 }
-export const IDLE_POSE: Pose = { sx: 1, sy: 1, lift: 0, tilt: 0, mouth: 0, eyes: 1, muted: false, sat: 1, alpha: 1, glow: 0, arms: 0, time: 0 };
+export const IDLE_POSE: Pose = { sx: 1, sy: 1, lift: 0, tilt: 0, mouth: 0, eyes: 1, muted: false, sat: 1, alpha: 1, glow: 0, arms: 0, time: 0, level: 1 };
 
 const DIM: Record<BodyShape, { w: number; h: number }> = {
   round: { w: 0.92, h: 0.84 },
@@ -237,6 +238,21 @@ function drawAccessory(sk: SkiaApi, c: Canvas, cr: Creature, S: number, w: numbe
 export function drawCreature(sk: SkiaApi, c: Canvas, cr: Creature, x: number, y: number, S: number, pose: Pose) {
   'worklet';
   const { w, h } = DIM[cr.shape.body];
+  if (pose.level < 0.995) {
+    // Volume as a fill level: coloured up to the level, drained (grey, a little see-through) above it.
+    const lineY = y - pose.lift - pose.level * h * S;
+    const top = y - S * 3.2;
+    c.save();
+    c.clipRect(sk.XYWHRect(x - S * 1.6, top, S * 3.2, lineY - top), 1, true);
+    drawCreature(sk, c, cr, x, y, S, { ...pose, level: 1, sat: pose.sat * 0.08, alpha: pose.alpha * 0.72 });
+    c.restore();
+    c.save();
+    c.clipRect(sk.XYWHRect(x - S * 1.6, lineY, S * 3.2, y + S - lineY), 1, true);
+    drawCreature(sk, c, cr, x, y, S, { ...pose, level: 1 });
+    c.restore();
+    if (pose.level > 0.01) c.drawLine(x - w * S * 0.42, lineY, x + w * S * 0.42, lineY, paint(sk, '#FFFFFF', 0.55, STROKE, 2));
+    return;
+  }
   const color = cr.color;
   const dark = mix(color, '#2A1233', 0.82);
   const light = mix(color, '#FFFFFF', 0.5);

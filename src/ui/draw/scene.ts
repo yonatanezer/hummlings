@@ -95,6 +95,7 @@ function poseFor(cr: Creature, s: SceneInput, base: Partial<Pose>, bounce: boole
     arms: pulse * (seed % 2 ? 1 : -1),
     glow: s.solo === cr.id ? 1 : 0,
     time: s.reduceMotion ? 0 : s.timeMs + (seed % 1000),
+    level: s.volumes?.[cr.id] ?? 1,
     lift: !bounce || muted || s.reduceMotion ? 0 : pulse * s.layout.size * 0.07, // little hop on every sung/played note
     ...base,
   };
@@ -185,14 +186,6 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
     }
   }
 
-  // per-creature level: a thin bar beside any singer that was turned down
-  if (s.volumes) for (const pl of s.placed) {
-    const v = s.volumes[pl.id];
-    if (v === undefined || v > 0.98) continue;
-    const sp = l.spots[pl.spot]!, bx = sp.x - l.size * 0.5, bh = l.size * 0.5;
-    c.drawRRect(sk.RRectXY(sk.XYWHRect(bx, sp.y - bh - l.size * 0.1, 5, bh), 2.5, 2.5), paint(sk, '#FFFFFF', 0.25));
-    c.drawRRect(sk.RRectXY(sk.XYWHRect(bx, sp.y - l.size * 0.1 - bh * v, 5, bh * v), 2.5, 2.5), paint(sk, '#FFC857', 0.95));
-  }
   if (s.popup) drawVolumePopup(sk, c, s);
 
   // tray

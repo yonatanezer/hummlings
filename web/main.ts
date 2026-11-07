@@ -15,6 +15,7 @@ import { popRate } from '../src/core/sfx';
 
 const STAGES: Stage[] = [pond, fair, clouds].map((r) => validateStage(r).stage!);
 const NAMES = ['Moonlit Pond', 'Candy Fair', 'Sleepy Cloud Town'];
+const BODY_H = { round: 0.84, wide: 0.7, tall: 1.1, small: 0.74 } as const;
 const CELL_W = 220, CELL_H = 240, FEET_X = 110, FEET_Y = 222, SPRITE_S = 120;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -107,8 +108,19 @@ function poseIndex(cr: Creature, beat: number, t: number, muted: boolean): numbe
   return state * 3 + sway;
 }
 
-function sprite(cr: Creature, pose: number, x: number, y: number, S: number, o: { sx?: number; sy?: number; lift?: number; tilt?: number; alpha?: number; grey?: boolean }) {
+function sprite(cr: Creature, pose: number, x: number, y: number, S: number, o: { level?: number; sx?: number; sy?: number; lift?: number; tilt?: number; alpha?: number; grey?: boolean }) {
   if (!atlas) return;
+  if (o.level !== undefined && o.level < 0.995) { // volume as a fill level: colour up to the level, drained grey above it
+    const lineY = y - (o.lift ?? 0) - o.level * BODY_H[cr.shape.body] * S;
+    ctx.save(); ctx.beginPath(); ctx.rect(x - S * 1.6, y - S * 3.2, S * 3.2, lineY - (y - S * 3.2)); ctx.clip();
+    sprite(cr, pose, x, y, S, { ...o, level: 1, alpha: (o.alpha ?? 1) * 0.72, grey: true });
+    ctx.restore();
+    ctx.save(); ctx.beginPath(); ctx.rect(x - S * 1.6, lineY, S * 3.2, y + S - lineY); ctx.clip();
+    sprite(cr, pose, x, y, S, { ...o, level: 1 });
+    ctx.restore();
+    if (o.level > 0.01) { ctx.strokeStyle = '#ffffff8c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - S * 0.4, lineY); ctx.lineTo(x + S * 0.4, lineY); ctx.stroke(); }
+    return;
+  }
   const i = stage.creatures.indexOf(cr);
   const k = S / SPRITE_S;
   ctx.save();
@@ -124,13 +136,6 @@ function sprite(cr: Creature, pose: number, x: number, y: number, S: number, o: 
 function drawVolumeUi() {
   const s = session!, l = layout;
   if (popup && s.state.spots[popup.spot] !== popup.creatureId) popup = null;
-  // level bar beside any singer that was turned down
-  for (const [id, v] of Object.entries(s.state.volume)) {
-    const i = s.state.spots.indexOf(id); if (i < 0 || v > 0.98) continue;
-    const sp = l.spots[i]!, bx = sp.x - l.size * 0.5, bh = l.size * 0.5;
-    ctx.fillStyle = '#ffffff40'; ctx.beginPath(); ctx.roundRect(bx, sp.y - bh - l.size * 0.1, 5, bh, 2.5); ctx.fill();
-    ctx.fillStyle = '#FFC857'; ctx.beginPath(); ctx.roundRect(bx, sp.y - l.size * 0.1 - bh * v, 5, bh * v, 2.5); ctx.fill();
-  }
   if (!popup) return;
   const r = popupRects(l, popup.spot), cr = stage.creatures.find((c) => c.id === popup!.creatureId)!;
   const vol = s.state.volume[cr.id] ?? 1, solo = s.state.solo === cr.id;
@@ -305,7 +310,7 @@ function frame(t: number) {
       sy *= 1 + 0.015 * breath(t, (hash(id) % 628) / 100);
     }
     if (celebration && celebration.creatureIds.includes(id) && !reduceMotion) { const k = celebration.creatureIds.indexOf(id); lift += Math.abs(Math.sin(beat * Math.PI + k * 0.5)) * l.size * 0.3; tilt = Math.sin(beat * Math.PI + k) * 0.12; }
-    sprite(cr, poseIndex(cr, beat, t, muted), x, y, l.size, { sx, sy, lift, tilt, alpha: dim ? TUNING.soloDimOpacity : muted ? 0.45 : 1 });
+    sprite(cr, poseIndex(cr, beat, t, muted), x, y, l.size, { sx, sy, lift, tilt, level: st.volume[id], alpha: dim ? TUNING.soloDimOpacity : muted ? 0.45 : 1 });
     if (muted || st.solo === id) badge(x + l.size * 0.36, y - l.size * (cr.shape.body === 'tall' ? 1.1 : cr.shape.body === 'wide' ? 0.7 : 0.82), l.size * 0.12, muted);
   }
   // tray
