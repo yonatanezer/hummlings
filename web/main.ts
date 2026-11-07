@@ -380,7 +380,7 @@ function frame(t: number) {
     const x = from.x + (to.x - from.x) * e, y = from.y + (to.y - from.y) * e - Math.sin(e * Math.PI) * l.size * 0.25;
     const fa = k < 0.08 ? k / 0.08 : k > 0.88 ? (1 - k) / 0.12 : 1;
     ctx.globalAlpha = fa; if (m > 0) sprite(stage.creatures[0]!, 4, x, y + l.size * 0.45, l.size * 0.9, { alpha: 0.85 });
-    ctx.fillStyle = '#ffffffe6'; ctx.strokeStyle = '#FFC857'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, 24, 0, 7); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.fillStyle = '#ffffffcc'; ctx.strokeStyle = '#FFC857'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, 17, 0, 7); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
   }
   drawVolumeUi();
   drawParticles(t);

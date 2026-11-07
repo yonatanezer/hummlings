@@ -80,6 +80,26 @@ button.on{background:#7A8CFF;border-color:#fff}
 .goal .gt{display:grid;gap:1px;flex:1;min-width:0}.goal .gt b{font-size:15px}.goal .gt small{color:var(--dim);font-size:13px}
 #toast{display:flex;align-items:center;gap:8px;font-size:17px}
 .fnd small{font-size:13px;font-weight:700;color:var(--dim);margin-right:4px}.fnd{display:inline-flex;gap:2px;align-items:center}
+/* ---- refinement pass: one rhythm (8 px grid), grouped toolbar, legible on every scene ---- */
+#bar{position:fixed;top:0;left:0;right:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px max(14px,env(safe-area-inset-right,0px)) 14px max(14px,env(safe-area-inset-left,0px));background:linear-gradient(#0a0620d9,#0a062000);pointer-events:none}
+#bar>*{pointer-events:auto}
+.acts{display:flex;gap:8px;flex:none}
+.hud{display:flex;align-items:center;gap:8px;margin-left:auto;flex:none}
+#worlds{gap:8px!important}
+#worlds button{padding:0 16px 0 10px;min-height:52px}
+button{box-shadow:0 2px 8px rgba(0,0,0,.35)}
+button.on{box-shadow:0 0 0 3px #FFE06699,0 2px 8px rgba(0,0,0,.35);border-color:#fff}
+#band,#combos-wrap{height:52px;box-sizing:border-box;border-radius:26px!important;background:rgba(27,19,64,.94)!important;border:2px solid rgba(255,255,255,.28);box-shadow:0 2px 8px rgba(0,0,0,.35);align-items:center}
+#band{padding:0 12px!important;margin-left:0!important}
+#band b{flex-direction:row!important;gap:6px!important;font-size:12px;align-items:center}
+#band b i{width:28px;height:28px;border-radius:50%}
+#combos-wrap{padding:0 14px!important}
+button.lb span{display:none}
+#worlds .short{display:none}
+@media (min-width:1560px){button.lb span{display:inline}}
+@media (max-width:1559px){#band b{font-size:0!important;gap:0!important}}
+@media (max-width:999px){#worlds .long{display:none}#worlds .short{display:inline}}
+@media (max-width:900px){.hud{margin-left:0;width:100%;justify-content:flex-end}}
 #beat{width:10px;height:10px;border-radius:50%;background:#FF7AA8;display:block}
 button{flex:none}
 button.ic{min-width:52px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
@@ -101,12 +121,14 @@ button.ic svg{width:26px;height:26px;flex:none}button.ic .off{display:none}butto
 </style>
 <div id="wrap"><canvas id="game" aria-label="Hummlings stage"></canvas></div>
 <div id="bar"><div id="worlds" role="group" aria-label="Worlds"></div>
+<div class="acts">
 <button id="clear" class="ic lb" aria-label="Clear the stage" title="Clear the stage"><svg viewBox="0 0 24 24"><path d="M19 3l-7 8"/><path d="M9.5 10.5l4 4-3 6.5H3l2-5z" fill="currentColor" stroke="none"/></svg><span>Clear</span></button>
 <button id="mute" class="ic lb" aria-label="Pause the music" title="Pause / resume" aria-pressed="false"><svg class="on" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z" class="fill"/><path d="M17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11"/></svg><svg class="off" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z" class="fill"/><path d="M17 9l5 6M22 9l-5 6"/></svg><span>Sound</span></button>
 <button id="bookBtn" class="ic lb" aria-label="Combo book" title="Combo book"><svg viewBox="0 0 24 24"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg><span>Combos</span></button>
 <button id="helpBtn" class="ic lb pulse" aria-label="How to play" title="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8M12 17.2v.3"/></svg><span>Help</span></button>
-<div id="band" aria-label="Band: layers playing"></div>
-<div id="combos-wrap"><span class="lbl"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg></span><div id="combos" aria-label="Secret combos: a dot lights up for each matching singer on stage"></div></div><i id="beat" aria-hidden="true"></i></div>
+</div>
+<div class="hud"><div id="band" aria-label="Band: layers playing"></div>
+<div id="combos-wrap"><span class="lbl"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg></span><div id="combos" aria-label="Secret combos: a dot lights up for each matching singer on stage"></div></div><i id="beat" aria-hidden="true"></i></div></div>
 <div id="toast"></div>
 <div id="book" class="ov hide" role="dialog" aria-label="Combo book"><div class="sheet"><button class="ic x" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div class="hd"><svg viewBox="0 0 24 24" width="30" height="30"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg><h2>Secret combos</h2></div><p class="sub">Dots light up for each matching singer on stage. Put all four together and keep them for two loops.</p><div id="cards"></div></div></div>
 <div id="help" class="ov hide" role="dialog" aria-label="How to play"><div class="sheet"><button class="ic x" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2>How to play</h2><video id="helpVid" muted loop playsinline autoplay width="560" height="308"></video><p id="helpTxt"></p><div class="nav"><button id="hPrev" class="ic" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span id="hDots"></span><button id="hNext" class="ic" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></div></div></div>
