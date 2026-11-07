@@ -80,3 +80,21 @@ export function standingAt(l: Layout, p: Pt, occupied: readonly boolean[]): numb
   });
   return best;
 }
+
+export interface PopupRects { panel: Rect; slider: Rect; solo: Rect }
+
+/** Volume popup that opens beside a creature after a long press: a solo button on top of a vertical slider. */
+export function popupRects(l: Layout, spot: number): PopupRects {
+  'worklet';
+  const sp = l.spots[spot]!;
+  const w = Math.max(52, 0.3 * l.size);
+  const onRight = spot < l.spots.length / 2; // open toward the middle of the screen
+  const x = onRight ? sp.x + l.size * 0.55 : sp.x - l.size * 0.55 - w;
+  const sliderH = Math.max(0.75 * l.size, 96);
+  const bottom = sp.y;
+  const solo: Rect = { x, y: bottom - sliderH - w - 8, w, h: w };
+  const slider: Rect = { x, y: bottom - sliderH, w, h: sliderH };
+  const panel: Rect = { x: x - 6, y: solo.y - 6, w: w + 12, h: sliderH + w + 8 + 12 };
+  return { panel, slider, solo };
+}
+export const inRect = (r: Rect, p: Pt): boolean => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;

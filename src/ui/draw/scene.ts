@@ -6,6 +6,7 @@ import type { Layout } from '../../core/layout';
 import { IDLE_POSE, bodyDims, drawCreature, type Pose } from './creature';
 import { gradientPaint, mix, paint, radialPaint, STROKE, type Canvas, type SkiaApi } from './common';
 import { drawCelebration, danceOffset } from './celebrations';
+import { popupRects } from '../../core/layout';
 
 export interface PlacedCreature { id: string; spot: number; since: number; from: { x: number; y: number } }
 export interface DragCreature { id: string; x: number; y: number }
@@ -28,6 +29,8 @@ export interface SceneInput {
   hint: boolean; // first-run animated hand
   recordingBeat: number | null; // for the REC pulse (null = not recording)
   hintSlot: number;
+  popup?: { spot: number; creatureId: string; volume: number; solo: boolean } | null; // volume popup after a long press
+  volumes?: Record<string, number>;
 }
 
 export function idHash(id: string): number {
@@ -182,6 +185,16 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
     }
   }
 
+  // per-creature level: a thin bar beside any singer that was turned down
+  if (s.volumes) for (const pl of s.placed) {
+    const v = s.volumes[pl.id];
+    if (v === undefined || v > 0.98) continue;
+    const sp = l.spots[pl.spot]!, bx = sp.x - l.size * 0.5, bh = l.size * 0.5;
+    c.drawRRect(sk.RRectXY(sk.XYWHRect(bx, sp.y - bh - l.size * 0.1, 5, bh), 2.5, 2.5), paint(sk, '#FFFFFF', 0.25));
+    c.drawRRect(sk.RRectXY(sk.XYWHRect(bx, sp.y - l.size * 0.1 - bh * v, 5, bh * v), 2.5, 2.5), paint(sk, '#FFC857', 0.95));
+  }
+  if (s.popup) drawVolumePopup(sk, c, s);
+
   // tray
   c.save();
   c.clipRect(sk.XYWHRect(0, l.tray.y + 2, l.W, l.tray.h), 1, true);
@@ -221,6 +234,29 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   }
 
   if (s.hint && s.drags.length === 0) drawHintHand(sk, c, s, byId);
+}
+
+function drawVolumePopup(sk: SkiaApi, c: Canvas, s: SceneInput) {
+  'worklet';
+  const p = s.popup!;
+  const r = popupRects(s.layout, p.spot);
+  const cr = s.stage.creatures.find((q) => q.id === p.creatureId);
+  const col = cr ? LAYER_COLORS[cr.layer] : '#FFC857';
+  c.drawRRect(sk.RRectXY(sk.XYWHRect(r.panel.x, r.panel.y, r.panel.w, r.panel.h), 18, 18), paint(sk, '#1B1340', 0.94));
+  c.drawRRect(sk.RRectXY(sk.XYWHRect(r.panel.x, r.panel.y, r.panel.w, r.panel.h), 18, 18), paint(sk, '#FFFFFF', 0.3, STROKE, 2));
+  // solo star button
+  const cx = r.solo.x + r.solo.w / 2, cy = r.solo.y + r.solo.h / 2, rr = r.solo.w * 0.4;
+  c.drawCircle(cx, cy, rr, paint(sk, p.solo ? '#FFC857' : '#33276E', 1));
+  const q = sk.PathBuilder.Make();
+  for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? rr * 0.4 : rr * 0.78; if (k === 0) q.moveTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); else q.lineTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); }
+  q.close();
+  c.drawPath(q.build(), paint(sk, p.solo ? '#7A4A00' : '#FFE066'));
+  // slider
+  const tw = r.slider.w * 0.34, tx = r.slider.x + (r.slider.w - tw) / 2;
+  c.drawRRect(sk.RRectXY(sk.XYWHRect(tx, r.slider.y, tw, r.slider.h), tw / 2, tw / 2), paint(sk, '#FFFFFF', 0.18));
+  const fh = r.slider.h * p.volume;
+  c.drawRRect(sk.RRectXY(sk.XYWHRect(tx, r.slider.y + r.slider.h - fh, tw, fh), tw / 2, tw / 2), paint(sk, col, 1));
+  c.drawCircle(r.slider.x + r.slider.w / 2, r.slider.y + r.slider.h - fh, r.slider.w * 0.3, paint(sk, '#FFFFFF', 1));
 }
 
 /** First-run: an animated hand drags a creature from the tray to the stage; repeats every 4 s. */

@@ -1,5 +1,5 @@
 import { TUNING } from './tuning';
-import { slotAt, spotAt, standingAt, type Layout, type Pt } from './layout';
+import { inRect, popupRects, slotAt, spotAt, standingAt, type Layout, type Pt } from './layout';
 
 export type GestureEvent =
   | { type: 'pickup'; touch: number; creatureId: string; from: 'tray' | 'stage'; p: Pt }
@@ -8,7 +8,10 @@ export type GestureEvent =
   | { type: 'returnToTray'; touch: number; creatureId: string; p: Pt } // released outside any spot (from tray)
   | { type: 'remove'; touch: number; creatureId: string; p: Pt } // dragged off the stage or flicked down
   | { type: 'tap'; creatureId: string }
-  | { type: 'longPress'; creatureId: string }
+  | { type: 'longPress'; creatureId: string } // opens the volume popup for this creature
+  | { type: 'volumeSet'; creatureId: string; value: number } // slider or hold-and-drag
+  | { type: 'popupSolo'; creatureId: string }
+  | { type: 'popupClose' }
   | { type: 'tapEmpty'; p: Pt }
   | { type: 'scroll'; scrollX: number };
 
@@ -18,6 +21,8 @@ export interface World {
   scrollX: number;
   trayIds: readonly string[]; // creature id per tray slot
   onStage: readonly (string | null)[]; // creature id per spot
+  popup?: { spot: number; creatureId: string } | null; // volume popup currently open
+  volumeOf?: (id: string) => number;
 }
 
 type Touch =
@@ -25,7 +30,11 @@ type Touch =
   | { kind: 'pendingTray'; id: string | null; slot: number; start: Pt; startT: number; scrollStart: number }
   | { kind: 'pendingEmpty'; start: Pt }
   | { kind: 'drag'; id: string; from: 'tray' | 'stage'; last: Pt; lastT: number; vy: number }
-  | { kind: 'scroll'; start: Pt; scrollStart: number };
+  | { kind: 'scroll'; start: Pt; scrollStart: number }
+  | { kind: 'hold'; id: string; startY: number; startVol: number } // long press fired: dragging changes the volume
+  | { kind: 'slider'; id: string }
+  | { kind: 'popupSolo'; id: string }
+  | { kind: 'swallow' };
 
 const SLOP = 10; // px of movement before a touch stops being a tap
 
@@ -35,21 +44,34 @@ export class GestureTracker {
 
   /** Finger down. */
   start(touch: number, p: Pt, t: number, w: World): GestureEvent[] {
+    const lead: GestureEvent[] = [];
+    if (w.popup) {
+      const r = popupRects(w.layout, w.popup.spot);
+      if (inRect(r.panel, p)) {
+        if (inRect(r.solo, p)) this.touches.set(touch, { kind: 'popupSolo', id: w.popup.creatureId });
+        else if (inRect(r.slider, p)) {
+          this.touches.set(touch, { kind: 'slider', id: w.popup.creatureId });
+          return [{ type: 'volumeSet', creatureId: w.popup.creatureId, value: this.sliderValue(w, p) }];
+        } else this.touches.set(touch, { kind: 'swallow' });
+        return [];
+      }
+      lead.push({ type: 'popupClose' }); // a touch anywhere else closes it and then behaves normally
+    }
     this.scrollX = Math.min(w.layout.scrollMax, Math.max(0, w.scrollX));
     if (p.y >= w.layout.tray.y) {
       const slot = slotAt(w.layout, p, this.scrollX);
       const id = slot >= 0 ? w.trayIds[slot]! : null;
       const free = id !== null && !w.onStage.includes(id);
       this.touches.set(touch, { kind: 'pendingTray', id: free ? id : null, slot, start: p, startT: t, scrollStart: this.scrollX });
-      return [];
+      return lead;
     }
     const spot = standingAt(w.layout, p, w.onStage.map((x) => x !== null));
     if (spot >= 0) {
       this.touches.set(touch, { kind: 'pendingStage', id: w.onStage[spot]!, start: p, startT: t, fired: false });
-      return [];
+      return lead;
     }
     this.touches.set(touch, { kind: 'pendingEmpty', start: p });
-    return [];
+    return lead;
   }
 
   move(touch: number, p: Pt, t: number, w: World): GestureEvent[] {
@@ -77,6 +99,12 @@ export class GestureTracker {
         }
         return [];
       }
+      case 'slider':
+        return [{ type: 'volumeSet', creatureId: s.id, value: this.sliderValue(w, p) }];
+      case 'hold': {
+        if (Math.abs(p.y - s.startY) < SLOP) return [];
+        return [{ type: 'volumeSet', creatureId: s.id, value: Math.min(1, Math.max(0, s.startVol - (p.y - s.startY) / w.layout.size)) }];
+      }
       case 'scroll':
         return this.scrollTo(s.scrollStart - (p.x - s.start.x), w);
       case 'drag': {
@@ -97,6 +125,10 @@ export class GestureTracker {
     switch (s.kind) {
       case 'pendingStage': return s.fired ? [] : [{ type: 'tap', creatureId: s.id }];
       case 'pendingEmpty': return [{ type: 'tapEmpty', p }];
+      case 'popupSolo': {
+        if (!w.popup) return [];
+        return inRect(popupRects(w.layout, w.popup.spot).solo, p) ? [{ type: 'popupSolo', creatureId: s.id }] : [];
+      }
       case 'drag': {
         const spot = p.y < w.layout.tray.y ? spotAt(w.layout, p) : -1;
         if (s.from === 'stage') {
@@ -120,11 +152,11 @@ export class GestureTracker {
   }
 
   /** Call regularly (or at deadline) to detect long presses. */
-  tick(t: number): GestureEvent[] {
+  tick(t: number, w?: World): GestureEvent[] {
     const out: GestureEvent[] = [];
-    for (const s of this.touches.values()) {
+    for (const [id, s] of this.touches) {
       if (s.kind === 'pendingStage' && !s.fired && t - s.startT >= TUNING.longPressMs) {
-        s.fired = true;
+        this.touches.set(id, { kind: 'hold', id: s.id, startY: s.start.y, startVol: w?.volumeOf?.(s.id) ?? 1 });
         out.push({ type: 'longPress', creatureId: s.id });
       }
     }
@@ -133,6 +165,11 @@ export class GestureTracker {
   get hasPendingLongPress(): boolean {
     for (const s of this.touches.values()) if (s.kind === 'pendingStage' && !s.fired) return true;
     return false;
+  }
+
+  private sliderValue(w: World, p: Pt): number {
+    const r = popupRects(w.layout, w.popup!.spot).slider;
+    return Math.min(1, Math.max(0, 1 - (p.y - r.y) / r.h));
   }
 
   private scrollTo(x: number, w: World): GestureEvent[] {

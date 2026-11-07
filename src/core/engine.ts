@@ -7,6 +7,7 @@ export interface BarPlan {
   ids: string[]; // creature ids audible from this bar
   bonusFile: string | null; // combo bonus loop playing during this bar
   tick: 'off' | 'soft'; // beat tick (empty stage / first-run count)
+  gains: Record<string, number>; // per-creature level 0..1 (missing = 1)
   fill: boolean; // a short drum fill on the last beat of the bar (end of a 4-bar loop with a fuller band)
 }
 
@@ -33,6 +34,8 @@ export interface AudioEngine {
   positionBeats(): number;
   /** Plays a short UI sound right now. `rate` re-pitches it (semitone ratio) so drops sound musical in the stage key. */
   playSfx(kind: SfxKind, rate?: number): void;
+  /** Changes one voice's level right now (smoothed). Used while dragging the volume slider. */
+  setVoiceGain(creatureId: string, gain: number): void;
   setVolume(v: number): void;
   readonly state: EngineState;
   /** Fires on interruption (call, other audio, headphones unplugged) or background. */

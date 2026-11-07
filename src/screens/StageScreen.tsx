@@ -72,6 +72,9 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
     });
     sv.muted.value = st.muted;
     sv.solo.value = st.solo;
+    sv.volumes.value = st.volume;
+    const pu = sv.popup.value;
+    if (pu) sv.popup.value = st.spots[pu.spot] === pu.creatureId ? { ...pu, volume: st.volume[pu.creatureId] ?? 1, solo: st.solo === pu.creatureId } : null;
     onDebug?.(`${stage.id} on=${audibleIds(st).length}`);
     force((n) => n + 1);
   }, [session, sv, anim, onDebug, stage.id]);
@@ -136,7 +139,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
     setRecording(true);
   };
 
-  const world = (): World => ({ layout: layoutRef.current, scrollX: sv.scrollX.value, trayIds: stage.creatures.map((c) => c.id), onStage: session.state.spots });
+  const world = (): World => ({ layout: layoutRef.current, scrollX: sv.scrollX.value, trayIds: stage.creatures.map((c) => c.id), onStage: session.state.spots, popup: sv.popup.value ? { spot: sv.popup.value.spot, creatureId: sv.popup.value.creatureId } : null, volumeOf: (id) => session.state.volume[id] ?? 1 });
 
   const apply = (ev: GestureEvent) => {
     const l = layoutRef.current;
@@ -188,10 +191,23 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
         session.dispatch({ kind: 'mute', creatureId: ev.creatureId });
         syncScene();
         break;
-      case 'longPress':
+      case 'longPress': {
+        hapticMedium();
+        const spot = session.state.spots.indexOf(ev.creatureId);
+        if (spot >= 0) sv.popup.value = { spot, creatureId: ev.creatureId, volume: session.state.volume[ev.creatureId] ?? 1, solo: session.state.solo === ev.creatureId };
+        break;
+      }
+      case 'volumeSet':
+        session.dispatch({ kind: 'volume', creatureId: ev.creatureId, value: ev.value });
+        syncScene();
+        break;
+      case 'popupSolo':
         hapticMedium();
         session.dispatch({ kind: 'solo', creatureId: ev.creatureId });
         syncScene();
+        break;
+      case 'popupClose':
+        sv.popup.value = null;
         break;
       case 'tapEmpty':
         session.dispatch({ kind: 'endSolo' });
@@ -214,7 +230,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
         kind === 'move' ? tracker.move(id, p, ts, world()) :
         kind === 'end' ? tracker.end(id, p, ts, world()) : tracker.cancel(id, world());
       evs.forEach(apply);
-      if (kind === 'start' && tracker.hasPendingLongPress) setTimeout(() => tracker.tick(Date.now()).forEach(apply), TUNING.longPressMs + 10);
+      if (kind === 'start' && tracker.hasPendingLongPress) setTimeout(() => tracker.tick(Date.now(), world()).forEach(apply), TUNING.longPressMs + 10);
     }
   };
 

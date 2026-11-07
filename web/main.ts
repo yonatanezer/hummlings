@@ -1,7 +1,7 @@
 // Playable web demo of Hummlings (Canvas 2D + Web Audio) using the real core logic and the real loops.
 import { beatBounce, blinkOpen, breath, hop, onsetPulse } from '../src/core/anim';
 import { GestureTracker, type GestureEvent, type World } from '../src/core/gestures';
-import { computeLayout, type Layout } from '../src/core/layout';
+import { computeLayout, popupRects, type Layout } from '../src/core/layout';
 import { Session } from '../src/core/session';
 import { TUNING } from '../src/core/tuning';
 import { LAYER_COLORS, type Creature, type Stage } from '../src/core/types';
@@ -40,6 +40,7 @@ let lastBeat = 0;
 const spawn = (p: Particle) => { if (particles.length < 160) particles.push(p); };
 const ripples2: { x: number; y: number; t: number }[] = [];
 const ripples: { x: number; y: number; t: number }[] = [];
+let popup: { spot: number; creatureId: string } | null = null;
 let ready = false;
 let hint = true;
 const store = { get: (k: string): string[] => { try { return JSON.parse(localStorage.getItem(k) ?? '[]') as string[]; } catch { return []; } }, set: (k: string, v: string[]) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } } };
@@ -118,6 +119,32 @@ function sprite(cr: Creature, pose: number, x: number, y: number, S: number, o: 
   ctx.scale((o.sx ?? 1) * k, (o.sy ?? 1) * k);
   ctx.drawImage(atlas, pose * CELL_W, i * CELL_H, CELL_W, CELL_H, -FEET_X, -FEET_Y, CELL_W, CELL_H);
   ctx.restore();
+}
+
+function drawVolumeUi() {
+  const s = session!, l = layout;
+  if (popup && s.state.spots[popup.spot] !== popup.creatureId) popup = null;
+  // level bar beside any singer that was turned down
+  for (const [id, v] of Object.entries(s.state.volume)) {
+    const i = s.state.spots.indexOf(id); if (i < 0 || v > 0.98) continue;
+    const sp = l.spots[i]!, bx = sp.x - l.size * 0.5, bh = l.size * 0.5;
+    ctx.fillStyle = '#ffffff40'; ctx.beginPath(); ctx.roundRect(bx, sp.y - bh - l.size * 0.1, 5, bh, 2.5); ctx.fill();
+    ctx.fillStyle = '#FFC857'; ctx.beginPath(); ctx.roundRect(bx, sp.y - l.size * 0.1 - bh * v, 5, bh * v, 2.5); ctx.fill();
+  }
+  if (!popup) return;
+  const r = popupRects(l, popup.spot), cr = stage.creatures.find((c) => c.id === popup!.creatureId)!;
+  const vol = s.state.volume[cr.id] ?? 1, solo = s.state.solo === cr.id;
+  ctx.fillStyle = '#1B1340f0'; ctx.beginPath(); ctx.roundRect(r.panel.x, r.panel.y, r.panel.w, r.panel.h, 18); ctx.fill();
+  ctx.strokeStyle = '#ffffff4d'; ctx.lineWidth = 2; ctx.stroke();
+  const cx = r.solo.x + r.solo.w / 2, cy = r.solo.y + r.solo.h / 2, rr = r.solo.w * 0.4;
+  ctx.fillStyle = solo ? '#FFC857' : '#33276E'; ctx.beginPath(); ctx.arc(cx, cy, rr, 0, 7); ctx.fill();
+  ctx.fillStyle = solo ? '#7A4A00' : '#FFE066'; ctx.beginPath();
+  for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? rr * 0.4 : rr * 0.78; ctx.lineTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); }
+  ctx.fill();
+  const tw = r.slider.w * 0.34, tx = r.slider.x + (r.slider.w - tw) / 2, fh = r.slider.h * vol;
+  ctx.fillStyle = '#ffffff2e'; ctx.beginPath(); ctx.roundRect(tx, r.slider.y, tw, r.slider.h, tw / 2); ctx.fill();
+  ctx.fillStyle = LAYER_COLORS[cr.layer]; ctx.beginPath(); ctx.roundRect(tx, r.slider.y + r.slider.h - fh, tw, fh, tw / 2); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(r.slider.x + r.slider.w / 2, r.slider.y + r.slider.h - fh, r.slider.w * 0.3, 0, 7); ctx.fill();
 }
 
 function drawParticles(t: number) {
@@ -317,6 +344,7 @@ function frame(t: number) {
     ctx.globalAlpha = fa; if (m > 0) sprite(stage.creatures[0]!, 4, x, y + l.size * 0.45, l.size * 0.9, { alpha: 0.85 });
     ctx.fillStyle = '#ffffffe6'; ctx.strokeStyle = '#FFC857'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, 24, 0, 7); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
   }
+  drawVolumeUi();
   drawParticles(t);
   for (let i = ripples2.length - 1; i >= 0; i--) { const r = ripples2[i]!, k = (t - r.t) / 1100; if (k >= 1) { ripples2.splice(i, 1); continue; } if (k < 0) continue; ctx.strokeStyle = `rgba(180,240,255,${0.7 * (1 - k)})`; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(r.x, r.y, 10 + 90 * k, (10 + 90 * k) * 0.35, 0, 0, 7); ctx.stroke(); }
   // banner for a found combo
@@ -335,7 +363,7 @@ function frame(t: number) {
 
 let lastHud = '';
 let lastTip = -1;
-const TIPS = ['Drag a singer from the tray up onto a glowing spot.', 'Nice! Add more singers. They always sound good together.', 'Tap a singer to mute it. Hold it to hear it solo. Drag it off to remove.', ''];
+const TIPS = ['Drag a singer from the tray up onto a glowing spot.', 'Nice! Add more singers. They always sound good together.', 'Tap a singer to mute it. Hold it to change its volume (the star is solo). Drag it off to remove.', ''];
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 function toast(msg: string) { const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600); }
 const LAYER_ORDER = ['drums', 'bass', 'melody', 'voice'] as const;
@@ -358,7 +386,7 @@ function updateHud() {
   if (html !== lastHud) { $('combos').innerHTML = html; lastHud = html; }
 }
 
-function world(): World { return { layout, scrollX, trayIds: stage.creatures.map((c) => c.id), onStage: session!.state.spots }; }
+function world(): World { return { layout, scrollX, trayIds: stage.creatures.map((c) => c.id), onStage: session!.state.spots, popup, volumeOf: (id) => session!.state.volume[id] ?? 1 }; }
 function apply(ev: GestureEvent, t: number) {
   const s = session!;
   const drop = (id: string) => (drags = drags.filter((d) => d.id !== id));
@@ -380,7 +408,10 @@ function apply(ev: GestureEvent, t: number) {
     case 'returnToTray': drop(ev.creatureId); back(ev.creatureId, { x: ev.p.x, y: ev.p.y + layout.size * 0.6 }); break;
     case 'remove': engine.playSfx('remove'); drop(ev.creatureId); back(ev.creatureId, { x: ev.p.x, y: ev.p.y + layout.size * 0.6 }); s.dispatch({ kind: 'remove', creatureId: ev.creatureId }); break;
     case 'tap': engine.playSfx(s.state.muted[ev.creatureId] ? 'unmute' : 'mute'); s.dispatch({ kind: 'mute', creatureId: ev.creatureId }); break;
-    case 'longPress': s.dispatch({ kind: 'solo', creatureId: ev.creatureId }); break;
+    case 'longPress': { const spot = s.state.spots.indexOf(ev.creatureId); if (spot >= 0) popup = { spot, creatureId: ev.creatureId }; engine.playSfx('pickup'); break; }
+    case 'volumeSet': s.dispatch({ kind: 'volume', creatureId: ev.creatureId, value: ev.value }); break;
+    case 'popupSolo': s.dispatch({ kind: 'solo', creatureId: ev.creatureId }); engine.playSfx('pop', 1.5); break;
+    case 'popupClose': popup = null; break;
     case 'tapEmpty': {
       s.dispatch({ kind: 'endSolo' });
       if (ev.p.y < layout.stageH) { // the world's own toy: tapping the scenery plays a note of the scale
@@ -402,7 +433,7 @@ canvas.addEventListener('pointerdown', (e) => {
   const t = performance.now();
   ripples.push({ ...pt(e), t });
   tracker.start(e.pointerId, pt(e), Date.now(), world()).forEach((ev) => apply(ev, t));
-  if (tracker.hasPendingLongPress) setTimeout(() => tracker.tick(Date.now()).forEach((ev) => apply(ev, performance.now())), TUNING.longPressMs + 10);
+  if (tracker.hasPendingLongPress) setTimeout(() => tracker.tick(Date.now(), world()).forEach((ev) => apply(ev, performance.now())), TUNING.longPressMs + 10);
 });
 canvas.addEventListener('pointermove', (e) => { if (ready && session) tracker.move(e.pointerId, pt(e), Date.now(), world()).forEach((ev) => apply(ev, performance.now())); });
 const up = (e: PointerEvent) => { if (ready && session) tracker.end(e.pointerId, pt(e), Date.now(), world()).forEach((ev) => apply(ev, performance.now())); };

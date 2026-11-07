@@ -87,3 +87,36 @@ describe('gestures', () => {
     expect(g.end(1, { x: 20, y: 20 }, 50, world())).toEqual([{ type: 'tapEmpty', p: { x: 20, y: 20 } }]);
   });
 });
+
+import { popupRects } from '../src/core/layout';
+describe('volume popup', () => {
+  const stage = [null, 'c1', null, null, null, null];
+  const body = { x: layout.spots[1]!.x, y: layout.spots[1]!.y - 30 };
+  const w = (popup: World['popup'] = null): World => ({ ...world(stage), popup, volumeOf: () => 0.8 });
+  it('hold then drag down lowers the volume; a plain long press changes nothing', () => {
+    const g = new GestureTracker();
+    g.start(1, body, 0, w());
+    expect(g.tick(500, w())).toEqual([{ type: 'longPress', creatureId: 'c1' }]);
+    expect(g.move(1, { x: body.x, y: body.y + 3 }, 600, w())).toEqual([]);
+    const ev = g.move(1, { x: body.x, y: body.y + layout.size * 0.4 }, 700, w());
+    expect(ev[0]).toMatchObject({ type: 'volumeSet', creatureId: 'c1' });
+    expect((ev[0] as { value: number }).value).toBeCloseTo(0.8 - 0.4, 1);
+    expect(g.end(1, body, 800, w())).toEqual([]); // the popup stays open
+  });
+  it('slider tap sets the level, solo button solos, outside touch closes', () => {
+    const g = new GestureTracker();
+    const popup = { spot: 1, creatureId: 'c1' };
+    const r = popupRects(layout, 1);
+    const top = g.start(1, { x: r.slider.x + 5, y: r.slider.y + 1 }, 0, w(popup));
+    expect((top[0] as { value: number }).value).toBeGreaterThan(0.95);
+    const low = g.move(1, { x: r.slider.x + 5, y: r.slider.y + r.slider.h - 1 }, 10, w(popup));
+    expect((low[0] as { value: number }).value).toBeLessThan(0.05);
+    g.end(1, { x: 0, y: 0 }, 20, w(popup));
+    g.start(2, { x: r.solo.x + 5, y: r.solo.y + 5 }, 100, w(popup));
+    expect(g.end(2, { x: r.solo.x + 5, y: r.solo.y + 5 }, 150, w(popup))).toEqual([{ type: 'popupSolo', creatureId: 'c1' }]);
+    expect(g.start(3, { x: 5, y: 5 }, 200, w(popup))[0]).toEqual({ type: 'popupClose' });
+  });
+  it('popup fits inside the screen for every spot and keeps 52 pt targets', () => {
+    for (let i = 0; i < 6; i++) { const r = popupRects(layout, i); expect(r.panel.x).toBeGreaterThanOrEqual(0); expect(r.panel.x + r.panel.w).toBeLessThanOrEqual(layout.W); expect(r.solo.w).toBeGreaterThanOrEqual(52); expect(r.panel.y).toBeGreaterThanOrEqual(0); }
+  });
+});

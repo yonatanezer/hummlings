@@ -5,6 +5,7 @@ export interface StageState {
   spots: (string | null)[]; // creature id per spot, length TUNING.maxSpots
   muted: Record<string, true>;
   solo: string | null;
+  volume: Record<string, number>; // per-creature level 0..1 (missing = 1)
 }
 
 export type StageAction =
@@ -13,12 +14,14 @@ export type StageAction =
   | { kind: 'mute'; creatureId: string } // toggles
   | { kind: 'solo'; creatureId: string } // toggles
   | { kind: 'endSolo' }
+  | { kind: 'volume'; creatureId: string; value: number } // set level (long-press, then drag the slider)
   | { kind: 'clear' };
 
 export const emptyStage = (): StageState => ({
   spots: Array.from({ length: TUNING.maxSpots }, () => null),
   muted: {},
   solo: null,
+  volume: {},
 });
 
 export const onStage = (s: StageState): string[] => s.spots.filter((x): x is string => x !== null);
@@ -41,16 +44,22 @@ export function reduceStage(s: StageState, a: StageAction): StageState {
         delete muted[old];
         if (solo === old) solo = null;
       }
-      return { spots, muted, solo };
+      const volume = { ...s.volume };
+      if (!s.spots.includes(a.creatureId)) delete volume[a.creatureId]; // arriving from the tray starts at full level; moving keeps it
+      if (old) delete volume[old];
+      return { spots, muted, solo, volume };
     }
     case 'remove': {
       if (!isOnStage(s, a.creatureId)) return s;
       const muted = { ...s.muted };
       delete muted[a.creatureId];
+      const volume = { ...s.volume };
+      delete volume[a.creatureId];
       return {
         spots: s.spots.map((x) => (x === a.creatureId ? null : x)),
         muted,
         solo: s.solo === a.creatureId ? null : s.solo,
+        volume,
       };
     }
     case 'mute': {
@@ -67,6 +76,12 @@ export function reduceStage(s: StageState, a: StageAction): StageState {
       const muted = { ...s.muted };
       delete muted[a.creatureId]; // solo on a muted creature unmutes it
       return { ...s, muted, solo: a.creatureId };
+    }
+    case 'volume': {
+      if (!isOnStage(s, a.creatureId)) return s;
+      const v = Math.min(1, Math.max(0, a.value));
+      if ((s.volume[a.creatureId] ?? 1) === v) return s;
+      return { ...s, volume: { ...s.volume, [a.creatureId]: v } };
     }
     case 'endSolo':
       return s.solo ? { ...s, solo: null } : s;

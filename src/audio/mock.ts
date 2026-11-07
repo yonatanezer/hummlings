@@ -47,6 +47,8 @@ export class MockEngine implements AudioEngine {
   positionBeats(): number { return this.beats; }
   sfx: { kind: string; rate: number }[] = [];
   playSfx(kind: string, rate = 1): void { this.sfx.push({ kind, rate }); }
+  voiceGains: Record<string, number> = {};
+  setVoiceGain(id: string, g: number): void { this.voiceGains[id] = g; }
   setVolume(v: number): void { this.volume = v; }
   onInterrupted(cb: () => void): () => void { this.listeners.add(cb); return () => this.listeners.delete(cb); }
   interrupt(): void { this.pause(); this.listeners.forEach((l) => l()); }

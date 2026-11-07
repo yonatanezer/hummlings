@@ -47,18 +47,18 @@ export function renderSong(stage: Stage, song: Song, bank: LoopBank): RenderResu
     if (bonus && bar - bonus.startBar >= TUNING.celebrationBars) bonus = null;
     const audible = new Set(audibleIds(state));
     const loopPos = (bar % stage.loopBars) * spb;
-    const layers: { buf: Float32Array; wasOn: boolean; isOn: boolean }[] = [];
+    const layers: { buf: Float32Array; wasOn: boolean; isOn: boolean; gain: number }[] = [];
     for (const id of new Set([...prevAudible, ...audible])) {
       const c = byId.get(id);
       const buf = c && bank[c.loopFile];
-      if (buf) layers.push({ buf, wasOn: prevAudible.has(id), isOn: audible.has(id) });
+      if (buf) layers.push({ buf, wasOn: prevAudible.has(id), isOn: audible.has(id), gain: state.volume[id] ?? 1 });
     }
-    if (bonus && bank[bonus.file]) layers.push({ buf: bank[bonus.file]!, wasOn: bar > bonus.startBar, isOn: true });
+    if (bonus && bank[bonus.file]) layers.push({ buf: bank[bonus.file]!, wasOn: bar > bonus.startBar, isOn: true, gain: 1 });
     const base = bar * spb;
     for (const l of layers) {
       const len = l.buf.length;
       for (let i = 0; i < spb; i++) {
-        const g = rampGain(l.wasOn, l.isOn, i, TUNING.sampleRate);
+        const g = rampGain(l.wasOn, l.isOn, i, TUNING.sampleRate) * l.gain;
         if (g === 0) continue;
         out[base + i] = out[base + i]! + l.buf[(loopPos + i) % len]! * g;
       }

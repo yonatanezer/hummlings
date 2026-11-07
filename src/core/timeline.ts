@@ -38,6 +38,11 @@ export class Recorder {
   }
   /** `audibleBar` = global bar index at which the change takes effect. */
   action(audibleBar: number, action: StageAction): void {
+    if (action.kind === 'volume') { // dragging a slider produces many events: keep only the last per creature and bar
+      const bar = Math.max(0, audibleBar - this.startBar);
+      const i = this.events.findIndex((e) => 'action' in e && e.bar === bar && e.action.kind === 'volume' && e.action.creatureId === action.creatureId);
+      if (i >= 0) { this.events[i] = { bar, action }; return; }
+    }
     this.events.push({ bar: Math.max(0, audibleBar - this.startBar), action });
   }
   combo(audibleBar: number, comboId: string): void {

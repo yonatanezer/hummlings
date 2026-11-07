@@ -76,7 +76,7 @@ export const en = {
   'help.step1': 'Drag a singer onto the stage. It joins the song on the next beat of the bar.',
   'help.step2': 'Add more singers. Every one fits the others, so it always sounds good.',
   'help.step3': 'Tap a singer to mute it. Tap again to bring it back.',
-  'help.step4': 'Hold a singer for a moment to hear it solo. Tap the empty stage to stop.',
+  'help.step4': 'Hold a singer to open its volume. Drag up or down to change the level. The star gives it a solo.',
   'help.step5': 'Drag a singer off the stage, or flick it down, to send it back.',
   'help.step6': 'Find secret combos: put the right four singers together and a show begins. The combo book gives hints.',
   'help.step7': 'Press the red button to record your song. Find it later in My songs and share it.',

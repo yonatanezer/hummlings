@@ -47,9 +47,15 @@ export function drawHelpStep(sk: SkiaApi, c: Canvas, stage: Stage, step: number,
     case 3: {
       s.placed = place(4, () => -1e6);
       const target = spot(2);
-      fx = target.x; fy = target.y; fa = 1; fp = t > 600 && t < 2000 ? 1 : 0;
-      if (t > 600 && t < 2000) ring = 30 + ((t - 600) / 1400) * 40;
-      if (t > 1000 && t < 3600) s.solo = ids[1]!;
+      fx = target.x; fy = target.y; fa = 1; fp = t > 600 && t < 3200 ? 1 : 0;
+      if (t > 600 && t < 1400) ring = 30 + ((t - 600) / 800) * 40;
+      if (t >= 1400 && t < 4000) { // popup opens; dragging down lowers the level
+        const k = Math.min(1, Math.max(0, (t - 1700) / 1300));
+        const vol = 1 - 0.65 * k;
+        s.popup = { spot: 2, creatureId: ids[1]!, volume: vol, solo: false };
+        s.volumes = { [ids[1]!]: vol };
+        fy = target.y + k * layout.size * 0.5;
+      }
       break;
     }
     case 4: {

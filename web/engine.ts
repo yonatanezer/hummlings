@@ -14,7 +14,7 @@ export class WebEngine implements AudioEngine {
   ctx!: AudioContext;
   private master!: GainNode;
   private buffers = new Map<string, AudioBuffer>();
-  private voices = new Map<string, { src: AudioBufferSourceNode; gain: GainNode }>();
+  private voices = new Map<string, { src: AudioBufferSourceNode; gain: GainNode; vol: GainNode }>();
   private tick: AudioBuffer | null = null;
   private sfxBuf = new Map<string, AudioBuffer>();
   private ambFile = '';
@@ -89,10 +89,13 @@ export class WebEngine implements AudioEngine {
       src.buffer = buf; src.loop = true; src.loopStart = 0; src.loopEnd = bs * TUNING.loopBars;
       gain.gain.setValueAtTime(0, t);
       gain.gain.linearRampToValueAtTime(1, t + TUNING.fadeInMs / 1000);
-      src.connect(gain); gain.connect(this.master);
+      const vol = ctx.createGain();
+      vol.gain.value = plan.gains[key] ?? 1;
+      src.connect(gain); gain.connect(vol); vol.connect(this.master);
       src.start(t, (bar % TUNING.loopBars) * bs); // in phase with the global clock
-      this.voices.set(key, { src, gain });
+      this.voices.set(key, { src, gain, vol });
     };
+    for (const [id, v] of this.voices) if (id in plan.gains || v.vol.gain.value !== 1) v.vol.gain.setValueAtTime(plan.gains[id] ?? 1, t);
     for (const id of plan.ids) launch(id, this.fileOf.get(id) ?? '');
     if (plan.bonusFile) launch(BONUS, plan.bonusFile);
     launch(AMBIENCE, this.ambFile);
@@ -114,6 +117,10 @@ export class WebEngine implements AudioEngine {
     src.start(when);
   }
   playSfx(kind: SfxKind, rate = 1): void { this.sfxAt(kind, 0, rate, TUNING.sfxGain); }
+  setVoiceGain(creatureId: string, gain: number): void {
+    const v = this.voices.get(creatureId);
+    if (v && this.ctx) v.vol.gain.setTargetAtTime(gain, this.ctx.currentTime, 0.03);
+  }
   pause(): void { if (this.state === 'running') { this.state = 'paused'; void this.ctx.suspend(); } }
   resume(): void { if (this.state === 'paused') { this.state = 'running'; void this.ctx.resume(); } }
   stop(): void {

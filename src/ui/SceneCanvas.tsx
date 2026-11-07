@@ -19,6 +19,8 @@ export interface SceneValues {
   celebration: SharedValue<SceneInput['celebration']>;
   hint: SharedValue<boolean>;
   hintSlot: SharedValue<number>;
+  popup: SharedValue<SceneInput['popup']>;
+  volumes: SharedValue<Record<string, number>>;
   reduceMotion: SharedValue<boolean>;
   timeMs: SharedValue<number>;
 }
@@ -37,6 +39,8 @@ export function useSceneValues(stage: Stage, layout: Layout, reduceMotion: boole
     celebration: useSharedValue<SceneInput['celebration']>(null),
     hint: useSharedValue(false),
     hintSlot: useSharedValue(0),
+    popup: useSharedValue<SceneInput['popup']>(null),
+    volumes: useSharedValue<Record<string, number>>({}),
     reduceMotion: useSharedValue(reduceMotion),
     timeMs: useSharedValue(0),
   };
@@ -55,7 +59,7 @@ export function SceneCanvas({ sv, width, height }: { sv: SceneValues; width: num
     const input: SceneInput = {
       layout: sv.layout.value, stage: sv.stage.value, placed: sv.placed.value, muted: sv.muted.value, solo: sv.solo.value,
       drags: sv.drags.value, returning: sv.returning.value, scrollX: sv.scrollX.value, beat: sv.beat.value, timeMs: clock.value,
-      reduceMotion: sv.reduceMotion.value, celebration: sv.celebration.value, hint: sv.hint.value, hintSlot: sv.hintSlot.value, recordingBeat: null,
+      reduceMotion: sv.reduceMotion.value, celebration: sv.celebration.value, hint: sv.hint.value, hintSlot: sv.hintSlot.value, popup: sv.popup.value, volumes: sv.volumes.value, recordingBeat: null,
     };
     const rec = Skia.PictureRecorder();
     const canvas = rec.beginRecording(Skia.XYWHRect(0, 0, width, height));

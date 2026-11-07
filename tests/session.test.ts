@@ -78,3 +78,29 @@ describe('combo replay', () => {
     expect(engine.plans[4]!.bonusFile).toBe(combo.bonusLoopFile);
   });
 });
+
+describe('volume in session and export', () => {
+  it('reaches the engine at once, the next plan, the recording and the offline render', async () => {
+    const engine = new MockEngine();
+    const s = new Session(stage, engine, {});
+    s.start();
+    const id = stage.creatures[0]!.id;
+    s.dispatch({ kind: 'drop', creatureId: id, spot: 0 });
+    engine.advanceBars(1);
+    s.startRecording();
+    s.dispatch({ kind: 'volume', creatureId: id, value: 0.5 });
+    s.dispatch({ kind: 'volume', creatureId: id, value: 0.25 });
+    expect(engine.voiceGains[id]).toBe(0.25);
+    engine.advanceBars(1);
+    expect(engine.plans[2]!.gains[id]).toBe(0.25);
+    const song = s.stopRecording({ id: 'v', name: 'v', createdAt: 0 })!;
+    expect(song.events.filter((e) => 'action' in e && e.action.kind === 'volume')).toHaveLength(1); // coalesced
+    const { renderSong, samplesPerBar } = await import('../src/core/render');
+    const spb = samplesPerBar(stage.bpm);
+    const bank = { [stage.creatures[0]!.loopFile]: new Float32Array(spb * 4).fill(0.4) };
+    const full = renderSong(stage, { ...song, events: song.events.filter((e) => !('action' in e && e.action.kind === 'volume')) }, bank).samples;
+    const quiet = renderSong(stage, song, bank).samples;
+    const mid = Math.floor(song.bars * spb * 0.5);
+    expect(quiet[mid]! / full[mid]!).toBeCloseTo(0.25, 2);
+  });
+});

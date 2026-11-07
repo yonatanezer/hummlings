@@ -38,3 +38,17 @@ describe('stage state', () => {
     expect(r(s, { kind: 'mute', creatureId: 'zzz' })).toBe(s);
   });
 });
+
+describe('per-creature volume', () => {
+  it('sets, clamps, survives moves, resets when the creature leaves', () => {
+    let s = r(emptyStage(), { kind: 'drop', creatureId: 'a', spot: 0 });
+    s = r(s, { kind: 'volume', creatureId: 'a', value: 0.4 });
+    expect(s.volume['a']).toBe(0.4);
+    expect(r(s, { kind: 'volume', creatureId: 'a', value: 7 }).volume['a']).toBe(1);
+    s = r(s, { kind: 'drop', creatureId: 'a', spot: 3 }); // moved: keeps its level
+    expect(s.volume['a']).toBe(0.4);
+    expect(r(s, { kind: 'volume', creatureId: 'zzz', value: 0.1 })).toBe(s); // not on stage
+    s = r(s, { kind: 'remove', creatureId: 'a' });
+    expect(s.volume['a']).toBeUndefined();
+  });
+});

@@ -49,6 +49,7 @@ export class Session {
     if (next === this.state) return;
     this.state = next;
     this.recorder?.action(this.nextAudibleBar, a);
+    if (a.kind === 'volume') this.engine.setVoiceGain(a.creatureId, next.volume[a.creatureId] ?? 1);
     this.events.onState?.(next);
   }
 
@@ -89,6 +90,7 @@ export class Session {
       ids,
       bonusFile: this.celebrating?.bonusFile ?? null,
       tick: onStage(this.state).length === 0 || this.countIn ? 'soft' : 'off',
+      gains: { ...this.state.volume },
       fill: bar % TUNING.loopBars === TUNING.loopBars - 1 && this.layerCount(ids) >= 3,
     };
   }
@@ -133,6 +135,6 @@ export function songProvider(stage: Stage, song: Song): (bar: number) => BarPlan
     if (bonus && bar - bonus.start >= 8) bonus = null;
     const ids = bar < song.bars ? audibleIds(state) : [];
     const layers = new Set(ids.map((id) => stage.creatures.find((c) => c.id === id)?.layer)).size;
-    return { ids, bonusFile: bar < song.bars ? bonus?.file ?? null : null, tick: 'off', fill: bar % 4 === 3 && layers >= 3 };
+    return { ids, bonusFile: bar < song.bars ? bonus?.file ?? null : null, tick: 'off', gains: { ...state.volume }, fill: bar % 4 === 3 && layers >= 3 };
   };
 }

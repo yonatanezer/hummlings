@@ -13,7 +13,7 @@ const START_DELAY_S = 0.12; // gap between start() and bar 0
 const BONUS = '__bonus';
 const AMBIENCE = '__ambience';
 
-interface Voice { src: AudioBufferSourceNode; gain: GainNode }
+interface Voice { src: AudioBufferSourceNode; gain: GainNode; vol: GainNode }
 
 /** Sample-accurate engine on react-native-audio-api: looped PCM buffers scheduled on one shared AudioContext clock. */
 export class NativeEngine implements AudioEngine {
@@ -130,12 +130,16 @@ export class NativeEngine implements AudioEngine {
       src.loopEnd = bs * TUNING.loopBars; // exact loop length: absorbs any encoder padding at the end of the file
       gain.gain.setValueAtTime(0, t);
       gain.gain.linearRampToValueAtTime(1, t + TUNING.fadeInMs / 1000);
+      const vol = ctx.createGain();
+      vol.gain.value = plan.gains[key] ?? 1;
       src.connect(gain);
-      gain.connect(this.master!);
+      gain.connect(vol);
+      vol.connect(this.master!);
       // Always in phase with the global clock: a late joiner enters at its place in the 4-bar chord loop.
       src.start(t, (bar % TUNING.loopBars) * bs);
-      this.voices.set(key, { src, gain });
+      this.voices.set(key, { src, gain, vol });
     };
+    for (const [id, v] of this.voices) if (id in plan.gains || v.vol.gain.value !== 1) v.vol.gain.setValueAtTime(plan.gains[id] ?? 1, t);
     for (const id of plan.ids) launch(id, this.fileOf(id));
     if (plan.bonusFile) launch(BONUS, plan.bonusFile);
     launch(AMBIENCE, this.ambFile);
@@ -165,6 +169,10 @@ export class NativeEngine implements AudioEngine {
   }
   playSfx(kind: SfxKind, rate = 1): void { this.sfxAt(kind, 0, rate, TUNING.sfxGain); }
 
+  setVoiceGain(creatureId: string, gain: number): void {
+    const v = this.voices.get(creatureId);
+    if (v && this.ctx) v.vol.gain.setTargetAtTime(gain, this.ctx.currentTime, 0.03);
+  }
   pause(): void { if (this.state === 'running') { this.state = 'paused'; void this.ctx?.suspend(); } }
   resume(): void { if (this.state === 'paused') { this.state = 'running'; void this.ctx?.resume(); } }
   stop(): void {
