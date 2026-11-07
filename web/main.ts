@@ -10,6 +10,7 @@ import pond from '../content/stages/1-pond.json';
 import fair from '../content/stages/2-fair.json';
 import clouds from '../content/stages/3-clouds.json';
 import { WebEngine } from './engine';
+import { en } from '../src/i18n/en';
 
 const STAGES: Stage[] = [pond, fair, clouds].map((r) => validateStage(r).stage!);
 const NAMES = ['Moonlit Pond', 'Candy Fair', 'Sleepy Cloud Town'];
@@ -32,6 +33,7 @@ const placedAnim = new Map<string, { since: number; from: { x: number; y: number
 let drags: { id: string; x: number; y: number }[] = [];
 let returning: { id: string; since: number; from: { x: number; y: number } }[] = [];
 let celebration: { comboId: string; creatureIds: string[]; startBeat: number } | null = null;
+const ripples: { x: number; y: number; t: number }[] = [];
 let ready = false;
 let hint = true;
 const found = new Set<string>();
@@ -219,6 +221,11 @@ function frame(t: number) {
     ctx.globalAlpha = fa; if (m > 0) sprite(stage.creatures[0]!, 1, x, y + l.size * 0.45, l.size * 0.9, { alpha: 0.85 });
     ctx.fillStyle = '#ffffffe6'; ctx.strokeStyle = '#FFC857'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, 24, 0, 7); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
   }
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const r = ripples[i]!, k = (t - r.t) / 420;
+    if (k >= 1) { ripples.splice(i, 1); continue; }
+    ctx.strokeStyle = `rgba(255,255,255,${0.7 * (1 - k)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(r.x, r.y, 14 + 34 * k, 0, 7); ctx.stroke();
+  }
   updateHud();
 }
 
@@ -270,6 +277,7 @@ canvas.addEventListener('pointerdown', (e) => {
   if (!ready || !session) return;
   canvas.setPointerCapture(e.pointerId);
   const t = performance.now();
+  ripples.push({ ...pt(e), t });
   tracker.start(e.pointerId, pt(e), Date.now(), world()).forEach((ev) => apply(ev, t));
   if (tracker.hasPendingLongPress) setTimeout(() => tracker.tick(Date.now()).forEach((ev) => apply(ev, performance.now())), TUNING.longPressMs + 10);
 });
@@ -315,3 +323,44 @@ resize();
 $('rotate').classList.toggle('hide', innerWidth >= innerHeight);
 requestAnimationFrame(frame);
 void stageIdx;
+
+// ---- combo book + how-to-play overlays ----
+const cardsEl = $('cards');
+function openBook() {
+  if (!session) return;
+  const s = session;
+  const on = new Set(s.state.spots.filter((x): x is string => !!x).filter((x) => !s.state.muted[x]));
+  cardsEl.innerHTML = '';
+  stage.combos.forEach((c) => {
+    const f = found.has(c.id);
+    const card = document.createElement('div'); card.className = 'card';
+    const cv = document.createElement('canvas'); cv.width = 4 * 150; cv.height = 170;
+    const g = cv.getContext('2d')!;
+    g.fillStyle = stage.palette.sky; g.fillRect(0, 0, cv.width, cv.height);
+    if (atlas) c.creatureIds.forEach((id, i) => {
+      const idx = stage.creatures.findIndex((q) => q.id === id);
+      if (!f) g.filter = 'brightness(0) opacity(0.45)';
+      g.drawImage(atlas!, 0, idx * CELL_H, CELL_W, CELL_H, i * 150 + 5, 0, 140, 153);
+      g.filter = 'none';
+    });
+    const n = s.state.solo ? 0 : c.creatureIds.filter((id) => on.has(id)).length;
+    const dots = document.createElement('div'); dots.className = 'combo' + (f ? ' found' : ''); dots.style.display = 'flex'; dots.style.gap = '6px';
+    dots.innerHTML = [0, 1, 2, 3].map((i) => `<i class="${f || i < n ? 'lit' : ''}"></i>`).join('');
+    card.append(cv, dots);
+    if (f) { const b = document.createElement('button'); b.textContent = 'Replay show'; b.addEventListener('click', () => { $('book').classList.add('hide'); s.replayCombo(c.id); }); card.append(b); }
+    cardsEl.append(card);
+  });
+  $('book').classList.remove('hide');
+}
+$('bookBtn').addEventListener('click', openBook);
+$('book').addEventListener('click', (e) => { if (e.target === $('book') || (e.target as HTMLElement).closest('.x')) $('book').classList.add('hide'); });
+let helpStep = 0;
+function showHelp() {
+  ($('helpImg') as HTMLImageElement).src = `help/${helpStep + 1}.png`;
+  $('helpTxt').textContent = (en as Record<string, string>)[`help.step${helpStep + 1}`]!;
+  $('hDots').innerHTML = Array.from({ length: 7 }, (_, i) => `<i class="${i === helpStep ? 'on' : ''}"></i>`).join('');
+}
+$('helpBtn').addEventListener('click', () => { helpStep = 0; showHelp(); $('help').classList.remove('hide'); });
+$('hPrev').addEventListener('click', () => { helpStep = Math.max(0, helpStep - 1); showHelp(); });
+$('hNext').addEventListener('click', () => { if (helpStep === 6) $('help').classList.add('hide'); else { helpStep++; showHelp(); } });
+$('help').addEventListener('click', (e) => { if (e.target === $('help') || (e.target as HTMLElement).closest('.x')) $('help').classList.add('hide'); });

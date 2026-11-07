@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { build } from 'esbuild';
 import { IDLE_POSE, drawCreature } from '../src/ui/draw/creature';
+import { drawHelpStep } from '../src/ui/draw/help';
 import { loadStages } from './qa-lib';
 import { renderPng } from './render-lib';
 
@@ -26,6 +27,9 @@ async function main() {
     }
     console.log('built', st.id);
   }
+  mkdirSync(`${OUT}/help`, { recursive: true });
+  const pondStage = loadStages()[0]!;
+  for (let i = 0; i < 7; i++) writeFileSync(`${OUT}/help/${i + 1}.png`, await renderPng(560, 308, (sk, c) => drawHelpStep(sk, c, pondStage, i, [2000, 2000, 2000, 1800, 1500, 3000, 1000][i]!, 560, 308), 1.5));
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', 'assets/sfx/tick.m4a', '-b:a', '96k', `${OUT}/audio/tick.mp3`]);
   await build({ entryPoints: ['web/main.ts'], bundle: true, minify: true, format: 'iife', target: 'es2020', outfile: `${OUT}/game.js`, loader: { '.json': 'json' }, logLevel: 'warning' });
   writeFileSync(`${OUT}/index.html`, `<title>Hummlings Playground</title>
@@ -47,6 +51,9 @@ button.on{background:#7A8CFF;border-color:#fff}
 #combos-wrap .lbl{font-size:12px;color:var(--dim);letter-spacing:.04em;text-transform:uppercase}#combos{display:flex;gap:10px}
 #worlds button{white-space:nowrap;display:inline-flex;align-items:center;gap:8px}#worlds .short{display:none}@media (max-width:980px){#worlds .long{display:none}#worlds .short{display:inline}}
 .wd{width:12px;height:12px;border-radius:50%;display:block}
+#cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:12px}.card{background:rgba(255,255,255,.06);border-radius:16px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:8px}.card canvas{width:100%;height:auto;border-radius:10px}
+.ov{position:fixed;inset:0;z-index:7;background:rgba(10,6,32,.78);display:flex;align-items:center;justify-content:center;padding:12px}.sheet{position:relative;background:var(--panel);border-radius:24px;padding:20px;max-width:760px;width:100%;max-height:92vh;overflow:auto;text-align:center}.sheet h2{margin:0 0 6px;font-size:22px}.sheet .sub{margin:0 auto 12px;color:var(--dim);max-width:52ch}.sheet img{max-width:100%;max-height:50vh;width:auto;height:auto;border-radius:14px;border:2px solid #FFE8A366}.sheet .x{position:absolute;top:8px;right:8px}.nav{display:flex;align-items:center;justify-content:center;gap:16px}#hDots{display:flex;gap:8px}#hDots i{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.25)}#hDots i.on{background:var(--accent);width:24px;border-radius:5px}
+.rip{position:fixed}
 #beat{width:10px;height:10px;border-radius:50%;background:#FF7AA8;display:block}
 button.ic{width:44px;padding:0;display:grid;place-items:center}
 svg{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}svg .fill{fill:currentColor;stroke:none}
@@ -67,9 +74,13 @@ button.ic svg{width:24px;height:24px}button.ic .off{display:none}button.ic.off .
 <div id="bar"><div id="worlds" role="group" aria-label="Worlds"></div>
 <button id="clear" class="ic" aria-label="Clear the stage" title="Clear the stage"><svg viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg></button>
 <button id="mute" class="ic" aria-label="Pause the music" title="Pause / resume" aria-pressed="false"><svg class="on" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z" class="fill"/><path d="M17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11"/></svg><svg class="off" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z" class="fill"/><path d="M17 9l5 6M22 9l-5 6"/></svg></button>
+<button id="bookBtn" class="ic" aria-label="Combo book" title="Combo book"><svg viewBox="0 0 24 24"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg></button>
+<button id="helpBtn" class="ic" aria-label="How to play" title="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8M12 17.2v.3"/></svg></button>
 <div id="combos-wrap"><span class="lbl">Secret combos</span><div id="combos" aria-label="Secret combos: a dot lights up for each matching singer on stage"></div></div><i id="beat" aria-hidden="true"></i></div>
 <div id="tip">Drag a singer up onto the stage. Tap it to mute, hold to solo, drag it off to remove. Find the secret combos!</div>
 <div id="toast">Secret combo found!</div>
+<div id="book" class="ov hide" role="dialog" aria-label="Combo book"><div class="sheet"><button class="ic x" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2>Secret combos</h2><p class="sub">Dots light up for each matching singer on stage. Put all four together and keep them for two loops.</p><div id="cards"></div></div></div>
+<div id="help" class="ov hide" role="dialog" aria-label="How to play"><div class="sheet"><button class="ic x" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2>How to play</h2><img id="helpImg" alt="" width="560" height="308"><p id="helpTxt"></p><div class="nav"><button id="hPrev" class="ic" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span id="hDots"></span><button id="hNext" class="ic" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></div></div></div>
 <div id="rotate" class="hide"><svg viewBox="0 0 24 24" width="64" height="64"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M3 12h2M19 12h2"/></svg><p>Turn your phone sideways to play.</p></div>
 <div id="loading" class="hide"><p>Loading music…</p></div>
 <div id="splash"><h1>Hummlings</h1><p>A playable preview: the real music loops and the real game logic, drawn in your browser. Sound starts after you press play.</p><button id="start">Play</button></div>
