@@ -55,7 +55,7 @@ button.on{background:#7A8CFF;border-color:#fff}
 #combos-wrap{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:20px;background:rgba(27,19,64,.78)}
 #combos-wrap .lbl{font-size:13px;font-weight:700;color:var(--dim);letter-spacing:.04em;text-transform:uppercase}#combos{display:flex;gap:10px}
 #worlds button{white-space:nowrap;display:inline-flex;align-items:center;gap:8px}#worlds .short{display:none}@media (max-width:980px){#worlds .long{display:none}#worlds .short{display:inline}}
-.wd{width:12px;height:12px;border-radius:50%;display:block}
+.wi{display:inline-flex}.wi svg{display:block}.wd{width:12px;height:12px;border-radius:50%;display:block}
 #cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:12px}.card{background:rgba(255,255,255,.06);border-radius:16px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:8px}.card canvas{width:100%;height:auto;border-radius:10px}
 .ov{position:fixed;inset:0;z-index:7;background:rgba(10,6,32,.78);display:flex;align-items:center;justify-content:center;padding:12px}.sheet{position:relative;background:var(--panel);border-radius:24px;padding:20px;max-width:760px;width:100%;max-height:92vh;overflow:auto;text-align:center}.sheet h2{margin:0 0 6px;font-size:22px}.sheet .sub{margin:0 auto 12px;color:var(--dim);max-width:52ch}.sheet img{max-width:100%;max-height:50vh;width:auto;height:auto;border-radius:14px;border:2px solid #FFE8A366}.sheet .x{position:absolute;top:8px;right:8px}.nav{display:flex;align-items:center;justify-content:center;gap:16px}#hDots{display:flex;gap:8px}#hDots i{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.25)}#hDots i.on{background:var(--accent);width:24px;border-radius:5px}
 .rip{position:fixed}

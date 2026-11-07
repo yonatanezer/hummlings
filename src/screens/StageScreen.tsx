@@ -10,11 +10,12 @@ import { audibleIds } from '../core/stageState';
 import { autoName } from '../core/timeline';
 import { TUNING } from '../core/tuning';
 import type { Stage } from '../core/types';
-import { t } from '../i18n';
+import { t, type StringKey } from '../i18n';
 import { useLang } from '../i18n/useLang';
 import { useProgress } from '../app/progress';
 import { ComboBook } from './ComboBook';
 import { IconButton } from '../ui/IconButton';
+import { WorldIcon } from '../ui/WorldIcon';
 import { SceneCanvas, useSceneValues } from '../ui/SceneCanvas';
 import { COLORS } from '../ui/theme';
 import { hapticLight, hapticMedium, hapticSuccess, setHapticsEnabled } from '../ui/haptics';
@@ -244,6 +245,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
 
       <View pointerEvents="box-none" style={[styles.top, { top: insets.top + 6, left: insets.left + 10, right: insets.right + 10, flexDirection: row }]}>
         <IconButton icon="back" label={t('a11y.back')} onPress={onBack} />
+        <View style={styles.world} accessibilityLabel={t(stage.nameKey as StringKey)}><WorldIcon stageId={stage.id} size={34} /></View>
         <View style={{ flex: 1 }} />
         <View style={{ flexDirection: row, gap: 10, alignItems: 'center' }}>
           {recording && <Text style={styles.rec} accessibilityLabel={`${recBars}`}>{recBars}</Text>}
@@ -291,6 +293,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.sky },
   top: { position: 'absolute', alignItems: 'center' },
+  world: { marginHorizontal: 10, width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(27,19,64,0.92)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)', alignItems: 'center', justifyContent: 'center' },
   clear: { position: 'absolute' },
   rec: { color: '#fff', fontSize: 18, fontWeight: '700', backgroundColor: COLORS.rec, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' },
   overlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(10,6,32,0.6)', alignItems: 'center', justifyContent: 'center' },

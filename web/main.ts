@@ -12,6 +12,7 @@ import clouds from '../content/stages/3-clouds.json';
 import { WebEngine } from './engine';
 import { en } from '../src/i18n/en';
 import { popRate } from '../src/core/sfx';
+import { worldIconSvg } from '../src/core/worldIcons';
 
 const STAGES: Stage[] = [pond, fair, clouds].map((r) => validateStage(r).stage!);
 const NAMES = ['Moonlit Pond', 'Candy Fair', 'Sleepy Cloud Town'];
@@ -471,6 +472,7 @@ async function loadAtlas(id: string) {
 async function openStage(i: number) {
   ready = false;
   session = null; // the frame loop pauses until the new world is ready
+  $('loading').innerHTML = `${worldIconSvg(STAGES[i]!.id, 72)}<p>${NAMES[i]}…</p>`;
   $('loading').classList.remove('hide');
   engine.stop();
   stageIdx = i; stage = STAGES[i]!;
@@ -490,7 +492,7 @@ async function openStage(i: number) {
   $('loading').classList.add('hide');
 }
 
-$('worlds').innerHTML = NAMES.map((n, i) => `<button data-i="${i}"><i class="wd" style="background:${STAGES[i]!.palette.accent}"></i><span class="long">${n}</span><span class="short">${n.split(' ')[0] === 'Sleepy' ? 'Clouds' : n.split(' ')[0] === 'Moonlit' ? 'Pond' : 'Fair'}</span></button>`).join('');
+$('worlds').innerHTML = NAMES.map((n, i) => `<button data-i="${i}"><span class="wi">${worldIconSvg(STAGES[i]!.id, 28)}</span><span class="long">${n}</span><span class="short">${n.split(' ')[0] === 'Sleepy' ? 'Clouds' : n.split(' ')[0] === 'Moonlit' ? 'Pond' : 'Fair'}</span></button>`).join('');
 $('worlds').addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button'); if (b) void openStage(Number(b.dataset.i)); });
 $('clear').addEventListener('click', () => { if (!session) return; session.state.spots.forEach((id, s) => { if (id) returning.push({ id, since: performance.now(), from: layout.spots[s]! }); }); session.dispatch({ kind: 'clear' }); });
 $('start').addEventListener('click', () => { $('splash').classList.add('hide'); void openStage(0); });

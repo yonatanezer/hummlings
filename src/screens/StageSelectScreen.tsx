@@ -7,6 +7,7 @@ import { useProgress } from '../app/progress';
 import { Icon } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
 import { StageCardArt } from '../ui/StageCardArt';
+import { WorldIcon } from '../ui/WorldIcon';
 import { COLORS } from '../ui/theme';
 import { hapticLight } from '../ui/haptics';
 
@@ -37,9 +38,10 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
               onPress={() => { hapticLight(); (locked ? onLocked : () => onPick(st.id))(); }} style={({ pressed }) => [{ width: cardW, alignItems: 'center', gap: 10, transform: [{ scale: pressed ? 0.97 : 1 }] }]}>
               <View>
                 <StageCardArt stage={st} locked={locked} width={cardW} height={cardH} />
+                <View style={styles.emblem}><WorldIcon stageId={st.id} size={40} /></View>
                 {locked && <View style={styles.lock}><Icon name="lock" size={28} color="#FFE8A3" /></View>}
               </View>
-              <Text style={styles.name}>{t(st.nameKey as StringKey)}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><WorldIcon stageId={st.id} size={28} /><Text style={styles.name}>{t(st.nameKey as StringKey)}</Text></View>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {st.combos.map((c, i) => <View key={c.id} style={[styles.dot, { backgroundColor: i < found ? COLORS.glow : 'rgba(255,255,255,0.18)' }]} />)}
               </View>
@@ -55,6 +57,7 @@ const styles = StyleSheet.create({
   top: { position: 'absolute', alignItems: 'center', zIndex: 2 },
   cards: { justifyContent: 'center', gap: 24, alignItems: 'flex-start' },
   name: { color: '#fff', fontSize: 22, fontWeight: '700' },
+  emblem: { position: 'absolute', top: 10, left: 10, width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(27,19,64,0.92)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)', alignItems: 'center', justifyContent: 'center' },
   lock: { position: 'absolute', top: 10, right: 10, width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(27,19,64,0.8)', alignItems: 'center', justifyContent: 'center' },
   dot: { width: 14, height: 14, borderRadius: 7 },
 });

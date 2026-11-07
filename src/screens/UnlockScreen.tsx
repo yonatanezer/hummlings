@@ -7,6 +7,7 @@ import { useProgress } from '../app/progress';
 import { t } from '../i18n';
 import { IconButton } from '../ui/IconButton';
 import { StageCardArt } from '../ui/StageCardArt';
+import { WorldIcon } from '../ui/WorldIcon';
 import { COLORS } from '../ui/theme';
 
 /** Unlock screen (shown behind the parental gate). */
@@ -33,7 +34,7 @@ export function UnlockScreen({ onBack }: { onBack: () => void }) {
       <View style={[styles.close, { top: insets.top + 6, right: insets.right + 10 }]}><IconButton icon="close" label={t('a11y.close')} onPress={onBack} /></View>
       <View style={styles.main}>
         <View style={{ flexDirection: 'row', gap: 16 }}>
-          {STAGES.slice(1).map((st) => <StageCardArt key={st.id} stage={st} locked={false} width={cw} height={ch} />)}
+          {STAGES.slice(1).map((st) => <View key={st.id}><StageCardArt stage={st} locked={false} width={cw} height={ch} /><View style={{ position: 'absolute', top: 8, left: 8, width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(27,19,64,0.92)', alignItems: 'center', justifyContent: 'center' }}><WorldIcon stageId={st.id} size={34} /></View></View>)}
         </View>
         <View style={{ maxWidth: 360, gap: 14 }}>
           <Text style={styles.title} accessibilityRole="header">{t('unlock.title')}</Text>
