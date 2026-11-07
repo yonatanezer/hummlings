@@ -15,9 +15,12 @@ async function main() {
   mkdirSync(`${OUT}/sprites`, { recursive: true });
   mkdirSync(`${OUT}/audio`, { recursive: true });
   for (const st of loadStages()) {
-    const png = await renderPng(CELL_W * 4, CELL_H * st.creatures.length, (sk, c) => {
+    const png = await renderPng(CELL_W * 10, CELL_H * st.creatures.length, (sk, c) => {
       st.creatures.forEach((cr, i) => {
-        const poses = [{ ...IDLE_POSE }, { ...IDLE_POSE, mouth: 0.85 }, { ...IDLE_POSE, eyes: 0 }, { ...IDLE_POSE, muted: true, alpha: 2.5 }];
+        // 9 poses = {rest, singing, blink} x ear/tail sway {-1, 0, +1}; the 10th is the muted pose
+        const sway = [267, 0.001, -267]; // pose.time values for sin(time / 170) = +1, 0, -1
+        const poses = [0, 1, 2].flatMap((state) => sway.map((time) => ({ ...IDLE_POSE, time, mouth: state === 1 ? 0.85 : 0, eyes: state === 2 ? 0 : 1 })));
+        poses.push({ ...IDLE_POSE, muted: true, alpha: 2.5, time: 0.001 });
         poses.forEach((p, k) => drawCreature(sk, c, cr, k * CELL_W + FEET_X, i * CELL_H + FEET_Y, S, p));
       });
     }, 1);
@@ -48,13 +51,16 @@ body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,sans-
 button{font:inherit;color:var(--fg);background:rgba(27,19,64,.78);border:1.5px solid rgba(255,255,255,.2);border-radius:20px;min-height:44px;padding:0 16px;cursor:pointer}
 button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 button.on{background:#7A8CFF;border-color:#fff}
-#combos-wrap{display:flex;align-items:center;gap:10px;margin-left:auto;padding:6px 12px;border-radius:20px;background:rgba(27,19,64,.78)}
+#combos-wrap{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:20px;background:rgba(27,19,64,.78)}
 #combos-wrap .lbl{font-size:12px;color:var(--dim);letter-spacing:.04em;text-transform:uppercase}#combos{display:flex;gap:10px}
 #worlds button{white-space:nowrap;display:inline-flex;align-items:center;gap:8px}#worlds .short{display:none}@media (max-width:980px){#worlds .long{display:none}#worlds .short{display:inline}}
 .wd{width:12px;height:12px;border-radius:50%;display:block}
 #cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:12px}.card{background:rgba(255,255,255,.06);border-radius:16px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:8px}.card canvas{width:100%;height:auto;border-radius:10px}
 .ov{position:fixed;inset:0;z-index:7;background:rgba(10,6,32,.78);display:flex;align-items:center;justify-content:center;padding:12px}.sheet{position:relative;background:var(--panel);border-radius:24px;padding:20px;max-width:760px;width:100%;max-height:92vh;overflow:auto;text-align:center}.sheet h2{margin:0 0 6px;font-size:22px}.sheet .sub{margin:0 auto 12px;color:var(--dim);max-width:52ch}.sheet img{max-width:100%;max-height:50vh;width:auto;height:auto;border-radius:14px;border:2px solid #FFE8A366}.sheet .x{position:absolute;top:8px;right:8px}.nav{display:flex;align-items:center;justify-content:center;gap:16px}#hDots{display:flex;gap:8px}#hDots i{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.25)}#hDots i.on{background:var(--accent);width:24px;border-radius:5px}
 .rip{position:fixed}
+#band{display:flex;gap:5px;margin-left:auto;padding:8px 10px;border-radius:20px;background:rgba(27,19,64,.78)}#band i{width:14px;height:14px;border-radius:5px;background:rgba(255,255,255,.14);display:block;transition:all .2s}#band i.on{background:var(--c);box-shadow:0 0 10px var(--c)}
+#combos-wrap{margin-left:0!important}
+.goals{grid-column:1/-1;text-align:left;margin-top:6px}.goals h3{margin:6px 0;font-size:16px}.goal{display:grid;gap:2px;background:rgba(255,255,255,.06);border-radius:12px;padding:8px 12px;margin-bottom:6px;position:relative;overflow:hidden}.goal span{color:var(--dim);font-size:13px}.goal em{display:block;height:4px;border-radius:2px;background:rgba(255,255,255,.12);position:relative}.goal em::after{content:"";position:absolute;inset:0;width:var(--p);background:var(--accent);border-radius:2px}.goal.done{outline:1.5px solid var(--accent)}
 #beat{width:10px;height:10px;border-radius:50%;background:#FF7AA8;display:block}
 button.ic{width:44px;padding:0;display:grid;place-items:center}
 svg{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}svg .fill{fill:currentColor;stroke:none}
@@ -77,6 +83,7 @@ button.ic svg{width:24px;height:24px}button.ic .off{display:none}button.ic.off .
 <button id="mute" class="ic" aria-label="Pause the music" title="Pause / resume" aria-pressed="false"><svg class="on" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z" class="fill"/><path d="M17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11"/></svg><svg class="off" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z" class="fill"/><path d="M17 9l5 6M22 9l-5 6"/></svg></button>
 <button id="bookBtn" class="ic" aria-label="Combo book" title="Combo book"><svg viewBox="0 0 24 24"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg></button>
 <button id="helpBtn" class="ic" aria-label="How to play" title="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8M12 17.2v.3"/></svg></button>
+<div id="band" aria-label="Band: layers playing"></div>
 <div id="combos-wrap"><span class="lbl">Secret combos</span><div id="combos" aria-label="Secret combos: a dot lights up for each matching singer on stage"></div></div><i id="beat" aria-hidden="true"></i></div>
 <div id="tip">Drag a singer up onto the stage. Tap it to mute, hold to solo, drag it off to remove. Find the secret combos!</div>
 <div id="toast">Secret combo found!</div>

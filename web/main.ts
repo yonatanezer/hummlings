@@ -34,10 +34,16 @@ const placedAnim = new Map<string, { since: number; from: { x: number; y: number
 let drags: { id: string; x: number; y: number }[] = [];
 let returning: { id: string; since: number; from: { x: number; y: number } }[] = [];
 let celebration: { comboId: string; creatureIds: string[]; startBeat: number } | null = null;
+interface Particle { x: number; y: number; vx: number; vy: number; t: number; life: number; kind: 'note' | 'star' | 'spark'; color: string; size: number }
+const particles: Particle[] = [];
+let lastBeat = 0;
+const spawn = (p: Particle) => { if (particles.length < 160) particles.push(p); };
 const ripples: { x: number; y: number; t: number }[] = [];
 let ready = false;
 let hint = true;
-const found = new Set<string>();
+const store = { get: (k: string): string[] => { try { return JSON.parse(localStorage.getItem(k) ?? '[]') as string[]; } catch { return []; } }, set: (k: string, v: string[]) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } } };
+const found = new Set<string>(store.get('hum.combos'));
+const stickers = new Set<string>(store.get('hum.goals'));
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function resize() {
@@ -93,9 +99,10 @@ function badge(x: number, y: number, r: number, muted: boolean) {
 }
 
 function poseIndex(cr: Creature, beat: number, t: number, muted: boolean): number {
-  if (muted) return 3;
-  if (blinkOpen(t + (hash(cr.id) % 3000), hash(cr.id)) < 0.5) return 2;
-  return !reduceMotion && onsetPulse(cr.onsets, beat) > 0.3 ? 1 : 0;
+  if (muted) return 9;
+  const sway = reduceMotion ? 1 : Math.sin((t + (hash(cr.id) % 1000)) / 170) > 0.35 ? 0 : Math.sin((t + (hash(cr.id) % 1000)) / 170) < -0.35 ? 2 : 1;
+  const state = blinkOpen(t + (hash(cr.id) % 3000), hash(cr.id)) < 0.5 ? 2 : !reduceMotion && onsetPulse(cr.onsets, beat) > 0.3 ? 1 : 0;
+  return state * 3 + sway;
 }
 
 function sprite(cr: Creature, pose: number, x: number, y: number, S: number, o: { sx?: number; sy?: number; lift?: number; tilt?: number; alpha?: number; grey?: boolean }) {
@@ -109,6 +116,48 @@ function sprite(cr: Creature, pose: number, x: number, y: number, S: number, o: 
   ctx.rotate(o.tilt ?? 0);
   ctx.scale((o.sx ?? 1) * k, (o.sy ?? 1) * k);
   ctx.drawImage(atlas, pose * CELL_W, i * CELL_H, CELL_W, CELL_H, -FEET_X, -FEET_Y, CELL_W, CELL_H);
+  ctx.restore();
+}
+
+function drawParticles(t: number) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i]!, k = (t - p.t) / p.life;
+    if (k >= 1) { particles.splice(i, 1); continue; }
+    const x = p.x + p.vx * (t - p.t) / 1000 + (p.kind === 'note' ? Math.sin(k * 9) * 6 : 0), y = p.y + p.vy * (t - p.t) / 1000 + (p.kind === 'spark' ? 200 * ((t - p.t) / 1000) ** 2 : 0);
+    ctx.save(); ctx.globalAlpha = Math.max(0, 1 - k * k); ctx.fillStyle = p.color; ctx.strokeStyle = p.color; ctx.translate(x, y);
+    if (p.kind === 'note') {
+      ctx.rotate(-0.3); ctx.beginPath(); ctx.ellipse(0, 0, p.size * 0.5, p.size * 0.36, 0, 0, 7); ctx.fill();
+      ctx.lineWidth = Math.max(1.5, p.size * 0.12); ctx.beginPath(); ctx.moveTo(p.size * 0.46, 0); ctx.lineTo(p.size * 0.46, -p.size * 1.3); ctx.quadraticCurveTo(p.size * 0.9, -p.size, p.size * 0.9, -p.size * 0.6); ctx.stroke();
+    } else if (p.kind === 'star') {
+      ctx.rotate(k * 3); ctx.beginPath();
+      for (let j = 0; j < 10; j++) { const a = -Math.PI / 2 + (j * Math.PI) / 5, rr = j % 2 ? p.size * 0.35 : p.size; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+      ctx.fill();
+    } else { ctx.beginPath(); ctx.arc(0, 0, p.size * (1 - k * 0.5), 0, 7); ctx.fill(); }
+    ctx.restore();
+  }
+}
+
+function burst(x: number, y: number, colors: string[], n: number, kind: 'star' | 'spark', t: number, speed = 160) {
+  for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 + rnd(i + x) * 0.6, sp = speed * (0.5 + rnd(i + y)); spawn({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t, life: 700 + rnd(i) * 500, kind, color: colors[i % colors.length]!, size: 4 + rnd(i + 3) * 5 }); }
+}
+
+function drawDecor(t: number, beat: number) {
+  const p = stage.palette;
+  ctx.save();
+  if (stage.id === 'pond') { // lily pads, ripples and fireflies
+    for (let i = 0; i < 4; i++) { const x = W * (0.12 + i * 0.26), y = layout.stageH * (0.88 + 0.03 * (i % 2)); ctx.fillStyle = '#2c6f6a99'; ctx.beginPath(); ctx.ellipse(x, y, 30, 8, 0, 0, 7); ctx.fill(); ctx.strokeStyle = '#7fe3c455'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(x, y, 30 + ((t / 40 + i * 20) % 30), 8 + ((t / 120 + i * 6) % 8), 0, 0, 7); ctx.stroke(); }
+    for (let i = 0; i < 14; i++) { const x = rnd(i + 40) * W + Math.sin(t / 1300 + i) * 18, y = layout.stageH * (0.15 + rnd(i + 70) * 0.55) + Math.cos(t / 1700 + i) * 12; ctx.fillStyle = `rgba(255,248,170,${0.25 + 0.5 * (0.5 + 0.5 * Math.sin(t / 400 + i * 2))})`; ctx.beginPath(); ctx.arc(x, y, 2.2, 0, 7); ctx.fill(); }
+  } else if (stage.id === 'fair') { // bunting and balloons
+    ctx.strokeStyle = '#ffffff55'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 18); ctx.quadraticCurveTo(W / 2, 70, W, 18); ctx.stroke();
+    const cols = ['#FF7AA8', '#FFC857', '#5FE3C0', '#7A8CFF'];
+    for (let i = 0; i < 14; i++) { const u = (i + 0.5) / 14, x = W * u, y = 18 + 52 * 4 * u * (1 - u) * 0.5 + 6; ctx.fillStyle = cols[i % 4] + 'cc'; ctx.beginPath(); ctx.moveTo(x - 9, y); ctx.lineTo(x + 9, y); ctx.lineTo(x, y + 20 + 2 * Math.sin(t / 300 + i)); ctx.fill(); }
+    for (let i = 0; i < 5; i++) { const x = W * (0.08 + i * 0.21) + Math.sin(t / 1500 + i) * 10, y = layout.stageH * (0.3 + 0.08 * Math.sin(t / 1100 + i * 2)); ctx.strokeStyle = '#ffffff44'; ctx.beginPath(); ctx.moveTo(x, y + 18); ctx.lineTo(x, y + 70); ctx.stroke(); ctx.fillStyle = cols[(i + 1) % 4] + 'aa'; ctx.beginPath(); ctx.ellipse(x, y, 13, 17, 0, 0, 7); ctx.fill(); }
+  } else { // drifting clouds
+    for (let i = 0; i < 5; i++) { const x = ((t / 40 + i * W * 0.25) % (W * 1.3)) - W * 0.15, y = layout.stageH * (0.12 + 0.12 * i % 0.5); ctx.fillStyle = '#d6f0ff22'; for (const [dx, dy, r] of [[0, 0, 22], [24, -8, 28], [52, 0, 22], [26, 8, 24]] as const) { ctx.beginPath(); ctx.arc(x + dx, y + dy, r, 0, 7); ctx.fill(); } }
+  }
+  // the floor rim breathes with the beat
+  ctx.strokeStyle = p.glow + Math.round(40 + 90 * Math.max(0, 1 - (beat % 1) * 3)).toString(16).padStart(2, '0'); ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.ellipse(W / 2, layout.stageH * 0.93 + H * 0.055, W * 0.55, H * 0.25, 0, 0, 7); ctx.stroke();
   ctx.restore();
 }
 
@@ -137,11 +186,25 @@ function frame(t: number) {
   if (!session) return;
   const beat = engine.state === 'running' ? engine.positionBeats() : 0;
   drawBackground(t);
+  drawDecor(t, beat);
   const st = session.state;
   const l = layout;
   let target = -1;
   if (drags.length) { const d = drags[drags.length - 1]!; let best = Infinity; l.spots.forEach((p, i) => { const dist = Math.hypot(d.x - p.x, d.y - (p.y - l.size * 0.5)); if (dist < l.size * 0.62 && dist < best) { best = dist; target = i; } }); }
   const placedCount = st.spots.filter(Boolean).length;
+  if (!reduceMotion && beat > lastBeat && beat - lastBeat < 2) {
+    for (const id of st.spots) {
+      if (!id || st.muted[id] || (st.solo && st.solo !== id)) continue;
+      const cr = stage.creatures.find((c) => c.id === id)!;
+      const loop = beat % 16, prev = lastBeat % 16;
+      if (cr.onsets.some((o) => (prev <= loop ? o > prev && o <= loop : o > prev || o <= loop)) && cr.layer !== 'drums' && rnd(Math.floor(beat * 4) + hash(id)) < 0.6) {
+        const sp = l.spots[st.spots.indexOf(id)]!;
+        spawn({ x: sp.x + (rnd(beat) - 0.5) * l.size * 0.5, y: sp.y - l.size * 1.0, vx: (rnd(beat + 3) - 0.5) * 30, vy: -55, t, life: 1500, kind: 'note', color: LAYER_COLORS[cr.layer], size: 8 + l.size * 0.04 });
+      }
+    }
+  }
+  if (celebration && Math.floor(beat) !== Math.floor(lastBeat) && beat - celebration.startBeat >= 0 && beat - celebration.startBeat < 32) burst(W * (0.15 + rnd(Math.floor(beat)) * 0.7), l.stageH * (0.12 + rnd(Math.floor(beat) + 5) * 0.4), ['#FF7AA8', '#FFC857', '#5FE3C0', '#7A8CFF', '#FFFFFF'], 18, 'spark', t, 200);
+  lastBeat = beat;
   l.spots.forEach((p, i) => {
     if (i === target) {
       const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, l.size * 0.55); g.addColorStop(0, '#ffffffaa'); g.addColorStop(0.5, stage.palette.glow + '66'); g.addColorStop(1, '#00000000');
@@ -198,7 +261,7 @@ function frame(t: number) {
   stage.creatures.forEach((cr, i) => {
     const p = l.slotPos[i]!;
     const on = st.spots.includes(cr.id) || drags.some((d) => d.id === cr.id);
-    sprite(cr, 0, p.x - scrollX, p.y + trayS * 0.55, trayS, { alpha: on ? 0.22 : 1, grey: on });
+    sprite(cr, 1, p.x - scrollX, p.y + trayS * 0.55, trayS, { alpha: on ? 0.22 : 1, grey: on });
   });
   if (l.scrollMax > 0) {
     const fade = (x0: number, x1: number, a0: string, a1: string) => { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, a0); g.addColorStop(1, a1); ctx.fillStyle = g; ctx.fillRect(Math.min(x0, x1), l.tray.y + 2, 28, l.tray.h); };
@@ -210,17 +273,24 @@ function frame(t: number) {
     const i = stage.creatures.findIndex((c) => c.id === r.id);
     const to = { x: l.slotPos[i]!.x - scrollX, y: l.slotPos[i]!.y + trayS * 0.55 };
     const k = Math.min(1, (t - r.since) / TUNING.hopMs), q = hop(r.from, to, k, l.size * 0.4);
-    sprite(stage.creatures[i]!, 0, q.x, q.y, l.size * (1 - 0.25 * k), {});
+    sprite(stage.creatures[i]!, 1, q.x, q.y, l.size * (1 - 0.25 * k), {});
   }
   returning = returning.filter((r) => t - r.since < TUNING.hopMs + 40);
-  for (const d of drags) { const cr = stage.creatures.find((c) => c.id === d.id)!; sprite(cr, 1, d.x, d.y + l.size * 0.5, l.size * TUNING.dragLift, { tilt: 0.06 }); }
+  for (const d of drags) { const cr = stage.creatures.find((c) => c.id === d.id)!; sprite(cr, 4, d.x, d.y + l.size * 0.5, l.size * TUNING.dragLift, { tilt: 0.06 }); }
   if (hint && ready && drags.length === 0 && st.spots.every((s) => !s)) {
     const k = (t % 4000) / 4000, from = { x: l.slotPos[0]!.x - scrollX, y: l.slotPos[0]!.y }, to = { x: l.spots[2]!.x, y: l.spots[2]!.y - l.size * 0.4 };
     const m = Math.min(1, Math.max(0, (k - 0.15) / 0.55)), e = m * m * (3 - 2 * m);
     const x = from.x + (to.x - from.x) * e, y = from.y + (to.y - from.y) * e - Math.sin(e * Math.PI) * l.size * 0.25;
     const fa = k < 0.08 ? k / 0.08 : k > 0.88 ? (1 - k) / 0.12 : 1;
-    ctx.globalAlpha = fa; if (m > 0) sprite(stage.creatures[0]!, 1, x, y + l.size * 0.45, l.size * 0.9, { alpha: 0.85 });
+    ctx.globalAlpha = fa; if (m > 0) sprite(stage.creatures[0]!, 4, x, y + l.size * 0.45, l.size * 0.9, { alpha: 0.85 });
     ctx.fillStyle = '#ffffffe6'; ctx.strokeStyle = '#FFC857'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, 24, 0, 7); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  drawParticles(t);
+  // banner for a found combo
+  if (celebration && beat - celebration.startBeat >= 0 && beat - celebration.startBeat < 6) {
+    const k = beat - celebration.startBeat, sc = Math.min(1, k * 2) * (1 + 0.05 * Math.sin(k * 6));
+    ctx.save(); ctx.translate(W / 2, layout.stageH * 0.3); ctx.scale(sc, sc); ctx.globalAlpha = Math.min(1, (6 - k) / 1.5);
+    ctx.font = '800 38px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 8; ctx.strokeStyle = '#1B1340'; ctx.strokeText('SECRET COMBO!', 0, 0); ctx.fillStyle = '#FFE066'; ctx.fillText('SECRET COMBO!', 0, 0); ctx.restore();
   }
   for (let i = ripples.length - 1; i >= 0; i--) {
     const r = ripples[i]!, k = (t - r.t) / 420;
@@ -233,12 +303,19 @@ function frame(t: number) {
 let lastHud = '';
 let lastTip = -1;
 const TIPS = ['Drag a singer from the tray up onto a glowing spot.', 'Nice! Add more singers. They always sound good together.', 'Tap a singer to mute it. Hold it to hear it solo. Drag it off to remove.', ''];
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
+function toast(msg: string) { const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600); }
+const LAYER_ORDER = ['drums', 'bass', 'melody', 'voice'] as const;
+let lastBand = '';
 function updateHud() {
   if (!session) return;
   const n = session.state.spots.filter(Boolean).length;
   const tipIdx = n === 0 ? 0 : n < 3 ? 1 : n < 5 ? 2 : 3;
   if (tipIdx !== lastTip) { lastTip = tipIdx; $('tip').textContent = TIPS[tipIdx]!; $('tip').classList.toggle('hide', tipIdx === 3); }
   $('beat').style.transform = `scale(${1 + 0.6 * Math.max(0, 1 - ((engine.positionBeats() % 1) * 4))})`;
+  const live = new Set(session.state.solo ? [session.state.solo] : session.state.spots.filter((x): x is string => !!x && !session!.state.muted[x]));
+  const band = LAYER_ORDER.map((l) => (stage.creatures.some((c) => c.layer === l && live.has(c.id)) ? '1' : '0')).join('');
+  if (band !== lastBand) { lastBand = band; $('band').innerHTML = LAYER_ORDER.map((l, i) => `<i class="${band[i] === '1' ? 'on' : ''}" style="--c:${LAYER_COLORS[l]}" title="${l}"></i>`).join(''); }
   const html = stage.combos.map((c) => {
     const on = new Set(session!.state.spots.filter((x): x is string => !!x).filter((x) => !session!.state.muted[x]));
     const n = session!.state.solo ? 0 : c.creatureIds.filter((id) => on.has(id)).length;
@@ -262,6 +339,7 @@ function apply(ev: GestureEvent, t: number) {
       if (old && old !== ev.creatureId) back(old, layout.spots[ev.spot]!);
       placedAnim.set(ev.creatureId, { since: t, from: { x: ev.p.x, y: ev.p.y + layout.size * 0.6 } });
       engine.playSfx('pop', popRate(stage.key, ev.spot));
+      burst(layout.spots[ev.spot]!.x, layout.spots[ev.spot]!.y - layout.size * 0.3, [stage.palette.glow, '#FFFFFF', '#FF7AA8'], 10, 'star', t);
       s.dispatch({ kind: 'drop', creatureId: ev.creatureId, spot: ev.spot });
       if (hint) { hint = false; s.countIn = false; }
       break;
@@ -307,9 +385,10 @@ async function openStage(i: number) {
   await engine.init();
   await Promise.all([engine.loadStage(stage), loadAtlas(stage.id)]);
   session = new Session(stage, engine, {
-    onCelebration: (id, bar) => { const c = stage.combos.find((q) => q.id === id)!; celebration = { comboId: id, creatureIds: [...c.creatureIds], startBeat: bar * 4 }; found.add(id); engine.playSfx('combo'); $('toast').classList.add('show'); setTimeout(() => $('toast').classList.remove('show'), 2500); },
+    onCelebration: (id, bar) => { const c = stage.combos.find((q) => q.id === id)!; celebration = { comboId: id, creatureIds: [...c.creatureIds], startBeat: bar * 4 }; found.add(id); store.set('hum.combos', [...found]); engine.playSfx('combo'); toast('Secret combo found!'); },
     onCelebrationEnd: () => { celebration = null; },
-  }, [...found]);
+    onGoal: (key) => { stickers.add(key); store.set('hum.goals', [...stickers]); engine.playSfx('goal'); toast(`${(en as Record<string, string>)['goal.earned']} ${(en as Record<string, string>)['goal.' + key.split(':')[1]]}`); burst(W / 2, H * 0.3, ['#FFC857', '#FFFFFF', '#5FE3C0'], 16, 'star', performance.now(), 220); },
+  }, [...found], [...stickers]);
   session.countIn = true;
   session.start();
   ready = true;
@@ -352,6 +431,13 @@ function openBook() {
     if (f) { const b = document.createElement('button'); b.textContent = 'Replay show'; b.addEventListener('click', () => { $('book').classList.add('hide'); s.replayCombo(c.id); }); card.append(b); }
     cardsEl.append(card);
   });
+  const gs = document.createElement('div'); gs.className = 'goals';
+  gs.innerHTML = `<h3>${(en as Record<string, string>)['goal.title']}</h3>` + s.goals.progress(s.state, s.discoveredInStage).map((g) => {
+    const d = stickers.has(`${stage.id}:${g.id}`);
+    const name = (en as Record<string, string>)[`goal.${g.id}`], desc = (en as Record<string, string>)[`goal.${g.id}.desc`];
+    return `<div class="goal${d ? ' done' : ''}"><b>${d ? '★ ' : ''}${name}</b><span>${desc}</span><em style="--p:${d ? 100 : Math.round((g.n / g.total) * 100)}%"></em></div>`;
+  }).join('');
+  cardsEl.append(gs);
   $('book').classList.remove('hide');
 }
 $('bookBtn').addEventListener('click', openBook);

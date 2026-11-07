@@ -224,7 +224,7 @@ export function drawCreature(sk: SkiaApi, c: Canvas, cr: Creature, x: number, y:
 
   if (pose.glow > 0.01) c.drawCircle(0, -h * S * 0.5, S * 0.85, radialPaint(sk, 0, -h * S * 0.5, S * 0.85, ['#FFFFFF', color, '#00000000'], 0.45 * pose.glow));
 
-  const wave = pose.time > 0 ? Math.sin(pose.time / 170) : 0; // ears, tail, gills sway continuously
+  const wave = pose.time !== 0 ? Math.sin(pose.time / 170) : 0; // ears, tail, gills sway continuously
   drawBack(sk, c, cr, S, w, h, color, pose.arms * 0.7 + wave);
   for (const d of [-1, 1]) c.drawOval(oval(sk, d * w * S * 0.22, -S * 0.025, S * 0.085, S * 0.05), paint(sk, deep));
   const armSwing = pose.arms;
