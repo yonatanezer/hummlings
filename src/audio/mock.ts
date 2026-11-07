@@ -45,6 +45,8 @@ export class MockEngine implements AudioEngine {
   resume(): void { if (this.state === 'paused') this.state = 'running'; }
   stop(): void { this.state = 'idle'; if (this.timer) clearInterval(this.timer); }
   positionBeats(): number { return this.beats; }
+  sfx: { kind: string; rate: number }[] = [];
+  playSfx(kind: string, rate = 1): void { this.sfx.push({ kind, rate }); }
   setVolume(v: number): void { this.volume = v; }
   onInterrupted(cb: () => void): () => void { this.listeners.add(cb); return () => this.listeners.delete(cb); }
   interrupt(): void { this.pause(); this.listeners.forEach((l) => l()); }

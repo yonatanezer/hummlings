@@ -1,10 +1,13 @@
 import type { Stage } from './types';
 
 /** What should sound from a given bar on. Provided by the Session, applied by the engine at the bar boundary. */
+export type SfxKind = 'pickup' | 'pop' | 'mute' | 'unmute' | 'remove' | 'goal' | 'combo' | 'snare';
+
 export interface BarPlan {
   ids: string[]; // creature ids audible from this bar
   bonusFile: string | null; // combo bonus loop playing during this bar
   tick: 'off' | 'soft'; // beat tick (empty stage / first-run count)
+  fill: boolean; // a short drum fill on the last beat of the bar (end of a 4-bar loop with a fuller band)
 }
 
 export type BarProvider = (bar: number) => BarPlan;
@@ -28,6 +31,8 @@ export interface AudioEngine {
   stop(): void;
   /** Position in beats since start (float), compensated for output latency. Safe to call every frame. */
   positionBeats(): number;
+  /** Plays a short UI sound right now. `rate` re-pitches it (semitone ratio) so drops sound musical in the stage key. */
+  playSfx(kind: SfxKind, rate?: number): void;
   setVolume(v: number): void;
   readonly state: EngineState;
   /** Fires on interruption (call, other audio, headphones unplugged) or background. */

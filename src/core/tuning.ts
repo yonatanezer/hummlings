@@ -18,6 +18,8 @@ export const TUNING = {
   masterTrimDb: -6, // headroom before the limiter: six loops at -20 LUFS peak ~10 dB over the ceiling without it
   targetLufs: -20, // each loop is normalised to this loudness
   lufsTolerance: 1, // +/- LU allowed by the audit
+  sfxGain: 0.5, // UI sounds sit under the music
+  fillGain: 0.35, // drum fill at the end of a 4-bar loop
   tickGain: 0.12, // soft beat tick on an empty stage: audible but never annoying
   countInGain: 0.1, // first-run hi-hat count, softer than a tick
 

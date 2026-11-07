@@ -11,6 +11,7 @@ import fair from '../content/stages/2-fair.json';
 import clouds from '../content/stages/3-clouds.json';
 import { WebEngine } from './engine';
 import { en } from '../src/i18n/en';
+import { popRate } from '../src/core/sfx';
 
 const STAGES: Stage[] = [pond, fair, clouds].map((r) => validateStage(r).stage!);
 const NAMES = ['Moonlit Pond', 'Candy Fair', 'Sleepy Cloud Town'];
@@ -253,20 +254,21 @@ function apply(ev: GestureEvent, t: number) {
   const drop = (id: string) => (drags = drags.filter((d) => d.id !== id));
   const back = (id: string, from: { x: number; y: number }) => returning.push({ id, since: t, from });
   switch (ev.type) {
-    case 'pickup': drags = [...drags.filter((d) => d.id !== ev.creatureId), { id: ev.creatureId, x: ev.p.x, y: ev.p.y }]; break;
+    case 'pickup': engine.playSfx('pickup'); drags = [...drags.filter((d) => d.id !== ev.creatureId), { id: ev.creatureId, x: ev.p.x, y: ev.p.y }]; break;
     case 'drag': drags = drags.map((d) => (d.id === ev.creatureId ? { ...d, x: ev.p.x, y: ev.p.y } : d)); break;
     case 'drop': {
       drop(ev.creatureId);
       const old = s.state.spots[ev.spot];
       if (old && old !== ev.creatureId) back(old, layout.spots[ev.spot]!);
       placedAnim.set(ev.creatureId, { since: t, from: { x: ev.p.x, y: ev.p.y + layout.size * 0.6 } });
+      engine.playSfx('pop', popRate(stage.key, ev.spot));
       s.dispatch({ kind: 'drop', creatureId: ev.creatureId, spot: ev.spot });
       if (hint) { hint = false; s.countIn = false; }
       break;
     }
     case 'returnToTray': drop(ev.creatureId); back(ev.creatureId, { x: ev.p.x, y: ev.p.y + layout.size * 0.6 }); break;
-    case 'remove': drop(ev.creatureId); back(ev.creatureId, { x: ev.p.x, y: ev.p.y + layout.size * 0.6 }); s.dispatch({ kind: 'remove', creatureId: ev.creatureId }); break;
-    case 'tap': s.dispatch({ kind: 'mute', creatureId: ev.creatureId }); break;
+    case 'remove': engine.playSfx('remove'); drop(ev.creatureId); back(ev.creatureId, { x: ev.p.x, y: ev.p.y + layout.size * 0.6 }); s.dispatch({ kind: 'remove', creatureId: ev.creatureId }); break;
+    case 'tap': engine.playSfx(s.state.muted[ev.creatureId] ? 'unmute' : 'mute'); s.dispatch({ kind: 'mute', creatureId: ev.creatureId }); break;
     case 'longPress': s.dispatch({ kind: 'solo', creatureId: ev.creatureId }); break;
     case 'tapEmpty': s.dispatch({ kind: 'endSolo' }); break;
     case 'scroll': scrollX = ev.scrollX; break;
@@ -305,7 +307,7 @@ async function openStage(i: number) {
   await engine.init();
   await Promise.all([engine.loadStage(stage), loadAtlas(stage.id)]);
   session = new Session(stage, engine, {
-    onCelebration: (id, bar) => { const c = stage.combos.find((q) => q.id === id)!; celebration = { comboId: id, creatureIds: [...c.creatureIds], startBeat: bar * 4 }; found.add(id); $('toast').classList.add('show'); setTimeout(() => $('toast').classList.remove('show'), 2500); },
+    onCelebration: (id, bar) => { const c = stage.combos.find((q) => q.id === id)!; celebration = { comboId: id, creatureIds: [...c.creatureIds], startBeat: bar * 4 }; found.add(id); engine.playSfx('combo'); $('toast').classList.add('show'); setTimeout(() => $('toast').classList.remove('show'), 2500); },
     onCelebrationEnd: () => { celebration = null; },
   }, [...found]);
   session.countIn = true;

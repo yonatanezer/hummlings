@@ -53,3 +53,15 @@ describe('offline render', () => {
     expect(renderSong(stage, song, bank).samples).toEqual(renderSong(stage, song, bank).samples);
   });
 });
+
+import { popRate } from '../src/core/sfx';
+describe('drop pop pitch', () => {
+  it('rises with the spot and stays within a sensible rate range for every key', () => {
+    for (const key of [{ root: 'A', mode: 'minor' }, { root: 'C', mode: 'major' }, { root: 'D', mode: 'major' }] as const) {
+      const rates = [0, 1, 2, 3, 4, 5].map((s) => popRate(key, s));
+      for (let i = 1; i < rates.length; i++) expect(rates[i]!).toBeGreaterThan(rates[i - 1]!);
+      for (const r of rates) { expect(r).toBeGreaterThan(0.6); expect(r).toBeLessThan(2.1); }
+    }
+    expect(popRate({ root: 'A', mode: 'minor' }, 0)).toBeCloseTo(1, 5);
+  });
+});

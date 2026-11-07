@@ -31,6 +31,7 @@ async function main() {
   const pondStage = loadStages()[0]!;
   for (let i = 0; i < 7; i++) writeFileSync(`${OUT}/help/${i + 1}.png`, await renderPng(560, 308, (sk, c) => drawHelpStep(sk, c, pondStage, i, [2000, 2000, 2000, 1800, 1500, 3000, 1000][i]!, 560, 308), 1.5));
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', 'assets/sfx/tick.m4a', '-b:a', '96k', `${OUT}/audio/tick.mp3`]);
+  for (const k of ['pop', 'pickup', 'mute', 'unmute', 'remove', 'goal', 'combo', 'snare']) execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', `assets/sfx/${k}.m4a`, '-b:a', '96k', `${OUT}/audio/sfx_${k}.mp3`]);
   await build({ entryPoints: ['web/main.ts'], bundle: true, minify: true, format: 'iife', target: 'es2020', outfile: `${OUT}/game.js`, loader: { '.json': 'json' }, logLevel: 'warning' });
   writeFileSync(`${OUT}/index.html`, `<title>Hummlings Playground</title>
 <meta name="claude:viewport-fit-sides" content="cover">

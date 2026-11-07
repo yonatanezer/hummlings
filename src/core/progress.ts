@@ -8,6 +8,7 @@ export interface Progress {
   unlocked: boolean; // cached entitlement
   settings: Settings;
   firstDropDone: boolean;
+  goals: string[]; // earned stickers, `${stageId}:${goal}`
   helpSeen: boolean; // the how-to-play guide was opened at least once
 }
 
@@ -25,6 +26,7 @@ export const defaultProgress = (): Progress => ({
   unlocked: false,
   settings: { musicVolume: 0.8, haptics: true, reduceMotion: false, language: 'system' },
   firstDropDone: false,
+  goals: [],
   helpSeen: false,
 });
 
@@ -46,6 +48,7 @@ export function parseProgress(raw: unknown): Progress {
       language: s.language === 'en' || s.language === 'he' ? s.language : 'system',
     },
     firstDropDone: r.firstDropDone === true,
+    goals: Array.isArray(r.goals) ? r.goals.filter((x) => typeof x === 'string') : [],
     helpSeen: r.helpSeen === true,
   };
 }

@@ -1,4 +1,4 @@
-import type { AudioEngine, BarPlan, BarProvider, EngineState } from '../src/core/engine';
+import type { AudioEngine, BarPlan, BarProvider, EngineState, SfxKind } from '../src/core/engine';
 import { softClipCurve } from '../src/core/mix';
 import { TUNING, barSec, beatSec, masterTrim } from '../src/core/tuning';
 import type { Stage } from '../src/core/types';
@@ -15,6 +15,7 @@ export class WebEngine implements AudioEngine {
   private buffers = new Map<string, AudioBuffer>();
   private voices = new Map<string, { src: AudioBufferSourceNode; gain: GainNode }>();
   private tick: AudioBuffer | null = null;
+  private sfxBuf = new Map<string, AudioBuffer>();
   private fileOf = new Map<string, string>();
   private origin = 0;
   private nextBar = 0;
@@ -34,6 +35,7 @@ export class WebEngine implements AudioEngine {
     shaper.connect(this.ctx.destination);
     this.setVolume(this.volume);
     this.tick = await this.load('audio/tick.mp3');
+    for (const k of ['pop', 'pickup', 'mute', 'unmute', 'remove', 'goal', 'combo', 'snare']) this.sfxBuf.set(k, await this.load(`audio/sfx_${k}.mp3`));
   }
   private async load(url: string): Promise<AudioBuffer> {
     const res = await fetch(this.base + url);
@@ -89,6 +91,7 @@ export class WebEngine implements AudioEngine {
     };
     for (const id of plan.ids) launch(id, this.fileOf.get(id) ?? '');
     if (plan.bonusFile) launch(BONUS, plan.bonusFile);
+    if (plan.fill) for (let k = 0; k < 4; k++) this.sfxAt('snare', t + (3.5 + k * 0.125) * beatSec(this.bpm), 1, TUNING.fillGain * (0.6 + 0.13 * k));
     if (plan.tick === 'soft' && this.tick) {
       for (let k = 0; k < TUNING.beatsPerBar; k++) {
         const src = ctx.createBufferSource(), g = ctx.createGain();
@@ -97,6 +100,15 @@ export class WebEngine implements AudioEngine {
       }
     }
   }
+  private sfxAt(kind: SfxKind, when: number, rate: number, gain: number): void {
+    const buf = this.sfxBuf.get(kind);
+    if (!this.ctx || !buf) return;
+    const src = this.ctx.createBufferSource(), g = this.ctx.createGain();
+    src.buffer = buf; src.playbackRate.value = rate; g.gain.value = gain;
+    src.connect(g); g.connect(this.master);
+    src.start(when);
+  }
+  playSfx(kind: SfxKind, rate = 1): void { this.sfxAt(kind, 0, rate, TUNING.sfxGain); }
   pause(): void { if (this.state === 'running') { this.state = 'paused'; void this.ctx.suspend(); } }
   resume(): void { if (this.state === 'paused') { this.state = 'running'; void this.ctx.resume(); } }
   stop(): void {

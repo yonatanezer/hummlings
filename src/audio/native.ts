@@ -1,11 +1,11 @@
 import { AudioContext, AudioManager } from 'react-native-audio-api';
 import type { AudioBuffer, AudioBufferSourceNode, GainNode } from 'react-native-audio-api';
-import type { AudioEngine, BarPlan, BarProvider, EngineState } from '../core/engine';
+import type { AudioEngine, BarPlan, BarProvider, EngineState, SfxKind } from '../core/engine';
 import { softClipCurve } from '../core/mix';
 import { TUNING, barSec, beatSec, masterTrim } from '../core/tuning';
 import type { Stage } from '../core/types';
 import { LOOP_ASSETS } from '../content/loopAssets';
-import { SFX_TICK, SFX_TICK_ACCENT } from '../content/sfxAssets';
+import { SFX_ASSETS, SFX_TICK, SFX_TICK_ACCENT } from '../content/sfxAssets';
 
 const LOOKAHEAD_S = 0.15; // schedule bars this far ahead of the audio clock
 const TIMER_MS = 25;
@@ -31,6 +31,7 @@ export class NativeEngine implements AudioEngine {
   private volume = 0.8;
   private interrupted = new Set<() => void>();
   private fileIndex = new Map<string, string>(); // creature id -> loop file
+  private sfxBuf = new Map<string, AudioBuffer>();
 
   async init(): Promise<void> {
     if (this.ctx) return;
@@ -52,6 +53,7 @@ export class NativeEngine implements AudioEngine {
     this.setVolume(this.volume);
     this.tickBuf = await ctx.decodeAudioData(SFX_TICK);
     this.tickAccentBuf = await ctx.decodeAudioData(SFX_TICK_ACCENT);
+    for (const [k, asset] of Object.entries(SFX_ASSETS)) this.sfxBuf.set(k, await ctx.decodeAudioData(asset));
   }
 
   async loadStage(stage: Stage): Promise<void> {
@@ -132,6 +134,7 @@ export class NativeEngine implements AudioEngine {
     };
     for (const id of plan.ids) launch(id, this.fileOf(id));
     if (plan.bonusFile) launch(BONUS, plan.bonusFile);
+    if (plan.fill) for (let k = 0; k < 4; k++) this.sfxAt('snare', t + (3.5 + k * 0.125) * beatSec(this.bpm), 1, TUNING.fillGain * (0.6 + 0.13 * k));
     if (plan.tick === 'soft') {
       for (let k = 0; k < TUNING.beatsPerBar; k++) {
         const src = ctx.createBufferSource();
@@ -146,6 +149,16 @@ export class NativeEngine implements AudioEngine {
   }
 
   private fileOf(id: string): string { return this.fileIndex.get(id) ?? ''; }
+
+  private sfxAt(kind: SfxKind, when: number, rate: number, gain: number): void {
+    const ctx = this.ctx, buf = this.sfxBuf.get(kind);
+    if (!ctx || !buf || !this.master) return;
+    const src = ctx.createBufferSource(), g = ctx.createGain();
+    src.buffer = buf; src.playbackRate.value = rate; g.gain.value = gain;
+    src.connect(g); g.connect(this.master);
+    src.start(when);
+  }
+  playSfx(kind: SfxKind, rate = 1): void { this.sfxAt(kind, 0, rate, TUNING.sfxGain); }
 
   pause(): void { if (this.state === 'running') { this.state = 'paused'; void this.ctx?.suspend(); } }
   resume(): void { if (this.state === 'paused') { this.state = 'running'; void this.ctx?.resume(); } }

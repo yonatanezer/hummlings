@@ -2,6 +2,7 @@ import { TUNING } from './tuning';
 import { initialTracker, matchingCombos, stepTracker, type TrackerState } from './combos';
 import type { AudioEngine, BarPlan } from './engine';
 import { audibleIds, emptyStage, onStage, reduceStage, type StageAction, type StageState } from './stageState';
+import { GoalTracker } from './goals';
 import { Recorder, maxBars, type Song, type TimelineEvent } from './timeline';
 import type { Stage } from './types';
 
@@ -11,6 +12,7 @@ export interface SessionEvents {
   onCelebrationEnd?: () => void;
   onRecordingLimit?: () => void; // auto-stopped at 3 minutes
   onBar?: (bar: number) => void;
+  onGoal?: (goalKey: string) => void; // a sticker was earned
 }
 
 /**
@@ -27,9 +29,12 @@ export class Session {
   private replay: string | null = null; // combo book replay waiting for the next loop boundary
   countIn = false; // first-run soft hi-hat count
   private discovered = new Set<string>();
-  constructor(readonly stage: Stage, readonly engine: AudioEngine, private events: SessionEvents = {}, discovered: Iterable<string> = []) {
+  readonly goals: GoalTracker;
+  constructor(readonly stage: Stage, readonly engine: AudioEngine, private events: SessionEvents = {}, discovered: Iterable<string> = [], doneGoals: Iterable<string> = []) {
     for (const d of discovered) this.discovered.add(d);
+    this.goals = new GoalTracker(stage, doneGoals);
   }
+  get discoveredInStage(): number { return this.stage.combos.filter((c) => this.discovered.has(c.id)).length; }
 
   setEvents(e: SessionEvents): void { this.events = e; }
   isDiscovered = (comboId: string): boolean => this.discovered.has(comboId);
@@ -39,6 +44,7 @@ export class Session {
   start(): void { this.engine.start(this.stage.bpm, (bar) => this.plan(bar)); }
 
   dispatch(a: StageAction): void {
+    this.goals.onAction(a, this.state);
     const next = reduceStage(this.state, a);
     if (next === this.state) return;
     this.state = next;
@@ -76,12 +82,14 @@ export class Session {
       this.events.onRecordingLimit?.();
     }
     this.prevState = this.state;
+    for (const g of this.goals.check(this.state, this.discoveredInStage)) this.events.onGoal?.(g);
     this.events.onBar?.(bar);
     const ids = audibleIds(this.state);
     return {
       ids,
       bonusFile: this.celebrating?.bonusFile ?? null,
       tick: onStage(this.state).length === 0 || this.countIn ? 'soft' : 'off',
+      fill: bar % TUNING.loopBars === TUNING.loopBars - 1 && this.layerCount(ids) >= 3,
     };
   }
 
@@ -92,6 +100,10 @@ export class Session {
     this.dispatch({ kind: 'clear' });
     combo.creatureIds.forEach((id, i) => this.dispatch({ kind: 'drop', creatureId: id, spot: i + 1 }));
     this.replay = comboId;
+  }
+
+  private layerCount(ids: string[]): number {
+    return new Set(ids.map((id) => this.stage.creatures.find((c) => c.id === id)?.layer)).size;
   }
 
   startRecording(): void {
@@ -119,6 +131,8 @@ export function songProvider(stage: Stage, song: Song): (bar: number) => BarPlan
       }
     }
     if (bonus && bar - bonus.start >= 8) bonus = null;
-    return { ids: bar < song.bars ? audibleIds(state) : [], bonusFile: bar < song.bars ? bonus?.file ?? null : null, tick: 'off' };
+    const ids = bar < song.bars ? audibleIds(state) : [];
+    const layers = new Set(ids.map((id) => stage.creatures.find((c) => c.id === id)?.layer)).size;
+    return { ids, bonusFile: bar < song.bars ? bonus?.file ?? null : null, tick: 'off', fill: bar % 4 === 3 && layers >= 3 };
   };
 }

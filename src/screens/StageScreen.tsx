@@ -5,6 +5,7 @@ import { getEngine } from '../audio';
 import { GestureTracker, type GestureEvent, type World } from '../core/gestures';
 import { computeLayout } from '../core/layout';
 import { Session } from '../core/session';
+import { popRate } from '../core/sfx';
 import { audibleIds } from '../core/stageState';
 import { autoName } from '../core/timeline';
 import { TUNING } from '../core/tuning';
@@ -38,7 +39,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
   const layout = useMemo(() => computeLayout(width, height, undefined, padX), [width, height, padX]);
   const sv = useSceneValues(stage, layout, reduceMotion);
   const engine = useMemo(() => getEngine(), []);
-  const [session] = useState(() => new Session(stage, engine, {}, progress.discoveredCombos));
+  const [session] = useState(() => new Session(stage, engine, {}, progress.discoveredCombos, progress.goals));
   const tracker = useRef(new GestureTracker()).current;
   const anim = useRef(new Map<string, { since: number; from: { x: number; y: number } }>()).current;
   const [ready, setReady] = useState(false);
@@ -87,7 +88,9 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
         sv.celebration.value = { celebrationId: combo.celebrationId, creatureIds: combo.creatureIds as unknown as string[], startBeat: bar * TUNING.beatsPerBar };
         discover(id);
         hapticSuccess();
+        engine.playSfx('combo');
       },
+      onGoal: (key) => { engine.playSfx('goal'); update((p) => (p.goals.includes(key) ? p : { ...p, goals: [...p.goals, key] })); },
       onCelebrationEnd: () => { sv.celebration.value = null; },
       onRecordingLimit: () => stopRecording(),
       onBar: (bar) => { if (session.recorder) setRecBars(bar - session.recorder.startBar + 1); },
@@ -145,6 +148,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
     switch (ev.type) {
       case 'pickup':
         hapticLight();
+        engine.playSfx('pickup');
         sv.drags.value = [...withoutDrag(ev.creatureId), { id: ev.creatureId, x: ev.p.x, y: ev.p.y }];
         break;
       case 'drag':
@@ -156,6 +160,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
         if (old && old !== ev.creatureId) goBack(old, l.spots[ev.spot]!);
         anim.set(ev.creatureId, { since: now(), from: { x: ev.p.x, y: ev.p.y + l.size * 0.6 } });
         hapticMedium();
+        engine.playSfx('pop', popRate(stage.key, ev.spot));
         session.dispatch({ kind: 'drop', creatureId: ev.creatureId, spot: ev.spot });
         if (!progressRef.current.firstDropDone) {
           session.countIn = false;
@@ -173,11 +178,13 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
         sv.drags.value = withoutDrag(ev.creatureId);
         goBack(ev.creatureId, { x: ev.p.x, y: ev.p.y + l.size * 0.6 });
         session.dispatch({ kind: 'remove', creatureId: ev.creatureId });
+        engine.playSfx('remove');
         hapticLight();
         syncScene();
         break;
       case 'tap':
         hapticLight();
+        engine.playSfx(session.state.muted[ev.creatureId] ? 'unmute' : 'mute');
         session.dispatch({ kind: 'mute', creatureId: ev.creatureId });
         syncScene();
         break;

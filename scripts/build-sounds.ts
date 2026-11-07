@@ -69,4 +69,5 @@ if (!only || only === 'pond') {
   }
 }
 if (!existsSync(`${OUT}/pond_drums_1.m4a`)) throw new Error('no output');
+execFileSync('npx', ['tsx', 'scripts/build-sfx.ts'], { stdio: 'inherit' });
 console.log('done');
