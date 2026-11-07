@@ -113,7 +113,7 @@ function sprite(cr: Creature, pose: number, x: number, y: number, S: number, o: 
   if (o.level !== undefined && o.level < 0.995) { // volume as a fill level: colour up to the level, drained grey above it
     const lineY = y - (o.lift ?? 0) - o.level * BODY_H[cr.shape.body] * S;
     ctx.save(); ctx.beginPath(); ctx.rect(x - S * 1.6, y - S * 3.2, S * 3.2, lineY - (y - S * 3.2)); ctx.clip();
-    sprite(cr, pose, x, y, S, { ...o, level: 1, alpha: (o.alpha ?? 1) * 0.72, grey: true });
+    sprite(cr, pose, x, y, S, { ...o, level: 1, alpha: (o.alpha ?? 1) * 0.3, grey: true });
     ctx.restore();
     ctx.save(); ctx.beginPath(); ctx.rect(x - S * 1.6, lineY, S * 3.2, y + S - lineY); ctx.clip();
     sprite(cr, pose, x, y, S, { ...o, level: 1 });

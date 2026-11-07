@@ -244,7 +244,7 @@ export function drawCreature(sk: SkiaApi, c: Canvas, cr: Creature, x: number, y:
     const top = y - S * 3.2;
     c.save();
     c.clipRect(sk.XYWHRect(x - S * 1.6, top, S * 3.2, lineY - top), 1, true);
-    drawCreature(sk, c, cr, x, y, S, { ...pose, level: 1, sat: pose.sat * 0.08, alpha: pose.alpha * 0.72 });
+    drawCreature(sk, c, cr, x, y, S, { ...pose, level: 1, sat: pose.sat * 0.08, alpha: pose.alpha * 0.3 });
     c.restore();
     c.save();
     c.clipRect(sk.XYWHRect(x - S * 1.6, lineY, S * 3.2, y + S - lineY), 1, true);

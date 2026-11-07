@@ -90,8 +90,11 @@ export function reduceStage(s: StageState, a: StageAction): StageState {
   }
 }
 
+/** A singer turned all the way down counts as silent (like a mute) for the mix, combos and stickers. */
+export const SILENT_LEVEL = 0.03;
+
 /** Ids that make sound at a bar boundary. */
 export function audibleIds(s: StageState): string[] {
   if (s.solo) return isOnStage(s, s.solo) ? [s.solo] : [];
-  return onStage(s).filter((id) => !s.muted[id]);
+  return onStage(s).filter((id) => !s.muted[id] && (s.volume[id] ?? 1) >= SILENT_LEVEL);
 }

@@ -52,3 +52,14 @@ describe('per-creature volume', () => {
     expect(s.volume['a']).toBeUndefined();
   });
 });
+
+describe('silent level', () => {
+  it('a singer turned all the way down is not audible (combos and stickers ignore it too)', () => {
+    let s = r(emptyStage(), { kind: 'drop', creatureId: 'a', spot: 0 });
+    s = r(s, { kind: 'drop', creatureId: 'b', spot: 1 });
+    s = r(s, { kind: 'volume', creatureId: 'a', value: 0 });
+    expect(audibleIds(s)).toEqual(['b']);
+    s = r(s, { kind: 'volume', creatureId: 'a', value: 0.2 });
+    expect(audibleIds(s)).toEqual(['a', 'b']);
+  });
+});
