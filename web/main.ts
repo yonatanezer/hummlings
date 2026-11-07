@@ -59,7 +59,7 @@ function resize() {
   W = r.width; H = r.height;
   canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  layout = computeLayout(W, H, undefined, 12);
+  layout = computeLayout(W, H, undefined, 12, $('bar').offsetHeight + 4);
 }
 addEventListener('resize', () => { resize(); $('rotate').classList.toggle('hide', innerWidth >= innerHeight); });
 
@@ -343,15 +343,18 @@ function frame(t: number) {
   }
   for (let g = 0; g < 4; g++) {
     const a = l.slotPos[g * per]!, layer = stage.creatures[g * per]!.layer;
-    const gx = Math.max(a.x - l.slot * 0.45 - scrollX, 0) + 18, gy = l.tray.y + l.tray.h * 0.08 + 16;
+    // caption sits at the group's left edge (sticky while scrolling) but never leaves its own group, so two captions never overlap
+    const b2 = l.slotPos[g * per + per - 1]!, gL = a.x - l.slot * 0.55 - scrollX, gR = b2.x + l.slot * 0.55 - scrollX;
+    const cap = 112, gx = Math.min(Math.max(gL + 22, 22), gR - cap), gy = l.tray.y + 20;
+    if (gR - gL < cap + 10 || gR < 0 || gL > W) continue;
     trayGlyph(layer, gx, gy, LAYER_COLORS[layer]);
     ctx.font = '700 14px system-ui, sans-serif'; ctx.textBaseline = 'middle'; ctx.fillStyle = LAYER_COLORS[layer]; ctx.fillText(LAYER_NAMES[layer].toUpperCase(), gx + 20, gy);
   }
-  const trayS = Math.min(l.slot * 0.85, l.tray.h * 0.56);
+  const trayS = Math.min(l.slot * 0.85, (l.tray.h - 36) / 1.4); // leaves a caption row above the tallest singer
   stage.creatures.forEach((cr, i) => {
     const p = l.slotPos[i]!;
     const on = st.spots.includes(cr.id) || drags.some((d) => d.id === cr.id);
-    sprite(cr, 1, p.x - scrollX, p.y + trayS * 0.55, trayS, { alpha: on ? 0.22 : 1, grey: on });
+    sprite(cr, 1, p.x - scrollX, l.tray.y + l.tray.h - 10, trayS, { alpha: on ? 0.22 : 1, grey: on });
   });
   if (l.scrollMax > 0) {
     const fade = (x0: number, x1: number, a0: string, a1: string) => { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, a0); g.addColorStop(1, a1); ctx.fillStyle = g; ctx.fillRect(Math.min(x0, x1), l.tray.y + 2, 28, l.tray.h); };
@@ -368,7 +371,7 @@ function frame(t: number) {
   }
   for (const r of returning) {
     const i = stage.creatures.findIndex((c) => c.id === r.id);
-    const to = { x: l.slotPos[i]!.x - scrollX, y: l.slotPos[i]!.y + trayS * 0.55 + trayDy };
+    const to = { x: l.slotPos[i]!.x - scrollX, y: l.tray.y + l.tray.h - 10 + trayDy };
     const k = Math.min(1, (t - r.since) / TUNING.hopMs), q = hop(r.from, to, k, l.size * 0.4);
     sprite(stage.creatures[i]!, 1, q.x, q.y, l.size * (1 - 0.25 * k), {});
   }

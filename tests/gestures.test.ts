@@ -165,3 +165,14 @@ describe('hide and show the singer menu', () => {
     expect(g.move(1, { x: slot.x, y: slot.y - 40 }, 10, world())[0]).toMatchObject({ type: 'pickup' });
   });
 });
+
+describe('layout with a top overlay', () => {
+  it('shrinks singers so the tallest one stays below the toolbar, never under 56 pt', () => {
+    const plain = computeLayout(844, 390);
+    const withBar = computeLayout(844, 390, undefined, 0, 66);
+    expect(withBar.size).toBeLessThan(plain.size);
+    expect(withBar.size).toBeGreaterThanOrEqual(56);
+    const backRowY = Math.min(...withBar.spots.map((s) => s.y));
+    expect(backRowY - withBar.size * 1.5).toBeGreaterThanOrEqual(66 - 1);
+  });
+});

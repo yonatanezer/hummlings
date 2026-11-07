@@ -203,14 +203,14 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
     c.drawRRect(sk.RRectXY(sk.XYWHRect(a.x - l.slot * 0.55 - s.scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84), 14, 14), paint(sk, LAYER_COLORS[layer], 0.16));
     layerGlyph(sk, c, layer, Math.max(a.x - l.slot * 0.55 - s.scrollX, 0) + 16, l.tray.y + l.tray.h * 0.08 + 14, LAYER_COLORS[layer]);
   });
-  const trayS = Math.min(l.slot * 0.72, l.tray.h * 0.46);
+  const trayS = Math.min(l.slot * 0.72, (l.tray.h - 36) / 1.4); // leaves a caption row above the tallest singer
   stage.creatures.forEach((cr, i) => {
     const p = l.slotPos[i]!;
     const standing = s.placed.some((q) => q.id === cr.id);
     const carried = s.drags.some((d) => d.id === cr.id);
     const base: Partial<Pose> = standing || carried ? { sat: 0, alpha: 0.22, mouth: 0, eyes: 1 } : { mouth: 0 };
     const pose = { ...IDLE_POSE, ...base, sx: 1, sy: 1 + (standing ? 0 : 0.012 * (s.reduceMotion ? 0.5 : breath(s.timeMs, i))) };
-    drawCreature(sk, c, cr, p.x - s.scrollX, p.y + trayS * 0.55, trayS, pose);
+    drawCreature(sk, c, cr, p.x - s.scrollX, l.tray.y + l.tray.h - 10, trayS, pose);
   });
   c.restore();
   c.restore(); // end of the sliding tray
@@ -228,7 +228,7 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
     const cr = byId[r.id];
     if (!cr) continue;
     const i = stage.creatures.indexOf(cr);
-    const to = { x: l.slotPos[i]!.x - s.scrollX, y: l.slotPos[i]!.y + Math.min(l.slot * 0.72, l.tray.h * 0.46) * 0.55 + trayDy };
+    const to = { x: l.slotPos[i]!.x - s.scrollX, y: l.tray.y + l.tray.h - 10 + trayDy };
     const q = hop(r.from, to, (s.timeMs - r.since) / TUNING.hopMs, l.size * 0.4);
     drawCreature(sk, c, cr, q.x, q.y, l.size * (1 - 0.25 * Math.min(1, (s.timeMs - r.since) / TUNING.hopMs)), { ...IDLE_POSE, ...{} });
   }

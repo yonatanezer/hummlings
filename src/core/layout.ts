@@ -21,10 +21,12 @@ export interface Layout {
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
 /** Geometry of the stage screen (see LAYOUT.md). W x H = safe-area-reduced window in points. */
-export function computeLayout(W: number, H: number, creatureCount = TUNING.creaturesPerStage, padX = 0): Layout {
+export function computeLayout(W: number, H: number, creatureCount = TUNING.creaturesPerStage, padX = 0, topInset = 0): Layout {
   const u = clamp(Math.min(W / 844, H / 390), 0.8, 2.2);
   const stageH = 0.65 * H;
-  const size = clamp(Math.min(0.32 * H, (0.8 * W) / TUNING.maxSpots), TUNING.minTouchPt, 200);
+  // The tallest singer (tall body + ears, about 1.5 x size) must fit between the top overlay and the back row of spots.
+  const sizeByTop = (0.48 * H - topInset) / 1.5;
+  const size = clamp(Math.min(0.32 * H, (0.8 * W) / TUNING.maxSpots, sizeByTop), TUNING.minTouchPt, 200);
   const spots: Pt[] = Array.from({ length: TUNING.maxSpots }, (_, i) => {
     const t = (i + 0.5) / TUNING.maxSpots;
     return { x: W * (0.1 + 0.8 * t), y: 0.6 * H - 0.12 * H * 4 * t * (1 - t) };

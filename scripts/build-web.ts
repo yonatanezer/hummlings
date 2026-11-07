@@ -100,6 +100,18 @@ button.lb span{display:none}
 @media (max-width:1559px){#band b{font-size:0!important;gap:0!important}}
 @media (max-width:999px){#worlds .long{display:none}#worlds .short{display:inline}}
 @media (max-width:900px){.hud{margin-left:0;width:100%;justify-content:flex-end}}
+/* short screens (phone landscape): one compact row so the toolbar never covers the singers */
+@media (max-height:540px){
+  #bar{flex-wrap:nowrap;gap:6px;padding:6px max(10px,env(safe-area-inset-right,0px)) 8px max(10px,env(safe-area-inset-left,0px))}
+  button{min-height:44px}button.ic{min-width:44px;padding:0 8px}
+  #worlds{gap:6px!important}#worlds button{padding:0 8px;min-height:44px}#worlds .long,#worlds .short{display:none!important}
+  #worlds .wi svg{width:28px;height:28px}
+  .acts{gap:6px}button.ic svg{width:22px;height:22px}
+  .hud{width:auto!important;margin-left:auto;gap:6px}
+  #band,#combos-wrap{height:44px}#band{padding:0 8px!important;gap:4px!important}#band b i{width:24px;height:24px}#band b i svg{width:15px;height:15px}
+  #combos-wrap{padding:0 10px!important;gap:6px}.combo i{width:12px;height:12px}.fnd small,#combos-wrap .lbl{display:none}.fnd svg{width:13px;height:13px}
+  #beat{display:none}
+}
 #beat{width:10px;height:10px;border-radius:50%;background:#FF7AA8;display:block}
 button{flex:none}
 button.ic{min-width:52px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
