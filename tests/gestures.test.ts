@@ -84,6 +84,6 @@ describe('gestures', () => {
   it('tap on empty stage reports tapEmpty', () => {
     const g = new GestureTracker();
     g.start(1, { x: 20, y: 20 }, 0, world());
-    expect(g.end(1, { x: 20, y: 20 }, 50, world())).toEqual([{ type: 'tapEmpty' }]);
+    expect(g.end(1, { x: 20, y: 20 }, 50, world())).toEqual([{ type: 'tapEmpty', p: { x: 20, y: 20 } }]);
   });
 });

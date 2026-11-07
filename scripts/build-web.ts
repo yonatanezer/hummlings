@@ -25,7 +25,7 @@ async function main() {
       });
     }, 1);
     writeFileSync(`${OUT}/sprites/${st.id}.png`, png);
-    for (const f of [...st.creatures.map((c) => c.loopFile), ...st.combos.map((c) => c.bonusLoopFile)]) {
+    for (const f of [...st.creatures.map((c) => c.loopFile), ...st.combos.map((c) => c.bonusLoopFile), st.ambienceFile]) {
       execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', `assets/loops/${f}`, '-b:a', '96k', `${OUT}/audio/${f.replace('.m4a', '.mp3')}`]);
     }
     console.log('built', st.id);

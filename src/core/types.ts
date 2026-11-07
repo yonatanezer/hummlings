@@ -11,8 +11,10 @@ export const LAYER_COLORS: Record<Layer, string> = {
 
 export type BodyShape = 'round' | 'wide' | 'tall' | 'small';
 export type EyeStyle = 'dots' | 'big' | 'sleepy' | 'sparkle';
-export type Species = 'cat' | 'bunny' | 'bear' | 'mouse' | 'frog' | 'bird' | 'dino' | 'axolotl';
-export const SPECIES: readonly Species[] = ['cat', 'bunny', 'bear', 'mouse', 'frog', 'bird', 'dino', 'axolotl'];
+export type Species = 'cat' | 'bunny' | 'bear' | 'mouse' | 'frog' | 'bird' | 'dino' | 'axolotl' | 'sheep' | 'fox';
+export const SPECIES: readonly Species[] = ['cat', 'bunny', 'bear', 'mouse', 'frog', 'bird', 'dino', 'axolotl', 'sheep', 'fox'];
+/** Material of a world's creatures: glossy gummy, striped sprinkle candy, or soft fluffy cloud. */
+export type Look = 'gummy' | 'candy' | 'cloud';
 export type Accessory = 'none' | 'bow' | 'hat' | 'crown' | 'flower' | 'scarf' | 'star';
 
 export interface ShapeParams {
@@ -20,6 +22,7 @@ export interface ShapeParams {
   eyes: EyeStyle;
   species: Species;
   accessory: Accessory;
+  look: Look;
 }
 
 export interface Creature {
@@ -60,6 +63,7 @@ export interface Stage {
   loopBars: number;
   chordLoop: ChordSlot[];
   palette: StagePalette;
+  ambienceFile: string; // quiet looping bed that gives the world its own atmosphere
   creatures: Creature[];
   combos: Combo[];
 }

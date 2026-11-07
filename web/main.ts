@@ -38,6 +38,7 @@ interface Particle { x: number; y: number; vx: number; vy: number; t: number; li
 const particles: Particle[] = [];
 let lastBeat = 0;
 const spawn = (p: Particle) => { if (particles.length < 160) particles.push(p); };
+const ripples2: { x: number; y: number; t: number }[] = [];
 const ripples: { x: number; y: number; t: number }[] = [];
 let ready = false;
 let hint = true;
@@ -141,8 +142,39 @@ function burst(x: number, y: number, colors: string[], n: number, kind: 'star' |
   for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 + rnd(i + x) * 0.6, sp = speed * (0.5 + rnd(i + y)); spawn({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t, life: 700 + rnd(i) * 500, kind, color: colors[i % colors.length]!, size: 4 + rnd(i + 3) * 5 }); }
 }
 
+function floorClip() { ctx.beginPath(); ctx.ellipse(W / 2, layout.stageH * 0.93 + H * 0.055, W * 0.55, H * 0.25, 0, 0, 7); ctx.clip(); }
+function drawScenery(t: number) {
+  const fy = layout.stageH * 0.93 + H * 0.055;
+  ctx.save();
+  if (stage.id === 'pond') {
+    const mx = W * 0.82, my = H * 0.2, mr = H * 0.085;
+    let g = ctx.createRadialGradient(mx, my, mr * 0.6, mx, my, mr * 4); g.addColorStop(0, '#FFF6C855'); g.addColorStop(1, '#FFF6C800'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(mx, my, mr * 4, 0, 7); ctx.fill();
+    ctx.fillStyle = '#FFF6D0'; ctx.beginPath(); ctx.arc(mx, my, mr, 0, 7); ctx.fill(); ctx.fillStyle = '#E8DFA8'; for (const [dx, dy, r] of [[-0.3, -0.2, 0.18], [0.25, 0.1, 0.13], [-0.1, 0.35, 0.1]] as const) { ctx.beginPath(); ctx.arc(mx + dx * mr, my + dy * mr, r * mr, 0, 7); ctx.fill(); }
+    ctx.strokeStyle = '#5FE3C0aa'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    for (const [x, hgt] of [[0.02, 0.2], [0.045, 0.28], [0.07, 0.18], [0.93, 0.22], [0.96, 0.3], [0.985, 0.16]] as const) { const bx = W * x, by = layout.stageH * 0.84; ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx + Math.sin(t / 900 + x * 9) * 6, by - H * hgt * 0.5, bx + 6, by - H * hgt); ctx.stroke(); ctx.fillStyle = '#8a5a3c'; ctx.beginPath(); ctx.ellipse(bx + 6, by - H * hgt, 3.2, 8, 0, 0, 7); ctx.fill(); }
+    ctx.save(); floorClip(); ctx.strokeStyle = '#9fe8ff30'; ctx.lineWidth = 1.5;
+    for (let i = 0; i < 9; i++) { const y = fy - H * 0.2 + i * H * 0.05; ctx.beginPath(); for (let x = 0; x <= W; x += 14) ctx.lineTo(x, y + Math.sin(x / 40 + t / 700 + i) * 2.2); ctx.stroke(); }
+    g = ctx.createLinearGradient(mx, fy - H * 0.2, mx, fy + H * 0.05); g.addColorStop(0, '#FFF6C838'); g.addColorStop(1, '#FFF6C800'); ctx.fillStyle = g; ctx.fillRect(mx - mr * 0.5, fy - H * 0.2, mr, H * 0.3);
+    ctx.restore();
+  } else if (stage.id === 'fair') {
+    const cx = W * 0.17, cy = layout.stageH * 0.46, R = H * 0.19, a0 = t / 9000;
+    ctx.strokeStyle = '#FFD6E888'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(cx, cy, R * 0.12, 0, 7); ctx.stroke();
+    for (let i = 0; i < 8; i++) { const a = a0 + (i * Math.PI) / 4, x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x, y); ctx.stroke(); ctx.fillStyle = ['#FF7AA8', '#FFC857', '#5FE3C0', '#7A8CFF'][i % 4]! + 'dd'; ctx.beginPath(); ctx.roundRect(x - 8, y, 16, 13, 4); ctx.fill(); }
+    ctx.beginPath(); ctx.moveTo(cx - R * 0.45, cy + R * 1.4); ctx.lineTo(cx, cy); ctx.lineTo(cx + R * 0.45, cy + R * 1.4); ctx.stroke();
+    const tx = W * 0.83; for (let i = 0; i < 2; i++) { const x = tx + i * 70, w2 = 70; ctx.fillStyle = i ? '#FFC857aa' : '#FF7AA8aa'; ctx.beginPath(); ctx.moveTo(x - w2 / 2, layout.stageH * 0.55); ctx.lineTo(x, layout.stageH * 0.55 - 52); ctx.lineTo(x + w2 / 2, layout.stageH * 0.55); ctx.fill(); ctx.fillStyle = '#ffffff22'; ctx.fillRect(x - w2 / 2, layout.stageH * 0.55, w2, 26); }
+    ctx.save(); floorClip(); for (let i = -12; i < 14; i++) { ctx.fillStyle = i % 2 ? '#ffffff12' : '#00000018'; ctx.beginPath(); ctx.moveTo(W / 2 + i * 60 - 20, fy - H * 0.25); ctx.lineTo(W / 2 + i * 60 + 40, fy - H * 0.25); ctx.lineTo(W / 2 + i * 90 + 70, fy + H * 0.3); ctx.lineTo(W / 2 + i * 90 - 20, fy + H * 0.3); ctx.fill(); } ctx.restore();
+  } else {
+    const mx = W * 0.8, my = H * 0.22, mr = H * 0.08;
+    ctx.fillStyle = '#FFF4D2'; ctx.beginPath(); ctx.arc(mx, my, mr, 0, 7); ctx.fill(); ctx.fillStyle = stage.palette.sky; ctx.beginPath(); ctx.arc(mx + mr * 0.45, my - mr * 0.15, mr * 0.9, 0, 7); ctx.fill();
+    for (let i = 0; i < 6; i++) { const hx = W * (0.08 + i * 0.16) + (i % 2) * 14, hy = layout.stageH * 0.62, hw = 34 + (i % 3) * 8, hh = 26 + (i % 2) * 12; ctx.fillStyle = '#e8f6ffcc'; ctx.beginPath(); ctx.arc(hx, hy + 8, 30, 0, 7); ctx.arc(hx + 26, hy + 12, 24, 0, 7); ctx.arc(hx - 24, hy + 12, 22, 0, 7); ctx.fill(); ctx.fillStyle = '#FFE8A3'; ctx.fillRect(hx - hw / 2, hy - hh, hw, hh); ctx.fillStyle = '#7A8CFF'; ctx.beginPath(); ctx.moveTo(hx - hw / 2 - 4, hy - hh); ctx.lineTo(hx, hy - hh - 18); ctx.lineTo(hx + hw / 2 + 4, hy - hh); ctx.fill(); ctx.fillStyle = `rgba(255,170,60,${0.6 + 0.3 * Math.sin(t / 700 + i)})`; ctx.fillRect(hx - 4, hy - hh * 0.65, 8, 9); }
+    ctx.save(); floorClip(); ctx.fillStyle = '#ffffff1c'; for (let i = 0; i < 18; i++) { ctx.beginPath(); ctx.arc(W * (i / 17), fy - H * 0.17 + (i % 3) * 10, 26, 0, 7); ctx.fill(); } ctx.restore();
+  }
+  ctx.restore();
+}
+
 function drawDecor(t: number, beat: number) {
   const p = stage.palette;
+  drawScenery(t);
   ctx.save();
   if (stage.id === 'pond') { // lily pads, ripples and fireflies
     for (let i = 0; i < 4; i++) { const x = W * (0.12 + i * 0.26), y = layout.stageH * (0.88 + 0.03 * (i % 2)); ctx.fillStyle = '#2c6f6a99'; ctx.beginPath(); ctx.ellipse(x, y, 30, 8, 0, 0, 7); ctx.fill(); ctx.strokeStyle = '#7fe3c455'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(x, y, 30 + ((t / 40 + i * 20) % 30), 8 + ((t / 120 + i * 6) % 8), 0, 0, 7); ctx.stroke(); }
@@ -286,6 +318,7 @@ function frame(t: number) {
     ctx.fillStyle = '#ffffffe6'; ctx.strokeStyle = '#FFC857'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, 24, 0, 7); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
   }
   drawParticles(t);
+  for (let i = ripples2.length - 1; i >= 0; i--) { const r = ripples2[i]!, k = (t - r.t) / 1100; if (k >= 1) { ripples2.splice(i, 1); continue; } if (k < 0) continue; ctx.strokeStyle = `rgba(180,240,255,${0.7 * (1 - k)})`; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(r.x, r.y, 10 + 90 * k, (10 + 90 * k) * 0.35, 0, 0, 7); ctx.stroke(); }
   // banner for a found combo
   if (celebration && beat - celebration.startBeat >= 0 && beat - celebration.startBeat < 6) {
     const k = beat - celebration.startBeat, sc = Math.min(1, k * 2) * (1 + 0.05 * Math.sin(k * 6));
@@ -348,7 +381,17 @@ function apply(ev: GestureEvent, t: number) {
     case 'remove': engine.playSfx('remove'); drop(ev.creatureId); back(ev.creatureId, { x: ev.p.x, y: ev.p.y + layout.size * 0.6 }); s.dispatch({ kind: 'remove', creatureId: ev.creatureId }); break;
     case 'tap': engine.playSfx(s.state.muted[ev.creatureId] ? 'unmute' : 'mute'); s.dispatch({ kind: 'mute', creatureId: ev.creatureId }); break;
     case 'longPress': s.dispatch({ kind: 'solo', creatureId: ev.creatureId }); break;
-    case 'tapEmpty': s.dispatch({ kind: 'endSolo' }); break;
+    case 'tapEmpty': {
+      s.dispatch({ kind: 'endSolo' });
+      if (ev.p.y < layout.stageH) { // the world's own toy: tapping the scenery plays a note of the scale
+        const deg = Math.max(0, Math.min(5, Math.floor((ev.p.x / W) * 6)));
+        engine.playSfx('pop', popRate(stage.key, deg) * 2);
+        if (stage.id === 'pond') for (let k = 0; k < 3; k++) ripples2.push({ x: ev.p.x, y: ev.p.y, t: t + k * 160 });
+        else if (stage.id === 'fair') burst(ev.p.x, ev.p.y, ['#FF7AA8', '#FFC857', '#5FE3C0', '#7A8CFF'], 14, 'spark', t, 230);
+        else burst(ev.p.x, ev.p.y, ['#FFFFFF', '#D6F0FF', '#FFE8A3'], 8, 'star', t, 90);
+      }
+      break;
+    }
     case 'scroll': scrollX = ev.scrollX; break;
   }
 }
@@ -376,6 +419,7 @@ async function loadAtlas(id: string) {
 
 async function openStage(i: number) {
   ready = false;
+  session = null; // the frame loop pauses until the new world is ready
   $('loading').classList.remove('hide');
   engine.stop();
   stageIdx = i; stage = STAGES[i]!;

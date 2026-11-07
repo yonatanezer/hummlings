@@ -11,6 +11,7 @@ const LOOKAHEAD_S = 0.15; // schedule bars this far ahead of the audio clock
 const TIMER_MS = 25;
 const START_DELAY_S = 0.12; // gap between start() and bar 0
 const BONUS = '__bonus';
+const AMBIENCE = '__ambience';
 
 interface Voice { src: AudioBufferSourceNode; gain: GainNode }
 
@@ -32,6 +33,7 @@ export class NativeEngine implements AudioEngine {
   private interrupted = new Set<() => void>();
   private fileIndex = new Map<string, string>(); // creature id -> loop file
   private sfxBuf = new Map<string, AudioBuffer>();
+  private ambFile = '';
 
   async init(): Promise<void> {
     if (this.ctx) return;
@@ -59,7 +61,8 @@ export class NativeEngine implements AudioEngine {
   async loadStage(stage: Stage): Promise<void> {
     const ctx = this.ctx!;
     this.fileIndex = new Map(stage.creatures.map((c) => [c.id, c.loopFile]));
-    const files = [...stage.creatures.map((c) => c.loopFile), ...stage.combos.map((c) => c.bonusLoopFile)];
+    this.ambFile = stage.ambienceFile;
+    const files = [...stage.creatures.map((c) => c.loopFile), ...stage.combos.map((c) => c.bonusLoopFile), stage.ambienceFile];
     await Promise.all(files.filter((f) => !this.buffers.has(f)).map(async (f) => {
       this.buffers.set(f, await ctx.decodeAudioData(LOOP_ASSETS[f]!));
     }));
@@ -106,6 +109,7 @@ export class NativeEngine implements AudioEngine {
     const bs = barSec(this.bpm);
     const wanted = new Set(plan.ids);
     if (plan.bonusFile) wanted.add(BONUS);
+    wanted.add(AMBIENCE); // the world's bed always plays
     for (const [id, v] of this.voices) {
       if (wanted.has(id)) continue;
       v.gain.gain.cancelScheduledValues(t);
@@ -134,6 +138,7 @@ export class NativeEngine implements AudioEngine {
     };
     for (const id of plan.ids) launch(id, this.fileOf(id));
     if (plan.bonusFile) launch(BONUS, plan.bonusFile);
+    launch(AMBIENCE, this.ambFile);
     if (plan.fill) for (let k = 0; k < 4; k++) this.sfxAt('snare', t + (3.5 + k * 0.125) * beatSec(this.bpm), 1, TUNING.fillGain * (0.6 + 0.13 * k));
     if (plan.tick === 'soft') {
       for (let k = 0; k < TUNING.beatsPerBar; k++) {

@@ -36,6 +36,7 @@
     "glow": "#FFD6E8",
     "accent": "#FF7AA8"
   },
+  "ambienceFile": "fair_ambience.m4a",
   "creatures": [
     {
       "id": "fair_drums_1",
@@ -63,12 +64,13 @@
         15.5625,
         15.75
       ],
-      "color": "#FF5159",
+      "color": "#FF5170",
       "shape": {
         "body": "round",
         "eyes": "big",
-        "species": "mouse",
-        "accessory": "hat"
+        "species": "cat",
+        "accessory": "hat",
+        "look": "candy"
       }
     },
     {
@@ -110,12 +112,13 @@
         15.5625,
         15.75
       ],
-      "color": "#FF7076",
+      "color": "#FF7089",
       "shape": {
         "body": "round",
         "eyes": "sparkle",
-        "species": "frog",
-        "accessory": "bow"
+        "species": "fox",
+        "accessory": "bow",
+        "look": "candy"
       }
     },
     {
@@ -188,12 +191,13 @@
         15.5625,
         15.75
       ],
-      "color": "#FF8E94",
+      "color": "#FF8EA3",
       "shape": {
         "body": "round",
         "eyes": "dots",
-        "species": "bird",
-        "accessory": "star"
+        "species": "mouse",
+        "accessory": "crown",
+        "look": "candy"
       }
     },
     {
@@ -221,12 +225,13 @@
         15.5625,
         15.75
       ],
-      "color": "#FFADB1",
+      "color": "#FFADBC",
       "shape": {
         "body": "round",
         "eyes": "sleepy",
         "species": "dino",
-        "accessory": "crown"
+        "accessory": "hat",
+        "look": "candy"
       }
     },
     {
@@ -267,12 +272,13 @@
         15,
         15.5625
       ],
-      "color": "#FF3D46",
+      "color": "#FF3D60",
       "shape": {
         "body": "round",
         "eyes": "big",
-        "species": "axolotl",
-        "accessory": "hat"
+        "species": "bear",
+        "accessory": "hat",
+        "look": "candy"
       }
     },
     {
@@ -330,12 +336,13 @@
         15.5625,
         15.75
       ],
-      "color": "#FFB3B6",
+      "color": "#FFB3C0",
       "shape": {
         "body": "round",
         "eyes": "sparkle",
-        "species": "cat",
-        "accessory": "bow"
+        "species": "bunny",
+        "accessory": "bow",
+        "look": "candy"
       }
     },
     {
@@ -376,12 +383,13 @@
         15,
         15.5625
       ],
-      "color": "#6E51FF",
+      "color": "#5751FF",
       "shape": {
         "body": "wide",
         "eyes": "sparkle",
-        "species": "bird",
-        "accessory": "star"
+        "species": "fox",
+        "accessory": "crown",
+        "look": "candy"
       }
     },
     {
@@ -406,12 +414,13 @@
         14,
         15
       ],
-      "color": "#8770FF",
+      "color": "#7470FF",
       "shape": {
         "body": "wide",
         "eyes": "dots",
-        "species": "dino",
-        "accessory": "crown"
+        "species": "mouse",
+        "accessory": "hat",
+        "look": "candy"
       }
     },
     {
@@ -436,12 +445,13 @@
         15,
         15.5625
       ],
-      "color": "#A18EFF",
+      "color": "#928EFF",
       "shape": {
         "body": "wide",
         "eyes": "sleepy",
-        "species": "axolotl",
-        "accessory": "hat"
+        "species": "dino",
+        "accessory": "hat",
+        "look": "candy"
       }
     },
     {
@@ -458,12 +468,13 @@
         12,
         15.5625
       ],
-      "color": "#BBADFF",
+      "color": "#B0ADFF",
       "shape": {
         "body": "wide",
         "eyes": "big",
-        "species": "cat",
-        "accessory": "bow"
+        "species": "bear",
+        "accessory": "bow",
+        "look": "candy"
       }
     },
     {
@@ -492,12 +503,13 @@
         14.5625,
         15
       ],
-      "color": "#5D3DFF",
+      "color": "#433DFF",
       "shape": {
         "body": "wide",
         "eyes": "sparkle",
         "species": "bunny",
-        "accessory": "star"
+        "accessory": "crown",
+        "look": "candy"
       }
     },
     {
@@ -522,12 +534,13 @@
         14,
         15
       ],
-      "color": "#BFB3FF",
+      "color": "#B5B3FF",
       "shape": {
         "body": "wide",
         "eyes": "dots",
-        "species": "bear",
-        "accessory": "crown"
+        "species": "cat",
+        "accessory": "hat",
+        "look": "candy"
       }
     },
     {
@@ -568,12 +581,13 @@
         15,
         15.5625
       ],
-      "color": "#3CD7DD",
+      "color": "#3CDDCD",
       "shape": {
         "body": "tall",
         "eyes": "dots",
-        "species": "axolotl",
-        "accessory": "hat"
+        "species": "mouse",
+        "accessory": "hat",
+        "look": "candy"
       }
     },
     {
@@ -602,12 +616,13 @@
         14,
         15.5625
       ],
-      "color": "#56DDE1",
+      "color": "#56E1D4",
       "shape": {
         "body": "tall",
         "eyes": "sleepy",
-        "species": "cat",
-        "accessory": "bow"
+        "species": "dino",
+        "accessory": "bow",
+        "look": "candy"
       }
     },
     {
@@ -626,12 +641,13 @@
         14,
         15.5625
       ],
-      "color": "#70E2E6",
+      "color": "#70E6DA",
       "shape": {
         "body": "tall",
         "eyes": "big",
-        "species": "bunny",
-        "accessory": "star"
+        "species": "bear",
+        "accessory": "crown",
+        "look": "candy"
       }
     },
     {
@@ -660,12 +676,13 @@
         14.5625,
         15
       ],
-      "color": "#8AE7EB",
+      "color": "#8AEBE1",
       "shape": {
         "body": "tall",
         "eyes": "sparkle",
-        "species": "bear",
-        "accessory": "crown"
+        "species": "bunny",
+        "accessory": "hat",
+        "look": "candy"
       }
     },
     {
@@ -694,12 +711,13 @@
         14.25,
         15.25
       ],
-      "color": "#2BD4DA",
+      "color": "#2BDAC9",
       "shape": {
         "body": "tall",
         "eyes": "dots",
-        "species": "mouse",
-        "accessory": "hat"
+        "species": "cat",
+        "accessory": "hat",
+        "look": "candy"
       }
     },
     {
@@ -736,12 +754,13 @@
         14.5625,
         15
       ],
-      "color": "#A0ECEE",
+      "color": "#A0EEE7",
       "shape": {
         "body": "tall",
         "eyes": "sleepy",
-        "species": "frog",
-        "accessory": "bow"
+        "species": "fox",
+        "accessory": "bow",
+        "look": "candy"
       }
     },
     {
@@ -756,12 +775,13 @@
         12,
         14.5625
       ],
-      "color": "#FFF92E",
+      "color": "#FFDD2E",
       "shape": {
         "body": "small",
         "eyes": "sleepy",
-        "species": "bunny",
-        "accessory": "star"
+        "species": "dino",
+        "accessory": "crown",
+        "look": "candy"
       }
     },
     {
@@ -783,12 +803,13 @@
         14.5625,
         15.5625
       ],
-      "color": "#FFFA4D",
+      "color": "#FFE24D",
       "shape": {
         "body": "small",
         "eyes": "big",
         "species": "bear",
-        "accessory": "crown"
+        "accessory": "hat",
+        "look": "candy"
       }
     },
     {
@@ -809,12 +830,13 @@
         12.75,
         13.5625
       ],
-      "color": "#FFFB6B",
+      "color": "#FFE76B",
       "shape": {
         "body": "small",
         "eyes": "sparkle",
-        "species": "mouse",
-        "accessory": "hat"
+        "species": "bunny",
+        "accessory": "hat",
+        "look": "candy"
       }
     },
     {
@@ -829,12 +851,13 @@
         11,
         13.5625
       ],
-      "color": "#FFFC8A",
+      "color": "#FFEC8A",
       "shape": {
         "body": "small",
         "eyes": "dots",
-        "species": "frog",
-        "accessory": "bow"
+        "species": "cat",
+        "accessory": "bow",
+        "look": "candy"
       }
     },
     {
@@ -859,12 +882,13 @@
         14.5625,
         15
       ],
-      "color": "#FFF91A",
+      "color": "#FFDA1A",
       "shape": {
         "body": "small",
         "eyes": "sleepy",
-        "species": "bird",
-        "accessory": "star"
+        "species": "fox",
+        "accessory": "crown",
+        "look": "candy"
       }
     },
     {
@@ -881,12 +905,13 @@
         14,
         15
       ],
-      "color": "#FFFCA4",
+      "color": "#FFF0A4",
       "shape": {
         "body": "small",
         "eyes": "big",
-        "species": "dino",
-        "accessory": "crown"
+        "species": "mouse",
+        "accessory": "hat",
+        "look": "candy"
       }
     }
   ],

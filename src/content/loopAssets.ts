@@ -28,6 +28,7 @@ export const LOOP_ASSETS: Record<string, number> = {
   'pond_bonus_2.m4a': require('../../assets/loops/pond_bonus_2.m4a'),
   'pond_bonus_3.m4a': require('../../assets/loops/pond_bonus_3.m4a'),
   'pond_bonus_4.m4a': require('../../assets/loops/pond_bonus_4.m4a'),
+  'pond_ambience.m4a': require('../../assets/loops/pond_ambience.m4a'),
   'fair_drums_1.m4a': require('../../assets/loops/fair_drums_1.m4a'),
   'fair_drums_2.m4a': require('../../assets/loops/fair_drums_2.m4a'),
   'fair_drums_3.m4a': require('../../assets/loops/fair_drums_3.m4a'),
@@ -56,6 +57,7 @@ export const LOOP_ASSETS: Record<string, number> = {
   'fair_bonus_2.m4a': require('../../assets/loops/fair_bonus_2.m4a'),
   'fair_bonus_3.m4a': require('../../assets/loops/fair_bonus_3.m4a'),
   'fair_bonus_4.m4a': require('../../assets/loops/fair_bonus_4.m4a'),
+  'fair_ambience.m4a': require('../../assets/loops/fair_ambience.m4a'),
   'clouds_drums_1.m4a': require('../../assets/loops/clouds_drums_1.m4a'),
   'clouds_drums_2.m4a': require('../../assets/loops/clouds_drums_2.m4a'),
   'clouds_drums_3.m4a': require('../../assets/loops/clouds_drums_3.m4a'),
@@ -84,4 +86,5 @@ export const LOOP_ASSETS: Record<string, number> = {
   'clouds_bonus_2.m4a': require('../../assets/loops/clouds_bonus_2.m4a'),
   'clouds_bonus_3.m4a': require('../../assets/loops/clouds_bonus_3.m4a'),
   'clouds_bonus_4.m4a': require('../../assets/loops/clouds_bonus_4.m4a'),
+  'clouds_ambience.m4a': require('../../assets/loops/clouds_ambience.m4a'),
 };

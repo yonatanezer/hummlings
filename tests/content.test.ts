@@ -22,6 +22,11 @@ describe('content audit (every stage, every creature, every combo)', () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toHaveLength(3 * (24 + 4 + 4));
   });
+  it('each world has its own look, drum kit and species mix', () => {
+    expect(new Set(stages.map((s) => s.creatures[0]!.shape.look)).size).toBe(3);
+    const sets = stages.map((s) => [...new Set(s.creatures.map((c) => c.shape.species))].sort().join(','));
+    expect(new Set(sets).size).toBe(3);
+  });
   it('distinct tempo, key and palette per stage; tempos 84-112', () => {
     expect(new Set(stages.map((s) => s.bpm)).size).toBe(3);
     expect(new Set(stages.map((s) => `${s.key.root}${s.key.mode}`)).size).toBe(3);
@@ -32,6 +37,7 @@ describe('content audit (every stage, every creature, every combo)', () => {
   });
   it('every loop file exists and the committed JSON is not stale', () => {
     stages.forEach((s, i) => {
+      expect(existsSync(`assets/loops/${s.ambienceFile}`), s.ambienceFile).toBe(true);
       for (const c of s.creatures) expect(existsSync(`assets/loops/${c.loopFile}`), c.loopFile).toBe(true);
       for (const c of s.combos) expect(existsSync(`assets/loops/${c.bonusLoopFile}`), c.bonusLoopFile).toBe(true);
       expect(s).toEqual(buildStage(i));

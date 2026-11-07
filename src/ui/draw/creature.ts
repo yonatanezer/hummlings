@@ -91,6 +91,23 @@ function drawBack(sk: SkiaApi, c: Canvas, cr: Creature, S: number, w: number, h:
       for (let i = -1; i <= 1; i++) tri(sk, c, i * S * 0.12 - S * 0.06, top + S * 0.05, i * S * 0.12, top - S * 0.1 - (i === 0 ? S * 0.04 : 0), i * S * 0.12 + S * 0.06, top + S * 0.05, paint(sk, mix(color, '#FFFFFF', 0.4)));
       tri(sk, c, hw * 0.8, -S * 0.1, hw * 1.25, -S * 0.2 + wig * S * 0.06, hw * 0.85, -S * 0.3, paint(sk, color));
       break;
+    case 'sheep':
+      for (const d of [-1, 1]) {
+        c.save(); c.rotate(d * (28 + wig * 6), d * hw * 0.8, top + S * 0.16);
+        c.drawOval(oval(sk, d * (hw * 0.86 + S * 0.05), top + S * 0.2, S * 0.1, S * 0.05), paint(sk, mix(color, '#3A2A55', 0.55)));
+        c.restore();
+      }
+      break;
+    case 'fox':
+      for (const d of [-1, 1]) {
+        tri(sk, c, d * hw * 0.2, top + S * 0.07, d * hw * 0.92, top + S * 0.12, d * hw * 0.7, top - S * 0.22 + wig * S * 0.012, paint(sk, light));
+        tri(sk, c, d * hw * 0.5, top + S * 0.05, d * hw * 0.8, top + S * 0.1, d * hw * 0.7, top - S * 0.13, paint(sk, mix(color, '#3A1F2A', 0.7), 0.85));
+      }
+      c.save(); c.rotate(-18 + wig * 8, hw, -S * 0.15);
+      c.drawOval(oval(sk, hw * 1.12, -S * 0.2, S * 0.2, S * 0.1), paint(sk, light));
+      c.drawOval(oval(sk, hw * 1.25, -S * 0.2, S * 0.08, S * 0.07), paint(sk, '#FFFFFF', 0.9));
+      c.restore();
+      break;
     default: // axolotl: feathery gills
       for (const d of [-1, 1]) for (let i = 0; i < 3; i++) {
         c.save();
@@ -139,6 +156,8 @@ function drawFace(sk: SkiaApi, c: Canvas, cr: Creature, S: number, w: number, h:
   if (sp === 'cat' || sp === 'mouse') {
     for (const d of [-1, 1]) for (let i = 0; i < 2; i++) c.drawLine(d * S * 0.1, my - S * 0.03 + i * S * 0.03, d * S * 0.22, my - S * 0.05 + i * S * 0.06, paint(sk, dark, 0.45, STROKE, S * 0.01));
   }
+  if (sp === 'fox') { for (const d of [-1, 1]) tri(sk, c, d * S * 0.08, my - S * 0.01, d * S * 0.27, my - S * 0.06, d * S * 0.2, my + S * 0.07, paint(sk, '#FFFFFF', 0.85)); c.drawOval(oval(sk, 0, my - S * 0.05, S * 0.025, S * 0.018), paint(sk, dark)); }
+  if (sp === 'sheep') c.drawOval(oval(sk, 0, my - S * 0.04, S * 0.03, S * 0.02), paint(sk, mix(cr.color, '#3A2A55', 0.6)));
   if (sp === 'dino') for (const d of [-1, 1]) c.drawCircle(d * S * 0.03, my - S * 0.05, S * 0.009, paint(sk, dark, 0.6));
   if (sp === 'bird') tri(sk, c, -S * 0.045, my - S * 0.06, S * 0.045, my - S * 0.06, 0, my + S * 0.02 + open * S * 0.02, paint(sk, '#FFA94D'));
   else if (open < 0.08) {
@@ -149,6 +168,16 @@ function drawFace(sk: SkiaApi, c: Canvas, cr: Creature, S: number, w: number, h:
     const mh = S * (big ? 0.11 : 0.07) * open;
     c.drawOval(oval(sk, 0, my + mh * 0.2, mw, mh), paint(sk, mix(dark, '#000000', 0.2)));
     c.drawOval(oval(sk, 0, my + mh * 0.6, mw * 0.65, mh * 0.45), paint(sk, '#FF6F91', 0.9));
+  }
+}
+
+function drawWool(sk: SkiaApi, c: Canvas, S: number, w: number, h: number) {
+  'worklet';
+  const top = -h * S - S * 0.02, hw = (w * S) / 2;
+  for (let i = -3; i <= 3; i++) {
+    const u = i / 3;
+    c.drawCircle(u * hw * 0.62, top + S * 0.1 + Math.abs(u) * S * 0.06, S * (0.11 - Math.abs(u) * 0.02), paint(sk, '#FFFFFF', 0.95));
+    c.drawCircle(u * hw * 0.62 - S * 0.015, top + S * 0.085 + Math.abs(u) * S * 0.06, S * 0.05, paint(sk, '#F2EAFF', 0.9));
   }
 }
 
@@ -241,17 +270,45 @@ export function drawCreature(sk: SkiaApi, c: Canvas, cr: Creature, x: number, y:
     if (bodyR > 0) c.drawRRect(sk.RRectXY(sk.XYWHRect(-(w * S) / 2, -h * S - S * 0.02, w * S, h * S), bodyR, bodyR * 1.15), p);
     else c.drawOval(body, p);
   };
-  drawBody(gradientPaint(sk, 0, -h * S, 0, 0, [mix(color, '#FFFFFF', 0.3), color, deep]));
+  const look = cr.shape.look;
+  if (look === 'cloud') { // fluffy: a scalloped ring of puffs behind the soft body
+    for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * Math.PI * 2;
+      c.drawCircle(Math.cos(a) * (w * S) * 0.5, -h * S * 0.5 - S * 0.02 + Math.sin(a) * (h * S) * 0.5, S * 0.085, paint(sk, mix(color, '#FFFFFF', 0.45)));
+    }
+  }
+  drawBody(gradientPaint(sk, 0, -h * S, 0, 0, look === 'cloud' ? [mix(color, '#FFFFFF', 0.55), mix(color, '#FFFFFF', 0.28), mix(color, '#FFFFFF', 0.08)] : [mix(color, '#FFFFFF', 0.3), color, deep]));
+  if (look === 'candy') { // hard candy: diagonal stripes and sprinkles
+    c.save();
+    c.clipRRect(sk.RRectXY(sk.XYWHRect(-(w * S) / 2, -h * S - S * 0.02, w * S, h * S), cr.shape.body === 'tall' ? (w * S) / 2 : (w * S) / 2, cr.shape.body === 'tall' ? (w * S) / 2 : (h * S) / 2), 1, true);
+    for (let k = -3; k <= 3; k++) {
+      const x = k * w * S * 0.3;
+      const b = sk.PathBuilder.Make();
+      b.moveTo(x, -h * S - S * 0.05); b.lineTo(x + w * S * 0.12, -h * S - S * 0.05); b.lineTo(x + w * S * 0.12 - h * S * 0.35, S * 0.05); b.lineTo(x - h * S * 0.35, S * 0.05); b.close();
+      c.drawPath(b.build(), paint(sk, '#FFFFFF', 0.2));
+    }
+    let hsh = 5; for (let i = 0; i < cr.id.length; i++) hsh = (Math.imul(hsh, 31) + cr.id.charCodeAt(i)) >>> 0;
+    const cols = ['#FFFFFF', '#FFE066', '#7AF0D0', '#FF8FB4'];
+    for (let k = 0; k < 9; k++) {
+      hsh = (Math.imul(hsh, 1103515245) + 12345) >>> 0;
+      const px = ((hsh % 1000) / 1000 - 0.5) * w * S * 0.8, py = -h * S * (0.2 + (((hsh >>> 10) % 1000) / 1000) * 0.6);
+      c.save(); c.translate(px, py); c.rotate(hsh % 180, 0, 0);
+      c.drawRRect(sk.RRectXY(sk.XYWHRect(-S * 0.03, -S * 0.012, S * 0.06, S * 0.024), S * 0.012, S * 0.012), paint(sk, cols[k % 4]!, 0.9));
+      c.restore();
+    }
+    c.restore();
+  }
   c.drawOval(oval(sk, 0, -h * S * 0.26, w * S * 0.3, h * S * 0.2), paint(sk, light, 0.4)); // light belly
-  drawBody(paint(sk, mix(color, '#FFFFFF', 0.7), 0.45, STROKE, S * 0.02));
+  if (look !== 'cloud') drawBody(paint(sk, mix(color, '#FFFFFF', look === 'candy' ? 0.9 : 0.7), look === 'candy' ? 0.7 : 0.45, STROKE, S * (look === 'candy' ? 0.03 : 0.02)));
   c.save();
   c.translate(-w * S * 0.22, -h * S * 0.86);
   c.rotate(-28, 0, 0);
-  c.drawOval(oval(sk, 0, 0, w * S * 0.16, h * S * 0.07), paint(sk, '#FFFFFF', 0.6));
+  c.drawOval(oval(sk, 0, 0, w * S * 0.16, h * S * 0.07), paint(sk, '#FFFFFF', look === 'cloud' ? 0.3 : look === 'candy' ? 0.8 : 0.6));
   c.restore();
   c.drawCircle(-w * S * 0.36, -h * S * 0.68, S * 0.016, paint(sk, '#FFFFFF', 0.7));
 
   drawFace(sk, c, cr, S, w, h, pose, dark);
+  if (cr.shape.species === 'sheep') drawWool(sk, c, S, w, h);
   drawAccessory(sk, c, cr, S, w, h, color);
   c.restore();
   if (needsLayer) c.restore();

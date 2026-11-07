@@ -9,7 +9,7 @@ export type GestureEvent =
   | { type: 'remove'; touch: number; creatureId: string; p: Pt } // dragged off the stage or flicked down
   | { type: 'tap'; creatureId: string }
   | { type: 'longPress'; creatureId: string }
-  | { type: 'tapEmpty' }
+  | { type: 'tapEmpty'; p: Pt }
   | { type: 'scroll'; scrollX: number };
 
 /** What the gesture layer needs to know about the world. Supplied fresh on every call. */
@@ -96,7 +96,7 @@ export class GestureTracker {
     if (!s) return [];
     switch (s.kind) {
       case 'pendingStage': return s.fired ? [] : [{ type: 'tap', creatureId: s.id }];
-      case 'pendingEmpty': return [{ type: 'tapEmpty' }];
+      case 'pendingEmpty': return [{ type: 'tapEmpty', p }];
       case 'drag': {
         const spot = p.y < w.layout.tray.y ? spotAt(w.layout, p) : -1;
         if (s.from === 'stage') {

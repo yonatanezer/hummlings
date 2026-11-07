@@ -6,6 +6,7 @@ import type { Stage } from '../src/core/types';
 const LOOKAHEAD_S = 0.15;
 const START_DELAY_S = 0.12;
 const BONUS = '__bonus';
+const AMBIENCE = '__ambience';
 
 /** Browser (Web Audio) twin of src/audio/native.ts: same scheduling, used by the playable web demo. */
 export class WebEngine implements AudioEngine {
@@ -16,6 +17,7 @@ export class WebEngine implements AudioEngine {
   private voices = new Map<string, { src: AudioBufferSourceNode; gain: GainNode }>();
   private tick: AudioBuffer | null = null;
   private sfxBuf = new Map<string, AudioBuffer>();
+  private ambFile = '';
   private fileOf = new Map<string, string>();
   private origin = 0;
   private nextBar = 0;
@@ -43,7 +45,8 @@ export class WebEngine implements AudioEngine {
   }
   async loadStage(stage: Stage): Promise<void> {
     this.fileOf = new Map(stage.creatures.map((c) => [c.id, c.loopFile]));
-    const files = [...stage.creatures.map((c) => c.loopFile), ...stage.combos.map((c) => c.bonusLoopFile)];
+    this.ambFile = stage.ambienceFile;
+    const files = [...stage.creatures.map((c) => c.loopFile), ...stage.combos.map((c) => c.bonusLoopFile), stage.ambienceFile];
     await Promise.all(files.filter((f) => !this.buffers.has(f)).map(async (f) => this.buffers.set(f, await this.load(`audio/${f.replace('.m4a', '.mp3')}`))));
     for (const k of [...this.buffers.keys()]) if (!files.includes(k)) this.buffers.delete(k);
   }
@@ -69,6 +72,7 @@ export class WebEngine implements AudioEngine {
     const ctx = this.ctx, bs = barSec(this.bpm);
     const wanted = new Set(plan.ids);
     if (plan.bonusFile) wanted.add(BONUS);
+    wanted.add(AMBIENCE); // the world's bed always plays
     for (const [id, v] of this.voices) {
       if (wanted.has(id)) continue;
       v.gain.gain.cancelScheduledValues(t);
@@ -91,6 +95,7 @@ export class WebEngine implements AudioEngine {
     };
     for (const id of plan.ids) launch(id, this.fileOf.get(id) ?? '');
     if (plan.bonusFile) launch(BONUS, plan.bonusFile);
+    launch(AMBIENCE, this.ambFile);
     if (plan.fill) for (let k = 0; k < 4; k++) this.sfxAt('snare', t + (3.5 + k * 0.125) * beatSec(this.bpm), 1, TUNING.fillGain * (0.6 + 0.13 * k));
     if (plan.tick === 'soft' && this.tick) {
       for (let k = 0; k < TUNING.beatsPerBar; k++) {

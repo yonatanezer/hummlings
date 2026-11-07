@@ -14,7 +14,8 @@ const creatureSchema = z.object({
   shape: z.object({
     body: z.enum(['round', 'wide', 'tall', 'small']),
     eyes: z.enum(['dots', 'big', 'sleepy', 'sparkle']),
-    species: z.enum(['cat', 'bunny', 'bear', 'mouse', 'frog', 'bird', 'dino', 'axolotl']),
+    species: z.enum(['cat', 'bunny', 'bear', 'mouse', 'frog', 'bird', 'dino', 'axolotl', 'sheep', 'fox']),
+    look: z.enum(['gummy', 'candy', 'cloud']),
     accessory: z.enum(['none', 'bow', 'hat', 'crown', 'flower', 'scarf', 'star']),
   }),
 });
@@ -43,6 +44,7 @@ export const stageSchema = z.object({
     )
     .length(TUNING.loopBars),
   palette: z.object({ sky: hex, floor: hex, glow: hex, accent: hex }),
+  ambienceFile: z.string().min(1),
   creatures: z.array(creatureSchema).length(TUNING.creaturesPerStage),
   combos: z.array(comboSchema).length(TUNING.combosPerStage),
 });

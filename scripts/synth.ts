@@ -30,20 +30,22 @@ class Biquad {
 const noise = (r: () => number) => r() * 2 - 1;
 const env = (t: number, a: number, d: number): number => (t < a ? t / a : Math.exp(-(t - a) / d));
 
-export interface Timbre { melody: 'pluck' | 'bell' | 'flute'; voiceBrightness: number; bass: 'round' | 'fat' | 'soft' }
+export interface Timbre { melody: 'pluck' | 'bell' | 'flute'; voiceBrightness: number; bass: 'round' | 'fat' | 'soft'; kit: 'lofi' | 'bouncy' | 'soft' }
 
 type Voice = (n: NoteEvent, bps: number, r: () => number) => { start: number; samples: Float32Array };
 
-function drumVoice(n: NoteEvent, bps: number, r: () => number): Float32Array {
+function drumVoice(n: NoteEvent, bps: number, r: () => number, kit: Timbre['kit']): Float32Array {
   const len = Math.floor(SR * 0.5);
   const o = new Float32Array(len);
   const v = n.vel;
+  // Drum character per world: lofi = round and dusty, bouncy = snappy and bright, soft = brushed and gentle.
+  const K = { lofi: { kf: 0.85, kd: 8, sf: 0.75, sd: 20, hf: 0.9, hamp: 0.7, lp: 4800 }, bouncy: { kf: 1.2, kd: 11, sf: 1.3, sd: 24, hf: 1.15, hamp: 1.05, lp: 8000 }, soft: { kf: 0.7, kd: 6, sf: 0.65, sd: 12, hf: 0.8, hamp: 0.55, lp: 3600 } }[kit];
   switch (n.drum) {
-    case 'kick': { let ph = 0; for (let i = 0; i < len; i++) { const t = i / SR; const f = 45 + 90 * Math.exp(-t * 28); ph += (TAU * f) / SR; o[i] = Math.sin(ph) * Math.exp(-t * 9) * 0.95 * v; } break; }
+    case 'kick': { let ph = 0; for (let i = 0; i < len; i++) { const t = i / SR; const f = (45 + 90 * Math.exp(-t * 28)) * K.kf; ph += (TAU * f) / SR; o[i] = Math.sin(ph) * Math.exp(-t * K.kd) * 0.95 * v; } break; }
     case 'tom': { let ph = 0; for (let i = 0; i < len; i++) { const t = i / SR; const f = 110 + 90 * Math.exp(-t * 18); ph += (TAU * f) / SR; o[i] = Math.sin(ph) * Math.exp(-t * 11) * 0.8 * v; } break; }
-    case 'snare': { const bp = Biquad.make('bp', 1900, 0.8), lp = Biquad.make('lp', 6500); for (let i = 0; i < len; i++) { const t = i / SR; o[i] = (lp.p(bp.p(noise(r))) * 2.4 * Math.exp(-t * 20) + Math.sin(TAU * 190 * t) * Math.exp(-t * 28) * 0.5) * 0.7 * v; } break; }
+    case 'snare': { const bp = Biquad.make('bp', 1900 * K.sf, 0.8), lp = Biquad.make('lp', Math.min(6500, K.lp + 1500)); for (let i = 0; i < len; i++) { const t = i / SR; const att = kit === 'soft' ? Math.min(1, t / 0.012) : 1; o[i] = (lp.p(bp.p(noise(r))) * 2.4 * att * Math.exp(-t * K.sd) + Math.sin(TAU * 190 * t) * Math.exp(-t * 28) * (kit === 'soft' ? 0.2 : 0.5)) * 0.7 * v; } break; }
     case 'clap': { const bp = Biquad.make('bp', 1300, 0.9); for (let i = 0; i < len; i++) { const t = i / SR; const burst = [0, 0.012, 0.024].reduce((a, s) => a + (t >= s ? Math.exp(-(t - s) * 90) : 0), 0) * 0.5 + Math.exp(-t * 18) * 0.6; o[i] = bp.p(noise(r)) * burst * 1.6 * v; } break; }
-    case 'hat': case 'openhat': { const bp = Biquad.make('bp', 6000, 0.7), lp = Biquad.make('lp', 8000); const d = n.drum === 'hat' ? 0.03 : 0.16; for (let i = 0; i < len; i++) { const t = i / SR; o[i] = lp.p(bp.p(noise(r))) * Math.exp(-t / d) * 0.9 * v; } break; }
+    case 'hat': case 'openhat': { const bp = Biquad.make('bp', 6000 * K.hf, 0.7), lp = Biquad.make('lp', Math.min(8000, K.lp + 1500)); const d = n.drum === 'hat' ? 0.03 : 0.16; for (let i = 0; i < len; i++) { const t = i / SR; o[i] = lp.p(bp.p(noise(r))) * Math.exp(-t / d) * 0.9 * K.hamp * v; } break; }
     case 'shaker': { const bp = Biquad.make('bp', 4200, 0.6), lp = Biquad.make('lp', 7500); for (let i = 0; i < len; i++) { const t = i / SR; o[i] = lp.p(bp.p(noise(r))) * env(t, 0.008, 0.04) * 0.9 * v; } break; }
     default: { for (let i = 0; i < len; i++) { const t = i / SR; o[i] = Math.sin(TAU * 820 * t) * Math.exp(-t * 55) * 0.6 * v + Math.sin(TAU * 1230 * t) * Math.exp(-t * 70) * 0.25 * v; } }
   }
@@ -140,11 +142,12 @@ export function renderLoop(events: NoteEvent[], kind: LoopKind, bpm: number, tim
   const loopLen = Math.round(beatSec(bpm) * TUNING.beatsPerBar * TUNING.loopBars * SR);
   const buf = new Float32Array(loopLen * 3);
   const r = rng(seed);
+  const kit = timbre.kit;
   const voice: Voice | null = kind === 'bass' ? bassVoice(timbre.bass) : kind === 'melody' ? melodyVoice(timbre.melody) : kind === 'bonus' ? melodyVoice('bell') : kind === 'voice' ? voiceVoice(timbre.voiceBrightness) : null;
   for (let pass = 0; pass < 2; pass++) {
     for (const n of events) {
       const startSample = Math.round((n.beat / bps) * SR) + pass * loopLen;
-      const samples = voice ? voice(n, bps, r).samples : drumVoice(n, bps, r);
+      const samples = voice ? voice(n, bps, r).samples : drumVoice(n, bps, r, kit);
       for (let i = 0; i < samples.length && startSample + i < buf.length; i++) buf[startSample + i]! += samples[i]!;
     }
   }

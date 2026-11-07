@@ -36,6 +36,7 @@
     "glow": "#FFE8A3",
     "accent": "#7A8CFF"
   },
+  "ambienceFile": "pond_ambience.m4a",
   "creatures": [
     {
       "id": "pond_drums_1",
@@ -67,8 +68,9 @@
       "shape": {
         "body": "round",
         "eyes": "dots",
-        "species": "cat",
-        "accessory": "flower"
+        "species": "frog",
+        "accessory": "flower",
+        "look": "gummy"
       }
     },
     {
@@ -114,8 +116,9 @@
       "shape": {
         "body": "round",
         "eyes": "big",
-        "species": "bunny",
-        "accessory": "star"
+        "species": "axolotl",
+        "accessory": "none",
+        "look": "gummy"
       }
     },
     {
@@ -192,8 +195,9 @@
       "shape": {
         "body": "round",
         "eyes": "sleepy",
-        "species": "bear",
-        "accessory": "none"
+        "species": "bird",
+        "accessory": "star",
+        "look": "gummy"
       }
     },
     {
@@ -225,8 +229,9 @@
       "shape": {
         "body": "round",
         "eyes": "sparkle",
-        "species": "mouse",
-        "accessory": "bow"
+        "species": "bunny",
+        "accessory": "flower",
+        "look": "gummy"
       }
     },
     {
@@ -271,8 +276,9 @@
       "shape": {
         "body": "round",
         "eyes": "dots",
-        "species": "frog",
-        "accessory": "flower"
+        "species": "mouse",
+        "accessory": "flower",
+        "look": "gummy"
       }
     },
     {
@@ -334,8 +340,9 @@
       "shape": {
         "body": "round",
         "eyes": "big",
-        "species": "bird",
-        "accessory": "star"
+        "species": "bear",
+        "accessory": "none",
+        "look": "gummy"
       }
     },
     {
@@ -380,8 +387,9 @@
       "shape": {
         "body": "wide",
         "eyes": "big",
-        "species": "bear",
-        "accessory": "none"
+        "species": "axolotl",
+        "accessory": "star",
+        "look": "gummy"
       }
     },
     {
@@ -410,8 +418,9 @@
       "shape": {
         "body": "wide",
         "eyes": "sleepy",
-        "species": "mouse",
-        "accessory": "bow"
+        "species": "bird",
+        "accessory": "flower",
+        "look": "gummy"
       }
     },
     {
@@ -440,8 +449,9 @@
       "shape": {
         "body": "wide",
         "eyes": "sparkle",
-        "species": "frog",
-        "accessory": "flower"
+        "species": "bunny",
+        "accessory": "flower",
+        "look": "gummy"
       }
     },
     {
@@ -462,8 +472,9 @@
       "shape": {
         "body": "wide",
         "eyes": "dots",
-        "species": "bird",
-        "accessory": "star"
+        "species": "mouse",
+        "accessory": "none",
+        "look": "gummy"
       }
     },
     {
@@ -496,8 +507,9 @@
       "shape": {
         "body": "wide",
         "eyes": "big",
-        "species": "dino",
-        "accessory": "none"
+        "species": "bear",
+        "accessory": "star",
+        "look": "gummy"
       }
     },
     {
@@ -526,8 +538,9 @@
       "shape": {
         "body": "wide",
         "eyes": "sleepy",
-        "species": "axolotl",
-        "accessory": "bow"
+        "species": "frog",
+        "accessory": "flower",
+        "look": "gummy"
       }
     },
     {
@@ -572,8 +585,9 @@
       "shape": {
         "body": "tall",
         "eyes": "sleepy",
-        "species": "frog",
-        "accessory": "flower"
+        "species": "bird",
+        "accessory": "flower",
+        "look": "gummy"
       }
     },
     {
@@ -606,8 +620,9 @@
       "shape": {
         "body": "tall",
         "eyes": "sparkle",
-        "species": "bird",
-        "accessory": "star"
+        "species": "bunny",
+        "accessory": "none",
+        "look": "gummy"
       }
     },
     {
@@ -630,8 +645,9 @@
       "shape": {
         "body": "tall",
         "eyes": "dots",
-        "species": "dino",
-        "accessory": "none"
+        "species": "mouse",
+        "accessory": "star",
+        "look": "gummy"
       }
     },
     {
@@ -664,8 +680,9 @@
       "shape": {
         "body": "tall",
         "eyes": "big",
-        "species": "axolotl",
-        "accessory": "bow"
+        "species": "bear",
+        "accessory": "flower",
+        "look": "gummy"
       }
     },
     {
@@ -698,8 +715,9 @@
       "shape": {
         "body": "tall",
         "eyes": "sleepy",
-        "species": "cat",
-        "accessory": "flower"
+        "species": "frog",
+        "accessory": "flower",
+        "look": "gummy"
       }
     },
     {
@@ -740,8 +758,9 @@
       "shape": {
         "body": "tall",
         "eyes": "sparkle",
-        "species": "bunny",
-        "accessory": "star"
+        "species": "axolotl",
+        "accessory": "none",
+        "look": "gummy"
       }
     },
     {
@@ -760,8 +779,9 @@
       "shape": {
         "body": "small",
         "eyes": "sparkle",
-        "species": "dino",
-        "accessory": "none"
+        "species": "bunny",
+        "accessory": "star",
+        "look": "gummy"
       }
     },
     {
@@ -787,8 +807,9 @@
       "shape": {
         "body": "small",
         "eyes": "dots",
-        "species": "axolotl",
-        "accessory": "bow"
+        "species": "mouse",
+        "accessory": "flower",
+        "look": "gummy"
       }
     },
     {
@@ -813,8 +834,9 @@
       "shape": {
         "body": "small",
         "eyes": "big",
-        "species": "cat",
-        "accessory": "flower"
+        "species": "bear",
+        "accessory": "flower",
+        "look": "gummy"
       }
     },
     {
@@ -833,8 +855,9 @@
       "shape": {
         "body": "small",
         "eyes": "sleepy",
-        "species": "bunny",
-        "accessory": "star"
+        "species": "frog",
+        "accessory": "none",
+        "look": "gummy"
       }
     },
     {
@@ -863,8 +886,9 @@
       "shape": {
         "body": "small",
         "eyes": "sparkle",
-        "species": "bear",
-        "accessory": "none"
+        "species": "axolotl",
+        "accessory": "star",
+        "look": "gummy"
       }
     },
     {
@@ -885,8 +909,9 @@
       "shape": {
         "body": "small",
         "eyes": "dots",
-        "species": "mouse",
-        "accessory": "bow"
+        "species": "bird",
+        "accessory": "flower",
+        "look": "gummy"
       }
     }
   ],

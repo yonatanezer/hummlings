@@ -7,6 +7,7 @@ import { TUNING } from '../src/core/tuning';
 import { encodeWav } from '../src/core/wav';
 import { buildStage, seedOf } from './build-content';
 import { STAGES } from './stage-defs';
+import { renderAmbience } from './ambience';
 import { renderLoop, type LoopKind } from './synth';
 
 const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null;
@@ -56,6 +57,16 @@ STAGES.forEach((d, si) => {
     emit(c.loopFile, buildPattern({ stage: base, layer: c.layer, variant: v, seed, swing: d.swing, world: si }), c.layer, si, seed);
   });
   stage.combos.forEach((c, i) => emit(c.bonusLoopFile, buildBonusPattern(base, i, 9000 + si * 10 + i), 'bonus', si, 9000 + si * 10 + i));
+});
+
+// World ambience beds: normalised quieter than the loops (-30 LUFS) so they sit underneath.
+STAGES.forEach((d) => {
+  if (only && d.id !== only) return;
+  const buf = renderAmbience(d);
+  const g = Math.pow(10, (-30 - lufs(buf)) / 20);
+  for (let i = 0; i < buf.length; i++) buf[i] = buf[i]! * g;
+  encode(`${d.id}_ambience`, buf);
+  console.log(`${d.id}_ambience lufs=${lufs(buf).toFixed(1)}`);
 });
 
 // Tick sounds: soft hi-hat ticks for the empty stage and the first-run count.
