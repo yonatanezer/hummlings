@@ -18,7 +18,7 @@ export function UnlockScreen({ onBack }: { onBack: () => void }) {
   const [price, setPrice] = useState<string | null>(null);
   const [status, setStatus] = useState<'idle' | 'pending' | 'failed' | 'done'>('idle');
   useEffect(() => { void getPurchases().getPrice().then(setPrice); }, []);
-  const cw = Math.min(width * 0.22, 230), ch = Math.min(height * 0.5, cw * 1.1);
+  const cw = Math.min(width * 0.13, 150), ch = Math.min(height * 0.42, cw * 1.1);
   const buy = async () => {
     setStatus('pending');
     const r = await getPurchases().buy();

@@ -94,6 +94,8 @@ export const he: Record<StringKey, string> = {
   'ui.help': 'עזרה',
   'ui.settings': 'הגדרות',
   'ui.clear': 'ניקוי',
+  'ui.surprise': 'הפתעה',
+  'a11y.surprise': 'הפתעה: להקה אקראית',
   'ui.stop': 'עצור',
   'a11y.back': 'חזרה',
   'a11y.record': 'הקלטה',

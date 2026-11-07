@@ -135,6 +135,7 @@ button.ic svg{width:26px;height:26px;flex:none}button.ic .off{display:none}butto
 <div id="bar"><div id="worlds" role="group" aria-label="Worlds"></div>
 <div class="acts">
 <button id="clear" class="ic lb" aria-label="Clear the stage" title="Clear the stage"><svg viewBox="0 0 24 24"><path d="M19 3l-7 8"/><path d="M9.5 10.5l4 4-3 6.5H3l2-5z" fill="currentColor" stroke="none"/></svg><span>Clear</span></button>
+<button id="dice" class="ic lb" aria-label="Surprise band" title="Surprise me: a random band"><svg viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM8.5 9h.01M15.5 9h.01M12 12h.01M8.5 15h.01M15.5 15h.01"/></svg><span>Surprise</span></button>
 <button id="mute" class="ic lb" aria-label="Pause the music" title="Pause / resume" aria-pressed="false"><svg class="on" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z" class="fill"/><path d="M17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11"/></svg><svg class="off" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z" class="fill"/><path d="M17 9l5 6M22 9l-5 6"/></svg><span>Sound</span></button>
 <button id="bookBtn" class="ic lb" aria-label="Combo book" title="Combo book"><svg viewBox="0 0 24 24"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg><span>Combos</span></button>
 <button id="helpBtn" class="ic lb pulse" aria-label="How to play" title="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8M12 17.2v.3"/></svg><span>Help</span></button>

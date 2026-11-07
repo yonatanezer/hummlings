@@ -1,11 +1,12 @@
 import { Canvas, Circle, Group, Path, RoundedRect } from '@shopify/react-native-skia';
 
-export type IconName = 'back' | 'record' | 'stop' | 'book' | 'note' | 'gear' | 'trash' | 'play' | 'pause' | 'share' | 'close' | 'pencil' | 'lock' | 'sweep' | 'restore' | 'check' | 'full' | 'info' | 'next' | 'help' | 'volume' | 'vibrate' | 'motion' | 'globe';
+export type IconName = 'back' | 'record' | 'stop' | 'book' | 'note' | 'gear' | 'trash' | 'play' | 'pause' | 'share' | 'close' | 'pencil' | 'lock' | 'sweep' | 'restore' | 'check' | 'full' | 'info' | 'next' | 'help' | 'volume' | 'vibrate' | 'motion' | 'globe' | 'dice';
 
 // Icons are drawn from SVG path data on a 24x24 grid (original shapes, no icon font).
 const STROKES: Partial<Record<IconName, string>> = {
   back: 'M15 5 L8 12 L15 19',
   next: 'M9 5 L16 12 L9 19',
+  dice: 'M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z M8.5 9h.01 M15.5 9h.01 M12 12h.01 M8.5 15h.01 M15.5 15h.01',
   volume: 'M17 9a4 4 0 0 1 0 6 M19.5 6.5a8 8 0 0 1 0 11',
   vibrate: 'M8 4h8a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z M3 9v6 M21 9v6',
   motion: 'M3 12c3-5 6 5 9 0s6 5 9 0',

@@ -7,6 +7,7 @@ import { GestureTracker, type GestureEvent, type World } from '../core/gestures'
 import { computeLayout } from '../core/layout';
 import { Session } from '../core/session';
 import { popRate } from '../core/sfx';
+import { randomBand } from '../core/surprise';
 import { audibleIds } from '../core/stageState';
 import { autoName } from '../core/timeline';
 import { TUNING } from '../core/tuning';
@@ -261,6 +262,19 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
           <IconButton icon="note" label={t('a11y.songs')} caption={t('ui.songs')} onPress={onSongs} />
           <IconButton icon="help" label={t('a11y.help')} caption={t('ui.help')} onPress={onHelp} />
         </View>
+      </View>
+      <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 84, top: layout.stageH - 70 }]}>
+        <IconButton icon="dice" label={t('a11y.surprise')} caption={t('ui.surprise')} onPress={() => {
+          const l = layoutRef.current;
+          for (const id of session.state.spots) if (id) goBackAll(id, l.spots[session.state.spots.indexOf(id)]!);
+          session.dispatch({ kind: 'clear' });
+          randomBand(stage).forEach((id, spot) => {
+            anim.set(id, { since: now() + spot * 90, from: l.slotPos[stage.creatures.findIndex((c) => c.id === id)]! });
+            session.dispatch({ kind: 'drop', creatureId: id, spot });
+          });
+          engine.playSfx('goal');
+          syncScene();
+        }} />
       </View>
       <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 14, top: layout.stageH - 70 }]}>
         {onStageCount > 0 && <IconButton icon="sweep" label={t('a11y.clear')} caption={t('ui.clear')} onPress={() => {

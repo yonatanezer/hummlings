@@ -92,6 +92,8 @@ export const en = {
   'ui.help': 'Help',
   'ui.settings': 'Settings',
   'ui.clear': 'Clear',
+  'ui.surprise': 'Surprise',
+  'a11y.surprise': 'Surprise me: a random band',
   'ui.stop': 'Stop',
   'a11y.back': 'Back',
   'a11y.record': 'Record',

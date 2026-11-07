@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { STAGES, FREE_STAGE_IDS } from '../content';
 import { t, type StringKey } from '../i18n';
@@ -16,8 +16,8 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
   const insets = useSafeAreaInsets();
   const { rtl } = useLang();
   const { progress } = useProgress();
-  const cardW = Math.min(width * 0.28, 320);
-  const cardH = Math.min(height * 0.62, cardW * 1.1);
+  const cardW = Math.min(Math.max(width * 0.19, 150), 260);
+  const cardH = Math.min(height * 0.6, cardW * 1.1);
   const row = rtl ? 'row-reverse' : 'row';
   return (
     <View style={styles.root}>
@@ -29,7 +29,7 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
         <IconButton icon="gear" label={t('a11y.settings')} caption={t('ui.settings')} onPress={onSettings} />
         </View>
       </View>
-      <View style={[styles.cards, { flexDirection: 'row' }]}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.cards, { flexDirection: 'row', paddingHorizontal: 24, minWidth: '100%' }]}>
         {STAGES.map((st) => {
           const locked = !FREE_STAGE_IDS.includes(st.id) && !progress.unlocked;
           const found = st.combos.filter((c) => progress.discoveredCombos.includes(c.id)).length;
@@ -48,7 +48,7 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
     </View>
   );
 }

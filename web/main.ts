@@ -9,14 +9,18 @@ import { validateStage } from '../src/core/schema';
 import pond from '../content/stages/1-pond.json';
 import fair from '../content/stages/2-fair.json';
 import clouds from '../content/stages/3-clouds.json';
+import neon from '../content/stages/4-neon.json';
+import frost from '../content/stages/5-frost.json';
 import { WebEngine } from './engine';
 import { en } from '../src/i18n/en';
 import { popRate } from '../src/core/sfx';
+import { randomBand } from '../src/core/surprise';
 import { worldIconSvg } from '../src/core/worldIcons';
 import { P } from './pictos';
 
-const STAGES: Stage[] = [pond, fair, clouds].map((r) => validateStage(r).stage!);
-const NAMES = ['Moonlit Pond', 'Candy Fair', 'Sleepy Cloud Town'];
+const STAGES: Stage[] = [pond, fair, clouds, neon, frost].map((r) => validateStage(r).stage!);
+const NAMES = ['Moonlit Pond', 'Candy Fair', 'Sleepy Cloud Town', 'Neon City', 'Frosty Peaks'];
+const SHORT = ['Pond', 'Fair', 'Clouds', 'Neon', 'Frost'];
 const BODY_H = { round: 0.84, wide: 0.7, tall: 1.1, small: 0.74 } as const;
 const CELL_W = 220, CELL_H = 240, FEET_X = 110, FEET_Y = 222, SPRITE_S = 120;
 
@@ -208,11 +212,41 @@ function drawScenery(t: number) {
     ctx.beginPath(); ctx.moveTo(cx - R * 0.45, cy + R * 1.4); ctx.lineTo(cx, cy); ctx.lineTo(cx + R * 0.45, cy + R * 1.4); ctx.stroke();
     const tx = W * 0.83; for (let i = 0; i < 2; i++) { const x = tx + i * 70, w2 = 70; ctx.fillStyle = i ? '#FFC857aa' : '#FF7AA8aa'; ctx.beginPath(); ctx.moveTo(x - w2 / 2, layout.stageH * 0.55); ctx.lineTo(x, layout.stageH * 0.55 - 52); ctx.lineTo(x + w2 / 2, layout.stageH * 0.55); ctx.fill(); ctx.fillStyle = '#ffffff22'; ctx.fillRect(x - w2 / 2, layout.stageH * 0.55, w2, 26); }
     ctx.save(); floorClip(); for (let i = -12; i < 14; i++) { ctx.fillStyle = i % 2 ? '#ffffff12' : '#00000018'; ctx.beginPath(); ctx.moveTo(W / 2 + i * 60 - 20, fy - H * 0.25); ctx.lineTo(W / 2 + i * 60 + 40, fy - H * 0.25); ctx.lineTo(W / 2 + i * 90 + 70, fy + H * 0.3); ctx.lineTo(W / 2 + i * 90 - 20, fy + H * 0.3); ctx.fill(); } ctx.restore();
-  } else {
+  } else if (stage.id === 'clouds') {
     const mx = W * 0.8, my = H * 0.22, mr = H * 0.08;
     ctx.fillStyle = '#FFF4D2'; ctx.beginPath(); ctx.arc(mx, my, mr, 0, 7); ctx.fill(); ctx.fillStyle = stage.palette.sky; ctx.beginPath(); ctx.arc(mx + mr * 0.45, my - mr * 0.15, mr * 0.9, 0, 7); ctx.fill();
     for (let i = 0; i < 6; i++) { const hx = W * (0.08 + i * 0.16) + (i % 2) * 14, hy = layout.stageH * 0.62, hw = 34 + (i % 3) * 8, hh = 26 + (i % 2) * 12; ctx.fillStyle = '#e8f6ffcc'; ctx.beginPath(); ctx.arc(hx, hy + 8, 30, 0, 7); ctx.arc(hx + 26, hy + 12, 24, 0, 7); ctx.arc(hx - 24, hy + 12, 22, 0, 7); ctx.fill(); ctx.fillStyle = '#FFE8A3'; ctx.fillRect(hx - hw / 2, hy - hh, hw, hh); ctx.fillStyle = '#7A8CFF'; ctx.beginPath(); ctx.moveTo(hx - hw / 2 - 4, hy - hh); ctx.lineTo(hx, hy - hh - 18); ctx.lineTo(hx + hw / 2 + 4, hy - hh); ctx.fill(); ctx.fillStyle = `rgba(255,170,60,${0.6 + 0.3 * Math.sin(t / 700 + i)})`; ctx.fillRect(hx - 4, hy - hh * 0.65, 8, 9); }
     ctx.save(); floorClip(); ctx.fillStyle = '#ffffff1c'; for (let i = 0; i < 18; i++) { ctx.beginPath(); ctx.arc(W * (i / 17), fy - H * 0.17 + (i % 3) * 10, 26, 0, 7); ctx.fill(); } ctx.restore();
+  } else if (stage.id === 'neon') {
+    const hor = layout.stageH * 0.6;
+    const cols = ['#FF4DD2', '#7DF9FF', '#FFE066', '#C8B6FF'];
+    ctx.strokeStyle = '#FF4DD2'; ctx.lineWidth = 3; ctx.shadowColor = '#FF4DD2'; ctx.shadowBlur = 14; ctx.beginPath(); ctx.arc(W * 0.82, H * 0.2, H * 0.075, 0, 7); ctx.stroke(); ctx.shadowBlur = 0;
+    for (let i = 0; i < 13; i++) {
+      const bw = W * (0.045 + ((i * 37) % 5) * 0.008), bx = W * (i / 13) + 4, bh = layout.stageH * (0.22 + ((i * 53) % 7) * 0.05);
+      ctx.fillStyle = '#0d1530'; ctx.fillRect(bx, hor - bh, bw, bh);
+      ctx.strokeStyle = cols[i % 4]! + '66'; ctx.lineWidth = 1.5; ctx.strokeRect(bx, hor - bh, bw, bh);
+      for (let wy = 0; wy < bh - 10; wy += 14) for (let wx = 5; wx < bw - 8; wx += 11) { const on = Math.sin(i * 7.3 + wy * 0.9 + wx * 1.7 + Math.floor(t / 1800)) > 0.2; ctx.fillStyle = on ? cols[(i + wy) % 4]! + 'cc' : '#ffffff10'; ctx.fillRect(bx + wx, hor - bh + wy + 6, 5, 6); }
+    }
+    ctx.save(); ctx.font = '800 22px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.shadowColor = '#7DF9FF'; ctx.shadowBlur = 12 + 6 * Math.sin(t / 220); ctx.fillStyle = '#7DF9FF'; ctx.fillText('HUM', W * 0.12, layout.stageH * 0.3); ctx.restore();
+    ctx.save(); floorClip(); ctx.strokeStyle = '#7DF9FF40'; ctx.lineWidth = 1.5;
+    for (let i = -14; i <= 14; i++) { ctx.beginPath(); ctx.moveTo(W / 2 + i * 14, fy - H * 0.2); ctx.lineTo(W / 2 + i * 120, fy + H * 0.3); ctx.stroke(); }
+    for (let k = 0; k < 8; k++) { const u = ((k + (t / 1800) % 1) / 8) ** 2; ctx.beginPath(); ctx.moveTo(0, fy - H * 0.2 + u * H * 0.5); ctx.lineTo(W, fy - H * 0.2 + u * H * 0.5); ctx.stroke(); }
+    ctx.restore();
+  } else if (stage.id === 'frost') {
+    for (let k = 0; k < 3; k++) { // aurora ribbons
+      ctx.beginPath(); ctx.moveTo(0, layout.stageH * (0.18 + k * 0.07));
+      for (let x = 0; x <= W; x += 24) ctx.lineTo(x, layout.stageH * (0.16 + k * 0.07) + Math.sin(x / 130 + t / 1600 + k * 2) * 18);
+      for (let x = W; x >= 0; x -= 24) ctx.lineTo(x, layout.stageH * (0.3 + k * 0.07) + Math.sin(x / 110 + t / 1400 + k) * 22);
+      ctx.closePath(); const g = ctx.createLinearGradient(0, 0, 0, layout.stageH * 0.55); g.addColorStop(0, ['#5FE3C055', '#9AD7FF44', '#C8B6FF44'][k]!); g.addColorStop(1, '#00000000'); ctx.fillStyle = g; ctx.fill();
+    }
+    for (const [x0, w2, hh, col] of [[-0.05, 0.4, 0.34, '#2c5a86'], [0.25, 0.5, 0.42, '#3a6c9c'], [0.62, 0.45, 0.3, '#2c5a86'], [0.8, 0.4, 0.38, '#3a6c9c']] as const) {
+      const bx = W * x0, bw = W * w2, base = layout.stageH * 0.64, top = base - layout.stageH * hh;
+      ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(bx, base); ctx.lineTo(bx + bw / 2, top); ctx.lineTo(bx + bw, base); ctx.fill();
+      ctx.fillStyle = '#EAF6FF'; ctx.beginPath(); ctx.moveTo(bx + bw / 2, top); ctx.lineTo(bx + bw * 0.4, top + (base - top) * 0.28); ctx.lineTo(bx + bw * 0.5, top + (base - top) * 0.22); ctx.lineTo(bx + bw * 0.6, top + (base - top) * 0.3); ctx.fill();
+    }
+    ctx.save(); floorClip(); ctx.fillStyle = '#ffffff22'; ctx.fillRect(0, fy - H * 0.2, W, H * 0.5);
+    for (let i = 0; i < 30; i++) { ctx.fillStyle = '#ffffff44'; ctx.beginPath(); ctx.arc(rnd(i + 200) * W, fy - H * 0.18 + rnd(i + 300) * H * 0.3, 1.5, 0, 7); ctx.fill(); }
+    ctx.restore();
   }
   ctx.restore();
 }
@@ -229,8 +263,14 @@ function drawDecor(t: number, beat: number) {
     const cols = ['#FF7AA8', '#FFC857', '#5FE3C0', '#7A8CFF'];
     for (let i = 0; i < 14; i++) { const u = (i + 0.5) / 14, x = W * u, y = 18 + 52 * 4 * u * (1 - u) * 0.5 + 6; ctx.fillStyle = cols[i % 4] + 'cc'; ctx.beginPath(); ctx.moveTo(x - 9, y); ctx.lineTo(x + 9, y); ctx.lineTo(x, y + 20 + 2 * Math.sin(t / 300 + i)); ctx.fill(); }
     for (let i = 0; i < 5; i++) { const x = W * (0.08 + i * 0.21) + Math.sin(t / 1500 + i) * 10, y = layout.stageH * (0.3 + 0.08 * Math.sin(t / 1100 + i * 2)); ctx.strokeStyle = '#ffffff44'; ctx.beginPath(); ctx.moveTo(x, y + 18); ctx.lineTo(x, y + 70); ctx.stroke(); ctx.fillStyle = cols[(i + 1) % 4] + 'aa'; ctx.beginPath(); ctx.ellipse(x, y, 13, 17, 0, 0, 7); ctx.fill(); }
-  } else { // drifting clouds
+  } else if (stage.id === 'clouds') { // drifting clouds
     for (let i = 0; i < 5; i++) { const x = ((t / 40 + i * W * 0.25) % (W * 1.3)) - W * 0.15, y = layout.stageH * (0.12 + 0.12 * i % 0.5); ctx.fillStyle = '#d6f0ff22'; for (const [dx, dy, r] of [[0, 0, 22], [24, -8, 28], [52, 0, 22], [26, 8, 24]] as const) { ctx.beginPath(); ctx.arc(x + dx, y + dy, r, 0, 7); ctx.fill(); } }
+  } else if (stage.id === 'neon') { // neon rain
+    ctx.strokeStyle = '#7DF9FF55'; ctx.lineWidth = 1.5;
+    for (let i = 0; i < 46; i++) { const x = rnd(i + 400) * W, y = ((t / 3 * (0.6 + rnd(i + 500)) + rnd(i + 600) * layout.stageH * 2) % (layout.stageH * 1.2)) - 10; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 3, y + 13); ctx.stroke(); }
+  } else if (stage.id === 'frost') { // snowfall
+    ctx.fillStyle = '#ffffffcc';
+    for (let i = 0; i < 70; i++) { const x = (rnd(i + 700) * W + Math.sin(t / 900 + i) * 14 + W) % W, y = ((t / 12 * (0.4 + rnd(i + 800)) + rnd(i + 900) * layout.stageH * 2) % (layout.stageH * 1.15)) - 6; ctx.beginPath(); ctx.arc(x, y, 1.2 + rnd(i + 1000) * 2, 0, 7); ctx.fill(); }
   }
   // the floor rim breathes with the beat
   ctx.strokeStyle = p.glow + Math.round(40 + 90 * Math.max(0, 1 - (beat % 1) * 3)).toString(16).padStart(2, '0'); ctx.lineWidth = 3;
@@ -478,6 +518,8 @@ function apply(ev: GestureEvent, t: number) {
         engine.playSfx('pop', popRate(stage.key, deg) * 2);
         if (stage.id === 'pond') for (let k = 0; k < 3; k++) ripples2.push({ x: ev.p.x, y: ev.p.y, t: t + k * 160 });
         else if (stage.id === 'fair') burst(ev.p.x, ev.p.y, ['#FF7AA8', '#FFC857', '#5FE3C0', '#7A8CFF'], 14, 'spark', t, 230);
+        else if (stage.id === 'neon') { burst(ev.p.x, ev.p.y, ['#7DF9FF', '#FF4DD2', '#FFE066'], 16, 'spark', t, 260); for (let k = 0; k < 2; k++) ripples2.push({ x: ev.p.x, y: ev.p.y, t: t + k * 140 }); }
+        else if (stage.id === 'frost') burst(ev.p.x, ev.p.y, ['#FFFFFF', '#9AD7FF', '#E8F6FF'], 12, 'star', t, 110);
         else burst(ev.p.x, ev.p.y, ['#FFFFFF', '#D6F0FF', '#FFE8A3'], 8, 'star', t, 90);
       }
       break;
@@ -529,8 +571,21 @@ async function openStage(i: number) {
   $('loading').classList.add('hide');
 }
 
-$('worlds').innerHTML = NAMES.map((n, i) => `<button data-i="${i}" aria-label="${n}" title="${n}"><span class="wi">${worldIconSvg(STAGES[i]!.id, 32)}</span><span class="long">${n}</span><span class="short">${n.split(' ')[0] === 'Sleepy' ? 'Clouds' : n.split(' ')[0] === 'Moonlit' ? 'Pond' : 'Fair'}</span></button>`).join('');
+$('worlds').innerHTML = NAMES.map((n, i) => `<button data-i="${i}" aria-label="${n}" title="${n}"><span class="wi">${worldIconSvg(STAGES[i]!.id, 32)}</span><span class="long">${n}</span><span class="short">${SHORT[i]}</span></button>`).join('');
 $('worlds').addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button'); if (b) void openStage(Number(b.dataset.i)); });
+$('dice').addEventListener('click', () => {
+  if (!session || !ready) return;
+  const s = session;
+  s.state.spots.forEach((id, sp) => { if (id) returning.push({ id, since: performance.now(), from: layout.spots[sp]! }); });
+  s.dispatch({ kind: 'clear' });
+  const now = performance.now();
+  randomBand(stage).forEach((id, spot) => {
+    const i = stage.creatures.findIndex((c) => c.id === id);
+    placedAnim.set(id, { since: now + spot * 90, from: { x: layout.slotPos[i]!.x - scrollX, y: layout.slotPos[i]!.y } });
+    s.dispatch({ kind: 'drop', creatureId: id, spot });
+  });
+  hint = false; engine.playSfx('goal');
+});
 $('clear').addEventListener('click', () => { if (!session) return; session.state.spots.forEach((id, s) => { if (id) returning.push({ id, since: performance.now(), from: layout.spots[s]! }); }); session.dispatch({ kind: 'clear' }); });
 $('start').addEventListener('click', () => { $('splash').classList.add('hide'); void openStage(0); });
 $('mute').addEventListener('click', () => { const on = engine.state === 'running'; if (on) engine.pause(); else engine.resume(); $('mute').setAttribute('aria-pressed', String(on)); $('mute').classList.toggle('off', on); });
