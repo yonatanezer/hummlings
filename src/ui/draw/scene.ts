@@ -29,6 +29,7 @@ export interface SceneInput {
   hint: boolean; // first-run animated hand
   recordingBeat: number | null; // for the REC pulse (null = not recording)
   hintSlot: number;
+  reward?: { progress: number } | null; // ring that fills while a complete secret combo is being held
   trayK?: number; // 1 = singer menu shown, 0 = slid away (animated by the screen)
   popup?: { spot: number; creatureId: string; volume: number; solo: boolean } | null; // volume popup after a long press
   volumes?: Record<string, number>;
@@ -185,6 +186,7 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   }
 
   if (s.popup) drawVolumePopup(sk, c, s);
+  if (s.reward && !s.celebration) drawRewardRing(sk, c, s);
 
   // tray (singer menu): slides down out of view on a swipe; a handle tab at the bottom edge brings it back
   const trayK = s.trayK ?? 1;
@@ -252,6 +254,24 @@ function layerGlyph(sk: SkiaApi, c: Canvas, layer: string, x: number, y: number,
   else if (layer === 'bass') { const q = sk.PathBuilder.Make(); q.moveTo(x - 10, y); q.cubicTo(x - 6, y - 10, x - 2, y + 8, x + 1, y); q.cubicTo(x + 4, y - 8, x + 8, y + 8, x + 11, y); c.drawPath(q.build(), p); }
   else if (layer === 'melody') { c.drawCircle(x - 4, y + 5, 4, paint(sk, color)); c.drawLine(x, y + 5, x, y - 9, p); c.drawLine(x, y - 9, x + 8, y - 6, p); }
   else { c.drawOval(sk.XYWHRect(x - 10, y - 6, 20, 14), p); c.drawOval(sk.XYWHRect(x - 4, y, 8, 5), paint(sk, color)); }
+}
+
+/** Countdown to a secret combo's celebration: a gold ring that fills, with a star that pulses on the beat. */
+function drawRewardRing(sk: SkiaApi, c: Canvas, s: SceneInput) {
+  'worklet';
+  const l = s.layout, p = s.reward!.progress;
+  const cx = l.W / 2, cy = Math.max(l.H * 0.2, 96), r = Math.max(30, l.size * 0.26);
+  const pulse = s.reduceMotion ? 0 : Math.max(0, 1 - (s.beat % 1) * 3);
+  c.drawCircle(cx, cy, r + 8 + pulse * 4, radialPaint(sk, cx, cy, r + 14, ['#FFE066', '#00000000'], 0.25 + 0.5 * p));
+  c.drawCircle(cx, cy, r, paint(sk, '#1B1340', 0.92));
+  c.drawCircle(cx, cy, r - 5, paint(sk, '#FFFFFF', 0.22, STROKE, 7));
+  const ov = sk.XYWHRect(cx - r + 5, cy - r + 5, (r - 5) * 2, (r - 5) * 2);
+  c.drawArc(ov, -90, Math.max(1, 360 * p), false, paint(sk, '#FFC857', 1, STROKE, 7));
+  const q = sk.PathBuilder.Make();
+  const sr = r * (0.5 + 0.06 * pulse);
+  for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? sr * 0.42 : sr; if (k === 0) q.moveTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); else q.lineTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); }
+  q.close();
+  c.drawPath(q.build(), paint(sk, '#FFE066'));
 }
 
 function drawVolumePopup(sk: SkiaApi, c: Canvas, s: SceneInput) {

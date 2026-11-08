@@ -104,3 +104,19 @@ describe('volume in session and export', () => {
     expect(quiet[mid]! / full[mid]!).toBeCloseTo(0.25, 2);
   });
 });
+
+describe('reward countdown', () => {
+  it('appears while a complete combo is held, points at the exact start of the celebration, and disappears when it is broken', () => {
+    const engine = new MockEngine();
+    const s = new Session(stage, engine, {});
+    s.start();
+    combo.creatureIds.forEach((id, i) => s.dispatch({ kind: 'drop', creatureId: id, spot: i }));
+    engine.advanceBars(2);
+    expect(s.reward).toMatchObject({ comboId: combo.id, startBeat: 32 }); // the celebration really starts at bar 8
+    engine.advanceBars(3);
+    expect(s.reward!.startBeat).toBe(32);
+    s.dispatch({ kind: 'mute', creatureId: combo.creatureIds[0] });
+    engine.advanceBars(2);
+    expect(s.reward).toBeNull();
+  });
+});

@@ -147,6 +147,28 @@ function sprite(cr: Creature, pose: number, x: number, y: number, S: number, o: 
   ctx.restore();
 }
 
+/** Countdown to the secret combo's celebration: a gold ring that fills, the star pulses on the beat, seconds left underneath. */
+function drawRewardRing(t: number, beat: number) {
+  const rw = session?.reward;
+  if (!rw || celebration || playMode) return;
+  const total = Math.max(1, rw.startBeat - rw.fromBeat), left = Math.max(0, rw.startBeat - beat);
+  const p = Math.min(1, Math.max(0, 1 - left / total)), secs = Math.ceil((left * 60) / stage.bpm);
+  const cx = W / 2, cy = Math.max($('bar').offsetHeight + 56, H * 0.2), r = Math.max(30, layout.size * 0.26);
+  const pulse = reduceMotion ? 0 : Math.max(0, 1 - (beat % 1) * 3);
+  const g = ctx.createRadialGradient(cx, cy, r * 0.8, cx, cy, r + 16); g.addColorStop(0, `rgba(255,224,102,${0.25 + 0.5 * p})`); g.addColorStop(1, 'rgba(255,224,102,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r + 16 + pulse * 4, 0, 7); ctx.fill();
+  ctx.fillStyle = '#1B1340ee'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
+  ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.strokeStyle = '#ffffff38'; ctx.beginPath(); ctx.arc(cx, cy, r - 5, 0, 7); ctx.stroke();
+  ctx.strokeStyle = '#FFC857'; ctx.beginPath(); ctx.arc(cx, cy, r - 5, -Math.PI / 2, -Math.PI / 2 + Math.max(0.02, p) * Math.PI * 2); ctx.stroke();
+  const sr = r * (0.5 + 0.06 * pulse); ctx.fillStyle = '#FFE066'; ctx.beginPath();
+  for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? sr * 0.42 : sr; ctx.lineTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); }
+  ctx.fill();
+  ctx.font = '800 20px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const bw = 46, by = cy + r + 12; ctx.fillStyle = '#1B1340f0'; ctx.beginPath(); ctx.roundRect(cx - bw / 2, by - 13, bw, 26, 13); ctx.fill(); ctx.strokeStyle = '#FFC857'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#FFE066'; ctx.fillText(String(secs), cx, by + 1); ctx.textAlign = 'start';
+  void t;
+}
+
 function trayGlyph(layer: string, x: number, y: number, color: string) {
   ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
   ctx.beginPath();
@@ -434,6 +456,7 @@ function frame(t: number) {
     ctx.fillStyle = '#ffffffcc'; ctx.strokeStyle = '#FFC857'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, 17, 0, 7); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
   }
   drawVolumeUi();
+  drawRewardRing(t, beat);
   drawParticles(t);
   for (let i = ripples2.length - 1; i >= 0; i--) { const r = ripples2[i]!, k = (t - r.t) / 1100; if (k >= 1) { ripples2.splice(i, 1); continue; } if (k < 0) continue; ctx.strokeStyle = `rgba(180,240,255,${0.7 * (1 - k)})`; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(r.x, r.y, 10 + 90 * k, (10 + 90 * k) * 0.35, 0, 0, 7); ctx.stroke(); }
   // banner for a found combo

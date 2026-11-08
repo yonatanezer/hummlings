@@ -24,6 +24,8 @@ export class Session {
   tracker: TrackerState = initialTracker();
   lastProvidedBar = -1;
   celebrating: { comboId: string; startBar: number; bonusFile: string } | null = null;
+  /** While a complete combo is being held: when its celebration will start (in beats) and since when it counts. */
+  reward: { comboId: string; startBeat: number; fromBeat: number } | null = null;
   recorder: Recorder | null = null;
   private prevState: StageState = emptyStage(); // what sounded during the previous bar
   private replay: string | null = null; // combo book replay waiting for the next loop boundary
@@ -82,6 +84,7 @@ export class Session {
     if (this.recorder && bar - this.recorder.startBar >= this.recorder.maxBarCount) {
       this.events.onRecordingLimit?.();
     }
+    this.updateReward(bar);
     this.prevState = this.state;
     for (const g of this.goals.check(this.state, this.discoveredInStage)) this.events.onGoal?.(g);
     this.events.onBar?.(bar);
@@ -102,6 +105,17 @@ export class Session {
     this.dispatch({ kind: 'clear' });
     combo.creatureIds.forEach((id, i) => this.dispatch({ kind: 'drop', creatureId: id, spot: i + 1 }));
     this.replay = comboId;
+  }
+
+  /** Bars until the celebration of the combo that is currently held: a full loop must pass, then it starts on a loop boundary. */
+  private updateReward(bar: number): void {
+    const c = this.tracker.candidate;
+    if (this.celebrating || !c || this.replay) { this.reward = null; return; }
+    const need = Math.max(0, TUNING.loopBars * TUNING.comboWaitLoops - this.tracker.heldBars);
+    const b0 = bar + need;
+    const start = b0 + ((TUNING.loopBars - (b0 % TUNING.loopBars)) % TUNING.loopBars);
+    if (this.reward?.comboId === c && this.reward.startBeat === start * TUNING.beatsPerBar) return;
+    this.reward = { comboId: c, startBeat: start * TUNING.beatsPerBar, fromBeat: this.reward?.comboId === c ? this.reward.fromBeat : bar * TUNING.beatsPerBar };
   }
 
   private layerCount(ids: string[]): number {

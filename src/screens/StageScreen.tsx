@@ -57,6 +57,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
   const [saved, setSaved] = useState<Song | null>(null);
   const [exportMsg, setExportMsg] = useState<ExportResult | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [rewardSecs, setRewardSecs] = useState<number | null>(null);
   const [, force] = useState(0);
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
@@ -121,6 +122,14 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
     let raf = 0;
     const loop = () => {
       sv.beat.value = engine.state === 'running' ? engine.positionBeats() : sv.beat.value;
+      const rw = session.reward;
+      if (rw && !session.celebrating) {
+        const total = Math.max(1, rw.startBeat - rw.fromBeat);
+        const left = Math.max(0, rw.startBeat - sv.beat.value);
+        sv.reward.value = { progress: Math.min(1, Math.max(0, 1 - left / total)) };
+        const secs = Math.max(0, Math.ceil((left * 60) / stage.bpm));
+        setRewardSecs((v) => (v === secs ? v : secs));
+      } else if (sv.reward.value) { sv.reward.value = null; setRewardSecs(null); }
       if (sv.returning.value.length) {
         const t0 = now();
         const keep = sv.returning.value.filter((r) => t0 - r.since < TUNING.hopMs + 40);
@@ -302,6 +311,11 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
       </View>
 
       {book && <ComboBook stage={stage} session={session} discovered={progress.discoveredCombos} onClose={() => setBook(false)} onReplay={(id) => { setBook(false); session.replayCombo(id); }} />}
+      {rewardSecs !== null && !book && (
+        <View pointerEvents="none" style={[styles.rewardSecs, { top: Math.max(layout.H * 0.2, 96) + Math.max(30, layout.size * 0.26) + 10 }]}>
+          <Text style={styles.rewardText}>{rewardSecs}</Text>
+        </View>
+      )}
       {saved && (
         <View style={styles.overlay}>
           <View style={styles.card}>
@@ -351,6 +365,8 @@ const styles = StyleSheet.create({
   rec: { color: '#fff', fontSize: 18, fontWeight: '700', backgroundColor: COLORS.rec, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' },
   overlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(10,6,32,0.6)', alignItems: 'center', justifyContent: 'center' },
   card: { backgroundColor: COLORS.panel, padding: 24, borderRadius: 24, alignItems: 'center', gap: 16, maxWidth: 420 },
+  rewardSecs: { position: 'absolute', alignSelf: 'center', backgroundColor: 'rgba(27,19,64,0.92)', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 2, borderWidth: 2, borderColor: '#FFC857' },
+  rewardText: { color: '#FFE066', fontSize: 20, fontWeight: '800' },
   cardTitle: { color: COLORS.glow, fontSize: 24, fontWeight: '800' },
   ok: { color: COLORS.ok, fontSize: 16, fontWeight: '700' },
   fail: { color: COLORS.danger, fontSize: 16, textAlign: 'center' },
