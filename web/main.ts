@@ -15,6 +15,7 @@ import { WebEngine } from './engine';
 import { en } from '../src/i18n/en';
 import { popRate } from '../src/core/sfx';
 import { randomBand } from '../src/core/surprise';
+import { nextFreeSpot } from '../src/core/stageState';
 import { worldIconSvg } from '../src/core/worldIcons';
 import { P } from './pictos';
 import { autoName, comboStartsAt, stateAtBar, warnBars, type Song } from '../src/core/timeline';
@@ -515,6 +516,12 @@ function apply(ev: GestureEvent, t: number) {
     case 'longPress': { const spot = s.state.spots.indexOf(ev.creatureId); if (spot >= 0) popup = { spot, creatureId: ev.creatureId }; engine.playSfx('pickup'); break; }
     case 'volumeSet': s.dispatch({ kind: 'volume', creatureId: ev.creatureId, value: ev.value }); break;
     case 'popupSolo': s.dispatch({ kind: 'solo', creatureId: ev.creatureId }); engine.playSfx('pop', 1.5); break;
+    case 'trayTap': {
+      const spot = nextFreeSpot(s.state), i = stage.creatures.findIndex((c) => c.id === ev.creatureId);
+      if (spot < 0 || i < 0) { engine.playSfx('mute'); break; }
+      apply({ type: 'drop', touch: -1, creatureId: ev.creatureId, spot, p: { x: layout.slotPos[i]!.x - scrollX, y: layout.slotPos[i]!.y - layout.size * 0.6 } }, t);
+      break;
+    }
     case 'popupClose': popup = null; break;
     case 'trayHide': trayOpen = false; break;
     case 'trayShow': trayOpen = true; break;

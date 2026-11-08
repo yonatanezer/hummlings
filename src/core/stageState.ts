@@ -98,3 +98,7 @@ export function audibleIds(s: StageState): string[] {
   if (s.solo) return isOnStage(s, s.solo) ? [s.solo] : [];
   return onStage(s).filter((id) => !s.muted[id] && (s.volume[id] ?? 1) >= SILENT_LEVEL);
 }
+
+/** Order in which a tapped singer takes a spot: the middle of the stage first, then outward. */
+const SPOT_ORDER = [2, 3, 1, 4, 0, 5];
+export const nextFreeSpot = (s: StageState): number => SPOT_ORDER.find((i) => i < s.spots.length && !s.spots[i]) ?? -1;

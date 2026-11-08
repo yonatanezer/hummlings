@@ -135,20 +135,41 @@ button.ic svg{width:26px;height:26px;flex:none}button.ic .off{display:none}butto
 #songList{display:grid;gap:8px;text-align:left}.srow{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.06);border-radius:14px;padding:8px 10px}.sinfo{flex:1;min-width:0;display:grid;gap:2px}.sname{font:inherit;font-weight:700;color:var(--fg);background:transparent;border:0;border-bottom:1.5px dashed #ffffff44;padding:2px 0;width:100%}.sinfo small{color:var(--dim)}.srow button.ic{min-width:46px;min-height:46px}.del.armed{background:#FF4D6D}
 .empty{display:grid;place-items:center;gap:6px;padding:18px;color:var(--dim)}
 #playbar{position:fixed;left:50%;bottom:calc(35% + 10px);transform:translateX(-50%);z-index:6}
+/* ---- layout v3: worlds down the left edge, record/songs/surprise/clear down the right, status + secondary buttons in a slim top row ---- */
+#bar{left:50%!important;right:auto!important;transform:translateX(-50%);width:auto!important;max-width:calc(100% - 128px);flex-wrap:nowrap!important;gap:10px!important;padding:8px 0!important;background:none!important}
+#bar .hud{margin:0!important;width:auto!important;gap:8px}
+#bar .acts{gap:8px}
+#sideL,#sideR{position:fixed;top:8px;display:flex;flex-direction:column;gap:6px;z-index:3}
+#sideL{left:max(8px,env(safe-area-inset-left,0px))}
+#sideR{right:max(8px,env(safe-area-inset-right,0px))}
+#sideL button,#sideR button{width:48px;min-width:48px;height:48px;min-height:48px;padding:0;gap:0;justify-content:center}
+#worlds{display:flex!important;flex-direction:column;gap:6px!important}
+#worlds button{padding:0!important;width:48px}
+#worlds .long,#worlds .short,#sideR button.lb span,#bar button.lb span{display:none!important}
+#sideR #recBtn.recording{width:auto;min-width:48px;padding:0 10px;gap:6px}
+#sideR #recBtn.recording #recLbl{display:inline!important;font-variant-numeric:tabular-nums}
+#sideL button svg,#sideR button svg{width:26px;height:26px}
+#worlds .wi svg{width:30px;height:30px}
+@media (max-height:540px){#sideL button,#sideR button,#worlds button{width:44px;min-width:44px;height:44px;min-height:44px}#sideL,#sideR{gap:5px;top:6px}}
+@media (max-width:700px){#bar{max-width:calc(100% - 112px)}#band b i{width:22px;height:22px}}
 </style>
 <div id="wrap"><canvas id="game" aria-label="Hummlings stage"></canvas></div>
-<div id="bar"><div id="worlds" role="group" aria-label="Worlds"></div>
-<div class="acts">
-<button id="clear" class="ic lb" aria-label="Clear the stage" title="Clear the stage"><svg viewBox="0 0 24 24"><path d="M19 3l-7 8"/><path d="M9.5 10.5l4 4-3 6.5H3l2-5z" fill="currentColor" stroke="none"/></svg><span>Clear</span></button>
+<div id="sideL"><div id="worlds" role="group" aria-label="Worlds"></div></div>
+<div id="sideR">
 <button id="recBtn" class="ic lb rec" aria-label="Record" title="Record your song"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="#FF4D6D" stroke="none"/></svg><span id="recLbl">Record</span></button>
 <button id="songsBtn" class="ic lb" aria-label="My songs" title="My songs"><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="16" r="2.5"/></svg><span>Songs</span></button>
 <button id="dice" class="ic lb" aria-label="Surprise band" title="Surprise me: a random band"><svg viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM8.5 9h.01M15.5 9h.01M12 12h.01M8.5 15h.01M15.5 15h.01"/></svg><span>Surprise</span></button>
+<button id="clear" class="ic lb" aria-label="Clear the stage" title="Clear the stage"><svg viewBox="0 0 24 24"><path d="M19 3l-7 8"/><path d="M9.5 10.5l4 4-3 6.5H3l2-5z" fill="currentColor" stroke="none"/></svg><span>Clear</span></button>
+</div>
+<div id="bar">
+<div class="hud"><div id="band" aria-label="Band: layers playing"></div>
+<div id="combos-wrap"><span class="lbl"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg></span><div id="combos" aria-label="Secret combos: a dot lights up for each matching singer on stage"></div></div><i id="beat" aria-hidden="true"></i></div>
+<div class="acts">
 <button id="mute" class="ic lb" aria-label="Pause the music" title="Pause / resume" aria-pressed="false"><svg class="on" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z" class="fill"/><path d="M17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11"/></svg><svg class="off" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z" class="fill"/><path d="M17 9l5 6M22 9l-5 6"/></svg><span>Sound</span></button>
 <button id="bookBtn" class="ic lb" aria-label="Combo book" title="Combo book"><svg viewBox="0 0 24 24"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg><span>Combos</span></button>
 <button id="helpBtn" class="ic lb pulse" aria-label="How to play" title="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8M12 17.2v.3"/></svg><span>Help</span></button>
 </div>
-<div class="hud"><div id="band" aria-label="Band: layers playing"></div>
-<div id="combos-wrap"><span class="lbl"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg></span><div id="combos" aria-label="Secret combos: a dot lights up for each matching singer on stage"></div></div><i id="beat" aria-hidden="true"></i></div></div>
+</div>
 <div id="toast"></div>
 <div id="book" class="ov hide" role="dialog" aria-label="Combo book"><div class="sheet"><button class="ic x" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div class="hd"><svg viewBox="0 0 24 24" width="30" height="30"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg><h2>Secret combos</h2></div><p class="sub">Dots light up for each matching singer on stage. Put all four together and keep them for two loops.</p><div id="cards"></div></div></div>
 <div id="songs" class="ov hide" role="dialog" aria-label="My songs"><div class="sheet"><button class="ic x" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div class="hd"><svg viewBox="0 0 24 24" width="30" height="30"><path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="16" r="2.5"/></svg><h2>My songs</h2></div><div id="songList"></div></div></div>

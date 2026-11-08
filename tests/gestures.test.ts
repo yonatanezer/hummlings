@@ -176,3 +176,21 @@ describe('layout with a top overlay', () => {
     expect(backRowY - withBar.size * 1.5).toBeGreaterThanOrEqual(66 - 1);
   });
 });
+
+import { emptyStage, nextFreeSpot, reduceStage } from '../src/core/stageState';
+describe('tap a singer in the menu', () => {
+  it('a tap on a free singer adds it; a tap on one already on stage does nothing; the middle fills first', () => {
+    const g = new GestureTracker();
+    const slot = layout.slotPos[4]!;
+    g.start(1, slot, 0, world());
+    expect(g.end(1, slot, 80, world())).toEqual([{ type: 'trayTap', creatureId: 'c4' }]);
+    const onStage = [null, 'c4', null, null, null, null];
+    g.start(2, slot, 200, world(onStage));
+    expect(g.end(2, slot, 260, world(onStage))).toEqual([]);
+    let s = emptyStage();
+    const order: number[] = [];
+    for (let i = 0; i < 6; i++) { const sp = nextFreeSpot(s); order.push(sp); s = reduceStage(s, { kind: 'drop', creatureId: `x${i}`, spot: sp }); }
+    expect(order).toEqual([2, 3, 1, 4, 0, 5]);
+    expect(nextFreeSpot(s)).toBe(-1);
+  });
+});

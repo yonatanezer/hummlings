@@ -12,6 +12,7 @@ export type GestureEvent =
   | { type: 'volumeSet'; creatureId: string; value: number } // slider or hold-and-drag
   | { type: 'popupSolo'; creatureId: string }
   | { type: 'popupClose' }
+  | { type: 'trayTap'; creatureId: string } // tap a free singer in the menu: it hops onto the stage
   | { type: 'trayHide' } // swipe down on the singer menu
   | { type: 'trayShow' } // swipe up or tap the handle
   | { type: 'tapEmpty'; p: Pt }
@@ -150,6 +151,7 @@ export class GestureTracker {
       case 'pendingStage': return s.fired ? [] : [{ type: 'tap', creatureId: s.id }];
       case 'pendingEmpty': return [{ type: 'tapEmpty', p }];
       case 'handle': return s.done ? [] : [{ type: 'trayShow' }];
+      case 'pendingTray': return s.id ? [{ type: 'trayTap', creatureId: s.id }] : [];
       case 'popupSolo': {
         if (!w.popup) return [];
         return inRect(popupRects(w.layout, w.popup.spot).solo, p) ? [{ type: 'popupSolo', creatureId: s.id }] : [];

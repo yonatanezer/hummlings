@@ -8,7 +8,7 @@ import { computeLayout } from '../core/layout';
 import { Session } from '../core/session';
 import { popRate } from '../core/sfx';
 import { randomBand } from '../core/surprise';
-import { audibleIds } from '../core/stageState';
+import { audibleIds, nextFreeSpot } from '../core/stageState';
 import { autoName, warnBars, type Song } from '../core/timeline';
 import { TUNING, barSec } from '../core/tuning';
 import { exportSong, saveSongToDevice, type ExportResult } from '../app/exportSong';
@@ -215,6 +215,13 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
         session.dispatch({ kind: 'solo', creatureId: ev.creatureId });
         syncScene();
         break;
+      case 'trayTap': {
+        const spot = nextFreeSpot(session.state);
+        const i = stage.creatures.findIndex((c) => c.id === ev.creatureId);
+        if (spot < 0 || i < 0) { engine.playSfx('mute'); break; } // stage is full
+        apply({ type: 'drop', touch: -1, creatureId: ev.creatureId, spot, p: { x: l.slotPos[i]!.x - sv.scrollX.value, y: l.slotPos[i]!.y - l.size * 0.6 } });
+        break;
+      }
       case 'popupClose':
         sv.popup.value = null;
         break;
