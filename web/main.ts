@@ -15,7 +15,7 @@ import { WebEngine } from './engine';
 import { en } from '../src/i18n/en';
 import { popRate } from '../src/core/sfx';
 import { randomBand } from '../src/core/surprise';
-import { nextFreeSpot } from '../src/core/stageState';
+import { nextFreeSpot, type StageState } from '../src/core/stageState';
 import { worldIconSvg } from '../src/core/worldIcons';
 import { P } from './pictos';
 import { autoName, comboStartsAt, stateAtBar, warnBars, type Song } from '../src/core/timeline';
@@ -163,10 +163,11 @@ function drawRewardRing(t: number, beat: number) {
   const sr = r * (0.5 + 0.06 * pulse); ctx.fillStyle = '#FFE066'; ctx.beginPath();
   for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? sr * 0.42 : sr; ctx.lineTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); }
   ctx.fill();
-  ctx.font = '800 20px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const bw = 46, by = cy + r + 12; ctx.fillStyle = '#1B1340f0'; ctx.beginPath(); ctx.roundRect(cx - bw / 2, by - 13, bw, 26, 13); ctx.fill(); ctx.strokeStyle = '#FFC857'; ctx.lineWidth = 2; ctx.stroke();
-  ctx.fillStyle = '#FFE066'; ctx.fillText(String(secs), cx, by + 1); ctx.textAlign = 'start';
-  void t;
+  // bars left as dots (no digits): one dot per bar of the wait, lit as the bars pass
+  const bars = Math.max(1, Math.round(total / 4)), done = Math.min(bars, Math.floor(bars - left / 4));
+  const bw = bars * 20 + 14, by = cy + r + 16; ctx.fillStyle = '#1B1340f0'; ctx.beginPath(); ctx.roundRect(cx - bw / 2, by - 12, bw, 24, 12); ctx.fill(); ctx.strokeStyle = '#FFC857'; ctx.lineWidth = 2; ctx.stroke();
+  for (let i = 0; i < bars; i++) { ctx.fillStyle = i < done ? '#FFC857' : '#ffffff40'; ctx.beginPath(); ctx.arc(cx - bw / 2 + 17 + i * 20, by, 6.5, 0, 7); ctx.fill(); }
+  void t; void secs;
 }
 
 function trayGlyph(layer: string, x: number, y: number, color: string) {
@@ -613,6 +614,7 @@ $('worlds').addEventListener('click', (e) => { const b = (e.target as HTMLElemen
 $('dice').addEventListener('click', () => {
   if (!session || !ready) return;
   const s = session;
+  rememberForUndo();
   s.state.spots.forEach((id, sp) => { if (id) returning.push({ id, since: performance.now(), from: layout.spots[sp]! }); });
   s.dispatch({ kind: 'clear' });
   const now = performance.now();
@@ -623,7 +625,7 @@ $('dice').addEventListener('click', () => {
   });
   hint = false; engine.playSfx('goal');
 });
-$('clear').addEventListener('click', () => { if (!session) return; session.state.spots.forEach((id, s) => { if (id) returning.push({ id, since: performance.now(), from: layout.spots[s]! }); }); session.dispatch({ kind: 'clear' }); });
+$('clear').addEventListener('click', () => { if (!session) return; rememberForUndo(); session.state.spots.forEach((id, s) => { if (id) returning.push({ id, since: performance.now(), from: layout.spots[s]! }); }); session.dispatch({ kind: 'clear' }); });
 $('start').addEventListener('click', () => { $('splash').classList.add('hide'); void openStage(0); });
 $('mute').addEventListener('click', () => { const on = engine.state === 'running'; if (on) engine.pause(); else engine.resume(); $('mute').setAttribute('aria-pressed', String(on)); $('mute').classList.toggle('off', on); });
 resize();
@@ -795,3 +797,29 @@ async function exportWav(song: Song) {
   } catch { toast('<span>Could not prepare the audio file.</span>'); }
 }
 renderSongs();
+
+// ---- undo for Clear and Surprise (7 seconds) ----
+let undoState: StageState | null = null;
+let undoTimer: ReturnType<typeof setTimeout> | undefined;
+function rememberForUndo() {
+  if (!session || !session.state.spots.some(Boolean)) return;
+  undoState = session.state;
+  $('undo').classList.remove('hide');
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(() => $('undo').classList.add('hide'), 7000);
+}
+$('undo').addEventListener('click', () => {
+  const b = undoState;
+  if (!session || !b) return;
+  const s = session;
+  s.state.spots.forEach((id) => { if (id) s.dispatch({ kind: 'remove', creatureId: id }); });
+  b.spots.forEach((id, spot) => {
+    if (!id) return;
+    placedAnim.set(id, { since: performance.now(), from: layout.spots[spot]! });
+    s.dispatch({ kind: 'drop', creatureId: id, spot });
+    const v = b.volume[id];
+    if (v !== undefined) s.dispatch({ kind: 'volume', creatureId: id, value: v });
+    if (b.muted[id]) s.dispatch({ kind: 'mute', creatureId: id });
+  });
+  $('undo').classList.add('hide');
+});

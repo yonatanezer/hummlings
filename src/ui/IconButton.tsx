@@ -24,7 +24,7 @@ export function IconButton({ icon, label, onPress, color = COLORS.text, bg = 'rg
   return (
     <View style={styles.wrap}>
       {button}
-      <Text style={styles.caption} numberOfLines={1}>{caption}</Text>
+      <Text style={[styles.caption, { maxWidth: size + 28 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{caption}</Text>
     </View>
   );
 }

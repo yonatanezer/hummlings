@@ -156,6 +156,7 @@ button.ic svg{width:26px;height:26px;flex:none}button.ic .off{display:none}butto
 <div id="wrap"><canvas id="game" aria-label="Hummlings stage"></canvas></div>
 <div id="sideL"><div id="worlds" role="group" aria-label="Worlds"></div></div>
 <div id="sideR">
+<button id="undo" class="ic hide" aria-label="Undo" title="Undo: bring the band back" style="background:#7A8CFF"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 3 6M4 18v-5h5"/></svg></button>
 <button id="recBtn" class="ic lb rec" aria-label="Record" title="Record your song"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="#FF4D6D" stroke="none"/></svg><span id="recLbl">Record</span></button>
 <button id="songsBtn" class="ic lb" aria-label="My songs" title="My songs"><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="16" r="2.5"/></svg><span>Songs</span></button>
 <button id="dice" class="ic lb" aria-label="Surprise band" title="Surprise me: a random band"><svg viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM8.5 9h.01M15.5 9h.01M12 12h.01M8.5 15h.01M15.5 15h.01"/></svg><span>Surprise</span></button>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BackHandler, I18nManager, View } from 'react-native';
+import { BackHandler, I18nManager, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Localization from 'expo-localization';
@@ -20,6 +20,9 @@ import { ErrorBoundary } from './src/ui/ErrorBoundary';
 import { ParentalGate } from './src/ui/ParentalGate';
 import { DevOverlay } from './src/ui/DevOverlay';
 import { COLORS } from './src/ui/theme';
+
+// Large system text is respected up to 130% so captions and buttons never overflow the layouts.
+(Text as unknown as { defaultProps?: { maxFontSizeMultiplier?: number } }).defaultProps = { ...((Text as unknown as { defaultProps?: object }).defaultProps ?? {}), maxFontSizeMultiplier: 1.3 };
 
 type Route =
   | { name: 'splash' } | { name: 'select' } | { name: 'stage'; stageId: string }

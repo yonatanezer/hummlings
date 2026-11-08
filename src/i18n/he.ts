@@ -98,6 +98,8 @@ export const he: Record<StringKey, string> = {
   'ui.help': 'עזרה',
   'ui.settings': 'הגדרות',
   'ui.clear': 'ניקוי',
+  'ui.undo': 'ביטול',
+  'a11y.undo': 'ביטול: להחזיר את הלהקה',
   'ui.surprise': 'הפתעה',
   'a11y.surprise': 'הפתעה: להקה אקראית',
   'ui.stop': 'עצור',

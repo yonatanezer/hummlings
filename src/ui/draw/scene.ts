@@ -6,6 +6,7 @@ import type { Layout } from '../../core/layout';
 import { IDLE_POSE, bodyDims, drawCreature, type Pose } from './creature';
 import { gradientPaint, mix, paint, radialPaint, STROKE, type Canvas, type SkiaApi } from './common';
 import { drawCelebration, danceOffset } from './celebrations';
+import { drawDecor, drawScenery, drawTaps, type TapEffect } from './scenery';
 import { popupRects } from '../../core/layout';
 import type { SkPicture } from '@shopify/react-native-skia';
 
@@ -30,6 +31,7 @@ export interface SceneInput {
   hint: boolean; // first-run animated hand
   recordingBeat: number | null; // for the REC pulse (null = not recording)
   hintSlot: number;
+  taps?: TapEffect[]; // tap-the-scenery effects
   reward?: { progress: number } | null; // ring that fills while a complete secret combo is being held
   trayPicture?: SkPicture | null; // pre-recorded singer menu (app only; headless renders draw it directly)
   trayK?: number; // 1 = singer menu shown, 0 = slid away (animated by the screen)
@@ -112,6 +114,8 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   'worklet';
   const { layout: l, stage } = s;
   drawBackground(sk, c, stage, l, s.timeMs);
+  drawScenery(sk, c, stage.id, l, stage.palette, s.timeMs);
+  drawDecor(sk, c, stage.id, l, stage.palette, s.timeMs, s.reduceMotion ? 0 : s.beat);
   const byId: Record<string, Creature> = {};
   for (const cr of stage.creatures) byId[cr.id] = cr;
   const danceIds = s.celebration ? s.celebration.creatureIds : [];
@@ -187,6 +191,7 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
     }
   }
 
+  if (s.taps?.length) drawTaps(sk, c, s.taps, s.timeMs);
   if (s.popup) drawVolumePopup(sk, c, s);
   if (s.reward && !s.celebration) drawRewardRing(sk, c, s);
 

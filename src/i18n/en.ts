@@ -96,6 +96,8 @@ export const en = {
   'ui.help': 'Help',
   'ui.settings': 'Settings',
   'ui.clear': 'Clear',
+  'ui.undo': 'Undo',
+  'a11y.undo': 'Undo: bring the band back',
   'ui.surprise': 'Surprise',
   'a11y.surprise': 'Surprise me: a random band',
   'ui.stop': 'Stop',

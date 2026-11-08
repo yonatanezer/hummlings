@@ -8,7 +8,7 @@ import { computeLayout } from '../core/layout';
 import { Session } from '../core/session';
 import { popRate } from '../core/sfx';
 import { randomBand } from '../core/surprise';
-import { audibleIds, nextFreeSpot } from '../core/stageState';
+import { audibleIds, nextFreeSpot, type StageState } from '../core/stageState';
 import { autoName, warnBars, type Song } from '../core/timeline';
 import { TUNING, barSec } from '../core/tuning';
 import { exportSong, saveSongToDevice, type ExportResult } from '../app/exportSong';
@@ -60,7 +60,9 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
   const [saved, setSaved] = useState<Song | null>(null);
   const [exportMsg, setExportMsg] = useState<ExportResult | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [rewardSecs, setRewardSecs] = useState<number | null>(null);
+  const [rewardDots, setRewardDots] = useState<{ done: number; total: number } | null>(null);
+  const [undo, setUndo] = useState<StageState | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [screenReader, setScreenReader] = useState(false);
   const [, force] = useState(0);
   const layoutRef = useRef(layout);
@@ -139,9 +141,10 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
         const total = Math.max(1, rw.startBeat - rw.fromBeat);
         const left = Math.max(0, rw.startBeat - sv.beat.value);
         sv.reward.value = { progress: Math.min(1, Math.max(0, 1 - left / total)) };
-        const secs = Math.max(0, Math.ceil((left * 60) / stage.bpm));
-        setRewardSecs((v) => (v === secs ? v : secs));
-      } else if (sv.reward.value) { sv.reward.value = null; setRewardSecs(null); }
+        const totalBars = Math.max(1, Math.round(total / TUNING.beatsPerBar));
+        const done = Math.min(totalBars, Math.floor(totalBars - left / TUNING.beatsPerBar));
+        setRewardDots((v) => (v && v.done === done && v.total === totalBars ? v : { done, total: totalBars }));
+      } else if (sv.reward.value) { sv.reward.value = null; setRewardDots(null); }
       if (sv.returning.value.length) {
         const t0 = now();
         const keep = sv.returning.value.filter((r) => t0 - r.since < TUNING.hopMs + 40);
@@ -251,10 +254,18 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
         trayOpen.current = ev.type === 'trayShow';
         sv.trayK.value = withTiming(trayOpen.current ? 1 : 0, { duration: 260, easing: Easing.out(Easing.cubic) });
         break;
-      case 'tapEmpty':
+      case 'tapEmpty': {
         session.dispatch({ kind: 'endSolo' });
         syncScene();
+        if (ev.p.y < l.stageH) { // the world's toy: tapping the scenery plays a note of the scale, with an effect
+          const deg = Math.max(0, Math.min(5, Math.floor((ev.p.x / l.W) * 6)));
+          engine.playSfx('pop', popRate(stage.key, deg) * 2);
+          const kind = stage.id === 'pond' || stage.id === 'neon' ? 'ripple' : stage.id === 'fair' ? 'spark' : 'star';
+          const t0 = sv.timeMs.value;
+          sv.taps.value = [...sv.taps.value.filter((e) => t0 - e.t0 < 1400), { x: ev.p.x, y: ev.p.y, t0, kind }];
+        }
         break;
+      }
       case 'scroll':
         sv.scrollX.value = ev.scrollX;
         break;
@@ -303,6 +314,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
       <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 84, top: layout.stageH - 70 }]}>
         <IconButton icon="dice" label={t('a11y.surprise')} caption={t('ui.surprise')} onPress={() => {
           const l = layoutRef.current;
+          rememberForUndo();
           for (const id of session.state.spots) if (id) goBackAll(id, l.spots[session.state.spots.indexOf(id)]!);
           session.dispatch({ kind: 'clear' });
           randomBand(stage).forEach((id, spot) => {
@@ -316,6 +328,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
       <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 14, top: layout.stageH - 70 }]}>
         {onStageCount > 0 && <IconButton icon="sweep" label={t('a11y.clear')} caption={t('ui.clear')} onPress={() => {
           const l = layoutRef.current;
+          rememberForUndo();
           for (const id of session.state.spots) if (id) { const s = session.state.spots.indexOf(id); goBackAll(id, l.spots[s]!); }
           session.dispatch({ kind: 'clear' });
           syncScene();
@@ -357,9 +370,14 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
           })}
         </>
       )}
-      {rewardSecs !== null && !book && (
+      {undo && (
+        <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 154, top: layout.stageH - 70 }]}>
+          <IconButton icon="restore" label={t('a11y.undo')} caption={t('ui.undo')} bg={COLORS.accent} onPress={() => { restoreBand(undo); setUndo(null); }} />
+        </View>
+      )}
+      {rewardDots !== null && !book && (
         <View pointerEvents="none" style={[styles.rewardSecs, { top: Math.max(layout.H * 0.2, 96) + Math.max(30, layout.size * 0.26) + 10 }]}>
-          <Text style={styles.rewardText}>{rewardSecs}</Text>
+          <View style={{ flexDirection: 'row', gap: 6 }}>{Array.from({ length: rewardDots.total }, (_, i) => <View key={i} style={[styles.rdot, i < rewardDots.done && styles.rdotOn]} />)}</View>
         </View>
       )}
       {saved && (
@@ -399,6 +417,23 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
     </View>
   );
 
+  function rememberForUndo() {
+    if (!session.state.spots.some(Boolean)) return;
+    setUndo(session.state);
+    clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => setUndo(null), 7000);
+  }
+  function restoreBand(before: StageState) {
+    for (const id of session.state.spots) if (id) session.dispatch({ kind: 'remove', creatureId: id });
+    before.spots.forEach((id, spot) => {
+      if (!id) return;
+      session.dispatch({ kind: 'drop', creatureId: id, spot });
+      const v = before.volume[id];
+      if (v !== undefined) session.dispatch({ kind: 'volume', creatureId: id, value: v });
+      if (before.muted[id]) session.dispatch({ kind: 'mute', creatureId: id });
+    });
+    syncScene();
+  }
   function goBackAll(id: string, from: { x: number; y: number }) {
     sv.returning.value = [...sv.returning.value, { id, since: now(), from }];
   }
@@ -413,7 +448,8 @@ const styles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(10,6,32,0.6)', alignItems: 'center', justifyContent: 'center' },
   card: { backgroundColor: COLORS.panel, padding: 24, borderRadius: 24, alignItems: 'center', gap: 16, maxWidth: 420 },
   rewardSecs: { position: 'absolute', alignSelf: 'center', backgroundColor: 'rgba(27,19,64,0.92)', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 2, borderWidth: 2, borderColor: '#FFC857' },
-  rewardText: { color: '#FFE066', fontSize: 20, fontWeight: '800' },
+  rdot: { width: 14, height: 14, borderRadius: 7, backgroundColor: 'rgba(255,255,255,0.25)' },
+  rdotOn: { backgroundColor: '#FFC857' },
   srTray: { position: 'absolute', left: 0, right: 0 },
   srBtn: { width: 72, height: 72, margin: 4 },
   cardTitle: { color: COLORS.glow, fontSize: 24, fontWeight: '800' },
