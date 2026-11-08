@@ -13,6 +13,7 @@ import { comboStartsAt } from '../core/timeline';
 import { t } from '../i18n';
 import { useLang } from '../i18n/useLang';
 import { IconButton } from '../ui/IconButton';
+import { useParentalGate } from '../ui/ParentalGate';
 import { SceneCanvas, useSceneValues } from '../ui/SceneCanvas';
 import { COLORS } from '../ui/theme';
 
@@ -28,6 +29,7 @@ export function PlayerScreen({ song, onBack }: { song: Song; onBack: () => void 
   const sv = useSceneValues(stage, layout, progress.settings.reduceMotion);
   const [playing, setPlaying] = useState(false);
   const [ready, setReady] = useState(false);
+  const { ask, gate } = useParentalGate();
   const prev = useRef<Set<string>>(new Set());
 
   const play = () => {
@@ -73,10 +75,11 @@ export function PlayerScreen({ song, onBack }: { song: Song; onBack: () => void 
       </View>
       <View pointerEvents="box-none" style={[styles.bar, { bottom: insets.bottom + 10, flexDirection: row }]}>
         <IconButton icon={playing ? 'pause' : 'play'} label={playing ? t('a11y.pause') : t('a11y.play')} size={72} onPress={() => { if (playing) { engine.stop(); setPlaying(false); } else play(); }} />
-        <IconButton icon="share" label={t('a11y.share')} caption={t('songs.share')} onPress={() => void exportSong(engine, stage, song)} />
-        <IconButton icon="download" label={t('rec.saveDevice')} caption={t('rec.saveDevice')} onPress={() => void saveSongToDevice(engine, stage, song)} />
+        <IconButton icon="share" label={t('a11y.share')} caption={t('songs.share')} onPress={() => ask(() => void exportSong(engine, stage, song))} />
+        <IconButton icon="download" label={t('rec.saveDevice')} caption={t('rec.saveDevice')} onPress={() => ask(() => void saveSongToDevice(engine, stage, song))} />
       </View>
       {!ready && <View style={StyleSheet.absoluteFill} />}
+      {gate}
     </View>
   );
 }

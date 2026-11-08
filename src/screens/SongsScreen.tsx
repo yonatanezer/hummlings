@@ -12,6 +12,7 @@ import { t, type StringKey } from '../i18n';
 import { useLang } from '../i18n/useLang';
 import { Icon } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
+import { useParentalGate } from '../ui/ParentalGate';
 import { COLORS } from '../ui/theme';
 
 const fmtLen = (song: Song, bpm: number): string => {
@@ -27,6 +28,7 @@ export function SongsScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (s
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<ExportResult | null>(null);
+  const { ask, gate } = useParentalGate();
   const row = rtl ? 'row-reverse' : 'row';
 
   const share = async (song: Song) => {
@@ -85,14 +87,15 @@ export function SongsScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (s
                 </View>
                 <IconButton icon="play" label={t('a11y.play')} onPress={() => onPlay(item.id)} />
                 <IconButton icon="pencil" label={t('songs.rename')} onPress={() => { setRenaming(item.id); setDraft(item.name); }} />
-                <IconButton icon="share" label={t('songs.share')} onPress={() => void share(item)} bg={busy === item.id ? COLORS.accent : undefined} />
-                <IconButton icon="download" label={t('rec.saveDevice')} onPress={() => void saveDev(item)} bg={busy === item.id ? COLORS.accent : undefined} />
+                <IconButton icon="share" label={t('songs.share')} onPress={() => ask(() => void share(item))} bg={busy === item.id ? COLORS.accent : undefined} />
+                <IconButton icon="download" label={t('rec.saveDevice')} onPress={() => ask(() => void saveDev(item))} bg={busy === item.id ? COLORS.accent : undefined} />
                 <IconButton icon="trash" label={t('songs.delete')} color={COLORS.danger} onPress={() => del(item)} />
               </View>
             );
           }}
         />
       )}
+      {gate}
     </View>
   );
 }

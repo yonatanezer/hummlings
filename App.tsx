@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { I18nManager, View } from 'react-native';
+import { BackHandler, I18nManager, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Localization from 'expo-localization';
@@ -45,6 +45,22 @@ function Root() {
   }, [ready]);
 
   const done = useCallback(() => setRoute({ name: 'select' }), []);
+
+  // Android back button: one step back through the app instead of leaving it from the middle of a screen.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (gateFor) { setGateFor(null); return true; }
+      switch (route.name) {
+        case 'splash': return true;
+        case 'select': return false; // exits the app
+        case 'songs': setRoute(route.from.name === 'stage' ? { name: 'select' } : route.from); return true;
+        case 'player': setRoute({ name: 'songs', from: { name: 'select' } }); return true;
+        case 'help': setRoute(route.from); return true;
+        default: setRoute({ name: 'select' }); return true;
+      }
+    });
+    return () => sub.remove();
+  }, [route, gateFor]);
   if (!ready) return <View style={{ flex: 1, backgroundColor: COLORS.sky }} />;
 
   const songs = (from: Route) => setRoute({ name: 'songs', from });

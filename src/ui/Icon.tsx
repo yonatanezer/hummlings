@@ -28,11 +28,11 @@ const STROKES: Partial<Record<IconName, string>> = {
   gear: 'M12 3v3 M12 18v3 M3 12h3 M18 12h3 M5.6 5.6l2.1 2.1 M16.3 16.3l2.1 2.1 M5.6 18.4l2.1-2.1 M16.3 7.7l2.1-2.1',
 };
 
-export function Icon({ name, size = 28, color = '#FFFFFF' }: { name: IconName; size?: number; color?: string }) {
+export function Icon({ name, size = 28, color = '#FFFFFF', mirror = false }: { name: IconName; size?: number; color?: string; mirror?: boolean }) {
   const k = size / 24;
   return (
     <Canvas style={{ width: size, height: size }} pointerEvents="none">
-      <Group transform={[{ scale: k }]}>
+      <Group transform={mirror ? [{ scale: k }, { translateX: 24 }, { scaleX: -1 }] : [{ scale: k }]}>
         {name === 'record' && <Circle cx={12} cy={12} r={7} color={color} />}
         {name === 'stop' && <RoundedRect x={6} y={6} width={12} height={12} r={2.5} color={color} />}
         {name === 'play' && <Path path="M8 5l11 7-11 7z" color={color} />}

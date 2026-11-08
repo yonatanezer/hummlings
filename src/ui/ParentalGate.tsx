@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactElement } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, cancelAnimation, runOnJS } from 'react-native-reanimated';
 import { makeGate } from '../core/gate';
@@ -59,3 +59,11 @@ const styles = StyleSheet.create({
   ring: { backgroundColor: COLORS.ok },
   cancel: { position: 'absolute', top: 8, right: 8 },
 });
+
+/** Asks a grown-up first (sum + 2-second hold), then runs the action. Used before sharing or saving a song outside the app. */
+export function useParentalGate(): { ask: (action: () => void) => void; gate: ReactElement | null } {
+  const [pending, setPending] = useState<null | (() => void)>(null);
+  const ask = useCallback((action: () => void) => setPending(() => action), []);
+  const gate = pending ? <ParentalGate onPass={() => { const a = pending; setPending(null); a(); }} onCancel={() => setPending(null)} /> : null;
+  return { ask, gate };
+}

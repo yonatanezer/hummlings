@@ -7,6 +7,7 @@ import { IDLE_POSE, bodyDims, drawCreature, type Pose } from './creature';
 import { gradientPaint, mix, paint, radialPaint, STROKE, type Canvas, type SkiaApi } from './common';
 import { drawCelebration, danceOffset } from './celebrations';
 import { popupRects } from '../../core/layout';
+import type { SkPicture } from '@shopify/react-native-skia';
 
 export interface PlacedCreature { id: string; spot: number; since: number; from: { x: number; y: number } }
 export interface DragCreature { id: string; x: number; y: number }
@@ -30,6 +31,7 @@ export interface SceneInput {
   recordingBeat: number | null; // for the REC pulse (null = not recording)
   hintSlot: number;
   reward?: { progress: number } | null; // ring that fills while a complete secret combo is being held
+  trayPicture?: SkPicture | null; // pre-recorded singer menu (app only; headless renders draw it directly)
   trayK?: number; // 1 = singer menu shown, 0 = slid away (animated by the screen)
   popup?: { spot: number; creatureId: string; volume: number; solo: boolean } | null; // volume popup after a long press
   volumes?: Record<string, number>;
@@ -193,28 +195,7 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   const trayDy = (1 - trayK) * (l.tray.h + 6);
   c.save();
   c.translate(0, trayDy);
-  c.drawRect(sk.XYWHRect(0, l.tray.y, l.W, l.tray.h + 6), paint(sk, mix(stage.palette.sky, '#000000', 0.55), 0.94));
-  c.drawRect(sk.XYWHRect(0, l.tray.y, l.W, 2), paint(sk, stage.palette.glow, 0.25));
-  c.drawRRect(sk.RRectXY(sk.XYWHRect(l.W / 2 - 24, l.tray.y + 5, 48, 5), 2.5, 2.5), paint(sk, '#FFFFFF', 0.35)); // grab bar
-  c.save();
-  c.clipRect(sk.XYWHRect(0, l.tray.y + 2, l.W, l.tray.h), 1, true);
-  const per = stage.creatures.length / 4;
-  [0, 1, 2, 3].forEach((g) => {
-    const a = l.slotPos[g * per]!, b = l.slotPos[g * per + per - 1]!;
-    const layer = stage.creatures[g * per]!.layer;
-    c.drawRRect(sk.RRectXY(sk.XYWHRect(a.x - l.slot * 0.55 - s.scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84), 14, 14), paint(sk, LAYER_COLORS[layer], 0.16));
-    layerGlyph(sk, c, layer, Math.max(a.x - l.slot * 0.55 - s.scrollX, 0) + 16, l.tray.y + l.tray.h * 0.08 + 14, LAYER_COLORS[layer]);
-  });
-  const trayS = Math.min(l.slot * 0.72, (l.tray.h - 36) / 1.4); // leaves a caption row above the tallest singer
-  stage.creatures.forEach((cr, i) => {
-    const p = l.slotPos[i]!;
-    const standing = s.placed.some((q) => q.id === cr.id);
-    const carried = s.drags.some((d) => d.id === cr.id);
-    const base: Partial<Pose> = standing || carried ? { sat: 0, alpha: 0.22, mouth: 0, eyes: 1 } : { mouth: 0 };
-    const pose = { ...IDLE_POSE, ...base, sx: 1, sy: 1 + (standing ? 0 : 0.012 * (s.reduceMotion ? 0.5 : breath(s.timeMs, i))) };
-    drawCreature(sk, c, cr, p.x - s.scrollX, l.tray.y + l.tray.h - 10, trayS, pose);
-  });
-  c.restore();
+  if (s.trayPicture) c.drawPicture(s.trayPicture); else drawTray(sk, c, s);
   c.restore(); // end of the sliding tray
   if (trayK < 0.98) {
     const hy = l.H - 34 * (1 - trayK);
@@ -254,6 +235,34 @@ function layerGlyph(sk: SkiaApi, c: Canvas, layer: string, x: number, y: number,
   else if (layer === 'bass') { const q = sk.PathBuilder.Make(); q.moveTo(x - 10, y); q.cubicTo(x - 6, y - 10, x - 2, y + 8, x + 1, y); q.cubicTo(x + 4, y - 8, x + 8, y + 8, x + 11, y); c.drawPath(q.build(), p); }
   else if (layer === 'melody') { c.drawCircle(x - 4, y + 5, 4, paint(sk, color)); c.drawLine(x, y + 5, x, y - 9, p); c.drawLine(x, y - 9, x + 8, y - 6, p); }
   else { c.drawOval(sk.XYWHRect(x - 10, y - 6, 20, 14), p); c.drawOval(sk.XYWHRect(x - 4, y, 8, 5), paint(sk, color)); }
+}
+
+/** The singer menu as one self-contained drawing (panel, group captions, singers). Static between touches, so the app records it once as a Picture. */
+export function drawTray(sk: SkiaApi, c: Canvas, s: SceneInput) {
+  'worklet';
+  const { layout: l, stage } = s;
+  c.drawRect(sk.XYWHRect(0, l.tray.y, l.W, l.tray.h + 6), paint(sk, mix(stage.palette.sky, '#000000', 0.55), 0.94));
+  c.drawRect(sk.XYWHRect(0, l.tray.y, l.W, 2), paint(sk, stage.palette.glow, 0.25));
+  c.drawRRect(sk.RRectXY(sk.XYWHRect(l.W / 2 - 24, l.tray.y + 5, 48, 5), 2.5, 2.5), paint(sk, '#FFFFFF', 0.35)); // grab bar
+  c.save();
+  c.clipRect(sk.XYWHRect(0, l.tray.y + 2, l.W, l.tray.h), 1, true);
+  const per = stage.creatures.length / 4;
+  [0, 1, 2, 3].forEach((g) => {
+    const a = l.slotPos[g * per]!, b = l.slotPos[g * per + per - 1]!;
+    const layer = stage.creatures[g * per]!.layer;
+    c.drawRRect(sk.RRectXY(sk.XYWHRect(a.x - l.slot * 0.55 - s.scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84), 14, 14), paint(sk, LAYER_COLORS[layer], 0.16));
+    layerGlyph(sk, c, layer, Math.max(a.x - l.slot * 0.55 - s.scrollX, 0) + 16, l.tray.y + l.tray.h * 0.08 + 14, LAYER_COLORS[layer]);
+  });
+  const trayS = Math.min(l.slot * 0.72, (l.tray.h - 36) / 1.4); // leaves a caption row above the tallest singer
+  stage.creatures.forEach((cr, i) => {
+    const p = l.slotPos[i]!;
+    const standing = s.placed.some((q) => q.id === cr.id);
+    const carried = s.drags.some((d) => d.id === cr.id);
+    const base: Partial<Pose> = standing || carried ? { sat: 0, alpha: 0.22, mouth: 0, eyes: 1 } : { mouth: 0 };
+    const pose = { ...IDLE_POSE, ...base, sx: 1, sy: 1 };
+    drawCreature(sk, c, cr, p.x - s.scrollX, l.tray.y + l.tray.h - 10, trayS, pose);
+  });
+  c.restore();
 }
 
 /** Countdown to a secret combo's celebration: a gold ring that fills, with a star that pulses on the beat. */

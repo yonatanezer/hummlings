@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, AppState, StyleSheet, Text, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
+import { AccessibilityInfo, AppState, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
 import { Easing, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getEngine } from '../audio';
@@ -16,9 +16,11 @@ import type { Stage } from '../core/types';
 import { t, type StringKey } from '../i18n';
 import { useLang } from '../i18n/useLang';
 import { useProgress } from '../app/progress';
+import { recallBand, rememberBand } from '../app/bandMemory';
 import { ComboBook } from './ComboBook';
 import { IconButton } from '../ui/IconButton';
 import { WorldIcon } from '../ui/WorldIcon';
+import { useParentalGate } from '../ui/ParentalGate';
 import { SceneCanvas, useSceneValues } from '../ui/SceneCanvas';
 import { COLORS } from '../ui/theme';
 import { hapticLight, hapticMedium, hapticSuccess, setHapticsEnabled } from '../ui/haptics';
@@ -49,6 +51,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
   const anim = useRef(new Map<string, { since: number; from: { x: number; y: number } }>()).current;
   const [ready, setReady] = useState(false);
   const trayOpen = useRef(true);
+  const { ask, gate } = useParentalGate();
   const [paused, setPaused] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recBars, setRecBars] = useState(0);
@@ -58,6 +61,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
   const [exportMsg, setExportMsg] = useState<ExportResult | null>(null);
   const [exporting, setExporting] = useState(false);
   const [rewardSecs, setRewardSecs] = useState<number | null>(null);
+  const [screenReader, setScreenReader] = useState(false);
   const [, force] = useState(0);
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
@@ -67,8 +71,10 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
   useEffect(() => { setHapticsEnabled(progress.settings.haptics); engine.setVolume(progress.settings.musicVolume); }, [engine, progress.settings.haptics, progress.settings.musicVolume]);
   useEffect(() => {
     void AccessibilityInfo.isReduceMotionEnabled().then(setSysReduce);
+    void AccessibilityInfo.isScreenReaderEnabled().then(setScreenReader);
+    const srSub = AccessibilityInfo.addEventListener('screenReaderChanged', setScreenReader);
     const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setSysReduce);
-    return () => sub.remove();
+    return () => { sub.remove(); srSub.remove(); };
   }, []);
 
   const now = () => sv.timeMs.value;
@@ -113,6 +119,12 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
       await engine.loadStage(stage);
       if (!alive) return;
       session.start();
+      const before = recallBand(stage.id); // coming back from the guide, songs or settings: the band is still on stage
+      if (before) {
+        before.spots.forEach((id, spot) => { if (id) { session.dispatch({ kind: 'drop', creatureId: id, spot }); const v = before.volume[id]; if (v !== undefined) session.dispatch({ kind: 'volume', creatureId: id, value: v }); if (before.muted[id]) session.dispatch({ kind: 'mute', creatureId: id }); } });
+        syncScene();
+        if (before.spots.some(Boolean)) { session.countIn = false; sv.hint.value = false; }
+      }
       setReady(true);
     })();
     const unsub = engine.onInterrupted(() => setPaused(true));
@@ -138,7 +150,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
-    return () => { alive = false; cancelAnimationFrame(raf); unsub(); app.remove(); engine.stop(); };
+    return () => { alive = false; rememberBand(stage.id, session.state); cancelAnimationFrame(raf); unsub(); app.remove(); engine.stop(); };
   }, []);
 
   const stopRecording = useCallback(() => {
@@ -311,6 +323,40 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
       </View>
 
       {book && <ComboBook stage={stage} session={session} discovered={progress.discoveredCombos} onClose={() => setBook(false)} onReplay={(id) => { setBook(false); session.replayCombo(id); }} />}
+      {screenReader && ready && (
+        <>
+          <ScrollView horizontal style={[styles.srTray, { top: layout.tray.y, height: layout.tray.h }]} contentContainerStyle={{ alignItems: 'center' }}>
+            {stage.creatures.map((c, i) => {
+              const on = session.state.spots.includes(c.id);
+              const label = `${t(`layer.${c.layer}` as StringKey)} ${(i % TUNING.perLayer) + 1}${on ? `, ${t('a11y.onStage')}` : ''}`;
+              return <Pressable key={c.id} accessibilityRole="button" accessibilityLabel={label} style={styles.srBtn}
+                onPress={() => (on ? (session.dispatch({ kind: 'remove', creatureId: c.id }), syncScene()) : apply({ type: 'trayTap', creatureId: c.id }))} />;
+            })}
+          </ScrollView>
+          {session.state.spots.map((id, spot) => {
+            if (!id) return null;
+            const c = stage.creatures.find((q) => q.id === id)!;
+            const sp = layout.spots[spot]!;
+            const label = `${t(`layer.${c.layer}` as StringKey)} ${(stage.creatures.indexOf(c) % TUNING.perLayer) + 1}, ${t('a11y.onStage')}`;
+            const level = Math.round((session.state.volume[id] ?? 1) * 100);
+            return (
+              <Pressable key={id} accessibilityRole="adjustable" accessibilityLabel={label} accessibilityValue={{ text: `${level}%${session.state.muted[id] ? ', ' + t('a11y.mute') : ''}` }}
+                accessibilityActions={[{ name: 'increment', label: t('a11y.louder') }, { name: 'decrement', label: t('a11y.quieter') }, { name: 'activate', label: t('a11y.mute') }, { name: 'longpress', label: t('a11y.solo') }, { name: 'magicTap', label: t('a11y.remove') }]}
+                onAccessibilityAction={(e) => {
+                  const n = e.nativeEvent.actionName;
+                  const v = session.state.volume[id] ?? 1;
+                  if (n === 'increment') apply({ type: 'volumeSet', creatureId: id, value: Math.min(1, v + 0.1) });
+                  else if (n === 'decrement') apply({ type: 'volumeSet', creatureId: id, value: Math.max(0, v - 0.1) });
+                  else if (n === 'longpress') apply({ type: 'popupSolo', creatureId: id });
+                  else if (n === 'magicTap') apply({ type: 'remove', touch: -1, creatureId: id, p: sp });
+                  else apply({ type: 'tap', creatureId: id });
+                }}
+                onPress={() => apply({ type: 'tap', creatureId: id })}
+                style={{ position: 'absolute', left: sp.x - layout.size / 2, top: sp.y - layout.size * 1.1, width: layout.size, height: layout.size * 1.1 }} />
+            );
+          })}
+        </>
+      )}
       {rewardSecs !== null && !book && (
         <View pointerEvents="none" style={[styles.rewardSecs, { top: Math.max(layout.H * 0.2, 96) + Math.max(30, layout.size * 0.26) + 10 }]}>
           <Text style={styles.rewardText}>{rewardSecs}</Text>
@@ -323,8 +369,8 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
             <Text style={styles.cardText}>{saved.name}</Text>
             <View style={{ flexDirection: 'row', gap: 14 }}>
               <IconButton icon="play" label={t('a11y.play')} caption={t('a11y.play')} onPress={() => { const id = saved.id; setSaved(null); onPlay(id); }} />
-              <IconButton icon="share" label={t('songs.share')} caption={t('songs.share')} bg={exporting ? COLORS.accent : undefined} onPress={() => { setExporting(true); void exportSong(engine, stage, saved).then((r) => { setExporting(false); setExportMsg(r); }); }} />
-              <IconButton icon="download" label={t('rec.saveDevice')} caption={t('rec.saveDevice')} bg={exporting ? COLORS.accent : undefined} onPress={() => { setExporting(true); void saveSongToDevice(engine, stage, saved).then((r) => { setExporting(false); setExportMsg(r); }); }} />
+              <IconButton icon="share" label={t('songs.share')} caption={t('songs.share')} bg={exporting ? COLORS.accent : undefined} onPress={() => ask(() => { setExporting(true); void exportSong(engine, stage, saved).then((r) => { setExporting(false); setExportMsg(r); }); })} />
+              <IconButton icon="download" label={t('rec.saveDevice')} caption={t('rec.saveDevice')} bg={exporting ? COLORS.accent : undefined} onPress={() => ask(() => { setExporting(true); void saveSongToDevice(engine, stage, saved).then((r) => { setExporting(false); setExportMsg(r); }); })} />
               <IconButton icon="close" label={t('a11y.close')} caption={t('a11y.close')} onPress={() => setSaved(null)} />
             </View>
             {exportMsg === 'saved' && <Text style={styles.ok}>{t('rec.savedDevice')}</Text>}
@@ -344,6 +390,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
           </View>
         </View>
       )}
+      {gate}
       {paused && (
         <View style={styles.overlay}>
           <IconButton icon="play" label={t('a11y.play')} size={96} onPress={() => { engine.resume(); setPaused(false); }} />
@@ -367,6 +414,8 @@ const styles = StyleSheet.create({
   card: { backgroundColor: COLORS.panel, padding: 24, borderRadius: 24, alignItems: 'center', gap: 16, maxWidth: 420 },
   rewardSecs: { position: 'absolute', alignSelf: 'center', backgroundColor: 'rgba(27,19,64,0.92)', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 2, borderWidth: 2, borderColor: '#FFC857' },
   rewardText: { color: '#FFE066', fontSize: 20, fontWeight: '800' },
+  srTray: { position: 'absolute', left: 0, right: 0 },
+  srBtn: { width: 72, height: 72, margin: 4 },
   cardTitle: { color: COLORS.glow, fontSize: 24, fontWeight: '800' },
   ok: { color: COLORS.ok, fontSize: 16, fontWeight: '700' },
   fail: { color: COLORS.danger, fontSize: 16, textAlign: 'center' },

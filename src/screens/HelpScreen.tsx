@@ -44,11 +44,11 @@ export function HelpScreen({ onBack }: { onBack: () => void }) {
         <View style={[styles.card, { width: cw, height: ch }]}><Canvas style={{ width: cw, height: ch }}><Picture picture={picture} /></Canvas></View>
         <Text style={[styles.caption, { width: Math.min(cw, 640) }]} accessibilityLiveRegion="polite">{t(`help.step${step + 1}` as StringKey)}</Text>
         <View style={{ flexDirection: row, alignItems: 'center', gap: 20 }}>
-          <IconButton icon={rtl ? 'next' : 'back'} label={t('a11y.prev')} onPress={() => setStep((s) => Math.max(0, s - 1))} bg={step === 0 ? 'rgba(255,255,255,0.08)' : undefined} />
+          <IconButton icon="back" label={t('a11y.prev')} onPress={() => setStep((s) => Math.max(0, s - 1))} bg={step === 0 ? 'rgba(255,255,255,0.08)' : undefined} />
           <View style={{ flexDirection: row, gap: 8 }}>
             {Array.from({ length: HELP_STEPS }, (_, i) => <View key={i} style={[styles.dot, i === step && styles.dotOn]} />)}
           </View>
-          <IconButton icon={last ? 'check' : rtl ? 'back' : 'next'} label={last ? t('help.dontShow') : t('a11y.next')} bg={last ? COLORS.ok : undefined} color={last ? '#10282A' : undefined} onPress={() => (last ? onBack() : setStep((s) => s + 1))} />
+          <IconButton icon={last ? 'check' : 'next'} label={last ? t('help.dontShow') : t('a11y.next')} bg={last ? COLORS.ok : undefined} color={last ? '#10282A' : undefined} onPress={() => (last ? onBack() : setStep((s) => s + 1))} />
         </View>
       </View>
     </View>

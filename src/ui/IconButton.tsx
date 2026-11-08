@@ -1,11 +1,13 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { hapticLight } from './haptics';
+import { useLang } from '../i18n/useLang';
 import { Icon, type IconName } from './Icon';
 import { COLORS, MIN_TOUCH } from './theme';
 
 export function IconButton({ icon, label, onPress, color = COLORS.text, bg = 'rgba(27,19,64,0.96)', size = MIN_TOUCH, haptics = true, badge, caption }: {
   icon: IconName; label: string; onPress: () => void; color?: string; bg?: string; size?: number; haptics?: boolean; badge?: boolean; caption?: string;
 }) {
+  const { rtl } = useLang();
   const button = (
     <Pressable
       accessibilityRole="button"
@@ -14,7 +16,7 @@ export function IconButton({ icon, label, onPress, color = COLORS.text, bg = 'rg
       onPress={() => { if (haptics) hapticLight(); onPress(); }}
       style={({ pressed }) => [styles.btn, { width: size, height: size, borderRadius: size / 2, backgroundColor: pressed ? COLORS.panelLight : bg, transform: [{ scale: pressed ? 0.92 : 1 }] }]}
     >
-      <Icon name={icon} color={color} size={size * 0.52} />
+      <Icon name={icon} color={color} size={size * 0.52} mirror={rtl && (icon === 'back' || icon === 'next')} />
       {badge ? <View style={styles.badge} /> : null}
     </Pressable>
   );

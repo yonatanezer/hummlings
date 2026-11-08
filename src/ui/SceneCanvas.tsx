@@ -3,7 +3,7 @@ import { Canvas, Picture, Skia } from '@shopify/react-native-skia';
 import { useDerivedValue, useFrameCallback, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import type { Layout } from '../core/layout';
 import type { Stage } from '../core/types';
-import { drawScene, type DragCreature, type PlacedCreature, type ReturningCreature, type SceneInput } from './draw/scene';
+import { drawScene, drawTray, type DragCreature, type PlacedCreature, type ReturningCreature, type SceneInput } from './draw/scene';
 
 /** All inputs of the scene as shared values: updated on events (JS) and read every frame (UI thread). */
 export interface SceneValues {
@@ -59,11 +59,19 @@ export function SceneCanvas({ sv, width, height }: { sv: SceneValues; width: num
   useFrameCallback((info) => {
     clock.value = info.timeSinceFirstFrame;
   });
+  // The singer menu only changes on touches, so it is recorded once per change instead of every frame.
+  const trayPicture = useDerivedValue(() => {
+    const input = { layout: sv.layout.value, stage: sv.stage.value, placed: sv.placed.value, drags: sv.drags.value, scrollX: sv.scrollX.value } as SceneInput;
+    const rec = Skia.PictureRecorder();
+    const canvas = rec.beginRecording(Skia.XYWHRect(0, 0, width, height));
+    drawTray(Skia, canvas, input);
+    return rec.finishRecordingAsPicture();
+  });
   const picture = useDerivedValue(() => {
     const input: SceneInput = {
       layout: sv.layout.value, stage: sv.stage.value, placed: sv.placed.value, muted: sv.muted.value, solo: sv.solo.value,
       drags: sv.drags.value, returning: sv.returning.value, scrollX: sv.scrollX.value, beat: sv.beat.value, timeMs: clock.value,
-      reduceMotion: sv.reduceMotion.value, celebration: sv.celebration.value, hint: sv.hint.value, hintSlot: sv.hintSlot.value, popup: sv.popup.value, trayK: sv.trayK.value, reward: sv.reward.value, volumes: sv.volumes.value, recordingBeat: null,
+      reduceMotion: sv.reduceMotion.value, celebration: sv.celebration.value, hint: sv.hint.value, hintSlot: sv.hintSlot.value, popup: sv.popup.value, trayPicture: trayPicture.value, trayK: sv.trayK.value, reward: sv.reward.value, volumes: sv.volumes.value, recordingBeat: null,
     };
     const rec = Skia.PictureRecorder();
     const canvas = rec.beginRecording(Skia.XYWHRect(0, 0, width, height));
