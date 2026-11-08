@@ -20,6 +20,10 @@ export const en = {
   'songs.limit': 'Song list is full (50). Delete one to record again.',
   'songs.bars': '{n} bars',
   'songs.defaultName': 'Song {n}',
+  'rec.saved': 'Song saved!',
+  'rec.saveDevice': 'Save to device',
+  'rec.savedDevice': 'Saved to your device',
+  'rec.recording': 'Recording',
   'songs.storageFull': 'Not enough storage. Your song is safe.',
 
   'settings.title': 'Settings',

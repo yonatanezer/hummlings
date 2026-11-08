@@ -22,6 +22,10 @@ export const he: Record<StringKey, string> = {
   'songs.limit': 'רשימת השירים מלאה (50). מחקו שיר כדי להקליט שוב.',
   'songs.bars': '{n} תיבות',
   'songs.defaultName': 'שיר {n}',
+  'rec.saved': 'השיר נשמר!',
+  'rec.saveDevice': 'שמירה במכשיר',
+  'rec.savedDevice': 'נשמר במכשיר',
+  'rec.recording': 'מקליט',
   'songs.storageFull': 'אין מספיק מקום באחסון. השיר שלכם בטוח.',
 
   'settings.title': 'הגדרות',

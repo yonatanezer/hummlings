@@ -3,7 +3,7 @@ import { Alert, FlatList, StyleSheet, Text, TextInput, View } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getEngine } from '../audio';
 import { getStage } from '../content';
-import { exportSong, type ExportResult } from '../app/exportSong';
+import { exportSong, saveSongToDevice, type ExportResult } from '../app/exportSong';
 import { useProgress } from '../app/progress';
 import type { Song } from '../core/timeline';
 import { clampName } from '../core/timeline';
@@ -37,6 +37,14 @@ export function SongsScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (s
     setBusy(null);
     setMsg(r === 'shared' ? null : r);
   };
+  const saveDev = async (song: Song) => {
+    setBusy(song.id);
+    const engine = getEngine();
+    await engine.init();
+    const r = await saveSongToDevice(engine, getStage(song.stageId), song);
+    setBusy(null);
+    setMsg(r === 'saved' ? 'saved' : r === 'cancelled' ? null : r);
+  };
   const del = (song: Song) => Alert.alert(song.name, t('songs.deleteConfirm'), [
     { text: t('common.cancel'), style: 'cancel' },
     { text: t('songs.delete'), style: 'destructive', onPress: () => update((p) => ({ ...p, songs: p.songs.filter((s) => s.id !== song.id) })) },
@@ -53,7 +61,8 @@ export function SongsScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (s
         <IconButton icon="back" label={t('a11y.back')} onPress={onBack} />
         <Text style={styles.title} accessibilityRole="header">{t('songs.title')}</Text>
       </View>
-      {msg && msg !== 'shared' && (
+      {msg === 'saved' && <View style={[styles.banner, { flexDirection: row, backgroundColor: COLORS.ok }]}><Icon name="check" color="#10282A" size={28} /><Text style={[styles.bannerText, { color: '#10282A' }]}>{t('rec.savedDevice')}</Text></View>}
+      {msg && msg !== 'shared' && msg !== 'saved' && (
         <View style={[styles.banner, { flexDirection: row }]}><Icon name="full" color="#fff" size={28} /><Text style={styles.bannerText}>{t('songs.storageFull')}</Text></View>
       )}
       {progress.songs.length >= 50 && <View style={[styles.banner, { flexDirection: row }]}><Icon name="full" color="#fff" size={28} /><Text style={styles.bannerText}>{t('songs.limit')}</Text></View>}
@@ -77,6 +86,7 @@ export function SongsScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (s
                 <IconButton icon="play" label={t('a11y.play')} onPress={() => onPlay(item.id)} />
                 <IconButton icon="pencil" label={t('songs.rename')} onPress={() => { setRenaming(item.id); setDraft(item.name); }} />
                 <IconButton icon="share" label={t('songs.share')} onPress={() => void share(item)} bg={busy === item.id ? COLORS.accent : undefined} />
+                <IconButton icon="download" label={t('rec.saveDevice')} onPress={() => void saveDev(item)} bg={busy === item.id ? COLORS.accent : undefined} />
                 <IconButton icon="trash" label={t('songs.delete')} color={COLORS.danger} onPress={() => del(item)} />
               </View>
             );

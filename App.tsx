@@ -52,7 +52,7 @@ function Root() {
   switch (route.name) {
     case 'splash': screen = <SplashScreen onDone={done} />; break;
     case 'select': screen = <StageSelectScreen onPick={(id) => setRoute({ name: 'stage', stageId: id })} onLocked={() => setGateFor('unlock')} onSettings={() => setRoute({ name: 'settings' })} onSongs={() => songs(route)} onHelp={() => setRoute({ name: 'help', from: route })} />; break;
-    case 'stage': screen = <StageScreen key={route.stageId} stage={getStage(route.stageId)} onBack={() => setRoute({ name: 'select' })} onSongs={() => songs(route)} onHelp={() => setRoute({ name: 'help', from: route })} onDebug={setDebug} />; break;
+    case 'stage': screen = <StageScreen key={route.stageId} stage={getStage(route.stageId)} onBack={() => setRoute({ name: 'select' })} onSongs={() => songs(route)} onHelp={() => setRoute({ name: 'help', from: route })} onPlay={(id) => setRoute({ name: 'player', songId: id })} onDebug={setDebug} />; break;
     case 'songs': screen = <SongsScreen onBack={() => setRoute(route.from.name === 'stage' ? { name: 'select' } : route.from)} onPlay={(id) => setRoute({ name: 'player', songId: id })} />; break;
     case 'player': {
       const song = progress.songs.find((s) => s.id === route.songId);

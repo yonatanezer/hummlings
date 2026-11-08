@@ -3,7 +3,7 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getEngine } from '../audio';
 import { getStage } from '../content';
-import { exportSong } from '../app/exportSong';
+import { exportSong, saveSongToDevice } from '../app/exportSong';
 import { useProgress } from '../app/progress';
 import { computeLayout } from '../core/layout';
 import { songProvider } from '../core/session';
@@ -73,7 +73,8 @@ export function PlayerScreen({ song, onBack }: { song: Song; onBack: () => void 
       </View>
       <View pointerEvents="box-none" style={[styles.bar, { bottom: insets.bottom + 10, flexDirection: row }]}>
         <IconButton icon={playing ? 'pause' : 'play'} label={playing ? t('a11y.pause') : t('a11y.play')} size={72} onPress={() => { if (playing) { engine.stop(); setPlaying(false); } else play(); }} />
-        <IconButton icon="share" label={t('a11y.share')} onPress={() => void exportSong(engine, stage, song)} />
+        <IconButton icon="share" label={t('a11y.share')} caption={t('songs.share')} onPress={() => void exportSong(engine, stage, song)} />
+        <IconButton icon="download" label={t('rec.saveDevice')} caption={t('rec.saveDevice')} onPress={() => void saveSongToDevice(engine, stage, song)} />
       </View>
       {!ready && <View style={StyleSheet.absoluteFill} />}
     </View>

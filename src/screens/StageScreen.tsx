@@ -9,8 +9,9 @@ import { Session } from '../core/session';
 import { popRate } from '../core/sfx';
 import { randomBand } from '../core/surprise';
 import { audibleIds } from '../core/stageState';
-import { autoName } from '../core/timeline';
-import { TUNING } from '../core/tuning';
+import { autoName, warnBars, type Song } from '../core/timeline';
+import { TUNING, barSec } from '../core/tuning';
+import { exportSong, saveSongToDevice, type ExportResult } from '../app/exportSong';
 import type { Stage } from '../core/types';
 import { t, type StringKey } from '../i18n';
 import { useLang } from '../i18n/useLang';
@@ -28,10 +29,11 @@ interface Props {
   onBack: () => void;
   onSongs: () => void;
   onHelp: () => void;
+  onPlay: (songId: string) => void;
   onDebug?: (s: string) => void;
 }
 
-export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) {
+export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }: Props) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { rtl } = useLang();
@@ -52,6 +54,9 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
   const [recBars, setRecBars] = useState(0);
   const [book, setBook] = useState(false);
   const [limitMsg, setLimitMsg] = useState(false);
+  const [saved, setSaved] = useState<Song | null>(null);
+  const [exportMsg, setExportMsg] = useState<ExportResult | null>(null);
+  const [exporting, setExporting] = useState(false);
   const [, force] = useState(0);
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
@@ -133,7 +138,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
     const song = session.stopRecording({ id: `song_${Date.now()}`, name: autoName(names), createdAt: Date.now() });
     setRecording(false);
     setRecBars(0);
-    if (song) addSong(song);
+    if (song) { addSong(song); setSaved(song); setExportMsg(null); }
   }, [session, addSong]);
 
   const onRecord = () => {
@@ -256,7 +261,11 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
         <View style={styles.world} accessibilityLabel={t(stage.nameKey as StringKey)}><WorldIcon stageId={stage.id} size={34} /></View>
         <View style={{ flex: 1 }} />
         <View style={{ flexDirection: row, gap: 10, alignItems: 'center' }}>
-          {recording && <Text style={styles.rec} accessibilityLabel={`${recBars}`}>{recBars}</Text>}
+          {recording && (() => {
+            const secs = Math.round(recBars * barSec(stage.bpm));
+            const warn = recBars >= warnBars(stage.bpm);
+            return <Text style={[styles.rec, warn && styles.recWarn]} accessibilityLabel={`${t('rec.recording')} ${secs}`}>{`${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`}</Text>;
+          })()}
           <IconButton icon={recording ? 'stop' : 'record'} label={recording ? t('a11y.stopRecord') : t('a11y.record')} caption={recording ? t('ui.stop') : t('ui.record')} color={recording ? '#FFFFFF' : COLORS.rec} bg={recording ? COLORS.rec : undefined} onPress={onRecord} />
           <IconButton icon="book" label={t('a11y.comboBook')} caption={t('ui.combos')} onPress={() => setBook(true)} />
           <IconButton icon="note" label={t('a11y.songs')} caption={t('ui.songs')} onPress={onSongs} />
@@ -286,6 +295,22 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onDebug }: Props) 
       </View>
 
       {book && <ComboBook stage={stage} session={session} discovered={progress.discoveredCombos} onClose={() => setBook(false)} onReplay={(id) => { setBook(false); session.replayCombo(id); }} />}
+      {saved && (
+        <View style={styles.overlay}>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{t('rec.saved')}</Text>
+            <Text style={styles.cardText}>{saved.name}</Text>
+            <View style={{ flexDirection: 'row', gap: 14 }}>
+              <IconButton icon="play" label={t('a11y.play')} caption={t('a11y.play')} onPress={() => { const id = saved.id; setSaved(null); onPlay(id); }} />
+              <IconButton icon="share" label={t('songs.share')} caption={t('songs.share')} bg={exporting ? COLORS.accent : undefined} onPress={() => { setExporting(true); void exportSong(engine, stage, saved).then((r) => { setExporting(false); setExportMsg(r); }); }} />
+              <IconButton icon="download" label={t('rec.saveDevice')} caption={t('rec.saveDevice')} bg={exporting ? COLORS.accent : undefined} onPress={() => { setExporting(true); void saveSongToDevice(engine, stage, saved).then((r) => { setExporting(false); setExportMsg(r); }); }} />
+              <IconButton icon="close" label={t('a11y.close')} caption={t('a11y.close')} onPress={() => setSaved(null)} />
+            </View>
+            {exportMsg === 'saved' && <Text style={styles.ok}>{t('rec.savedDevice')}</Text>}
+            {(exportMsg === 'storage' || exportMsg === 'error') && <Text style={styles.fail}>{t('songs.storageFull')}</Text>}
+          </View>
+        </View>
+      )}
       {limitMsg && (
         <View style={styles.overlay}>
           <View style={styles.card}>
@@ -319,5 +344,9 @@ const styles = StyleSheet.create({
   rec: { color: '#fff', fontSize: 18, fontWeight: '700', backgroundColor: COLORS.rec, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' },
   overlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(10,6,32,0.6)', alignItems: 'center', justifyContent: 'center' },
   card: { backgroundColor: COLORS.panel, padding: 24, borderRadius: 24, alignItems: 'center', gap: 16, maxWidth: 420 },
+  cardTitle: { color: COLORS.glow, fontSize: 24, fontWeight: '800' },
+  ok: { color: COLORS.ok, fontSize: 16, fontWeight: '700' },
+  fail: { color: COLORS.danger, fontSize: 16, textAlign: 'center' },
+  recWarn: { backgroundColor: '#FF1744', borderWidth: 2, borderColor: '#fff' },
   cardText: { color: COLORS.text, fontSize: 18, textAlign: 'center' },
 });
