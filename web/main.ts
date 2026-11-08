@@ -17,6 +17,11 @@ import { popRate } from '../src/core/sfx';
 import { randomBand } from '../src/core/surprise';
 import { worldIconSvg } from '../src/core/worldIcons';
 import { P } from './pictos';
+import { autoName, comboStartsAt, stateAtBar, warnBars, type Song } from '../src/core/timeline';
+import { songProvider } from '../src/core/session';
+import { barSec } from '../src/core/tuning';
+import { renderSong, samplesPerBar } from '../src/core/render';
+import { encodeWav } from '../src/core/wav';
 
 const STAGES: Stage[] = [pond, fair, clouds, neon, frost].map((r) => validateStage(r).stage!);
 const NAMES = ['Moonlit Pond', 'Candy Fair', 'Sleepy Cloud Town', 'Neon City', 'Frosty Peaks'];
@@ -50,6 +55,8 @@ const ripples: { x: number; y: number; t: number }[] = [];
 let popup: { spot: number; creatureId: string } | null = null;
 let trayOpen = true;
 let trayK = 1; // 1 = shown, 0 = tucked away (animated)
+let playMode: { song: Song } | null = null;
+let recording = false;
 let ready = false;
 let hint = true;
 const store = { get: (k: string): string[] => { try { return JSON.parse(localStorage.getItem(k) ?? '[]') as string[]; } catch { return []; } }, set: (k: string, v: string[]) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } } };
@@ -529,15 +536,15 @@ function apply(ev: GestureEvent, t: number) {
 }
 function pt(e: PointerEvent) { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
 canvas.addEventListener('pointerdown', (e) => {
-  if (!ready || !session) return;
+  if (!ready || !session || playMode) return;
   canvas.setPointerCapture(e.pointerId);
   const t = performance.now();
   ripples.push({ ...pt(e), t });
   tracker.start(e.pointerId, pt(e), Date.now(), world()).forEach((ev) => apply(ev, t));
   if (tracker.hasPendingLongPress) setTimeout(() => tracker.tick(Date.now(), world()).forEach((ev) => apply(ev, performance.now())), TUNING.longPressMs + 10);
 });
-canvas.addEventListener('pointermove', (e) => { if (ready && session) tracker.move(e.pointerId, pt(e), Date.now(), world()).forEach((ev) => apply(ev, performance.now())); });
-const up = (e: PointerEvent) => { if (ready && session) tracker.end(e.pointerId, pt(e), Date.now(), world()).forEach((ev) => apply(ev, performance.now())); };
+canvas.addEventListener('pointermove', (e) => { if (ready && session && !playMode) tracker.move(e.pointerId, pt(e), Date.now(), world()).forEach((ev) => apply(ev, performance.now())); });
+const up = (e: PointerEvent) => { if (ready && session && !playMode) tracker.end(e.pointerId, pt(e), Date.now(), world()).forEach((ev) => apply(ev, performance.now())); };
 canvas.addEventListener('pointerup', up);
 canvas.addEventListener('pointercancel', (e) => { if (session) tracker.cancel(e.pointerId, world()).forEach((ev) => apply(ev, performance.now())); });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -642,3 +649,119 @@ $('helpBtn').addEventListener('click', () => { $('helpBtn').classList.remove('pu
 $('hPrev').addEventListener('click', () => { helpStep = Math.max(0, helpStep - 1); showHelp(); });
 $('hNext').addEventListener('click', () => { if (helpStep === 6) $('help').classList.add('hide'); else { helpStep++; showHelp(); } });
 $('help').addEventListener('click', (e) => { if (e.target === $('help') || (e.target as HTMLElement).closest('.x')) $('help').classList.add('hide'); });
+
+// ---- recording, saved songs, playback and export ----
+const MAX_SONGS = 50;
+const loadSongs = (): Song[] => { try { return JSON.parse(localStorage.getItem('hum.songs') ?? '[]') as Song[]; } catch { return []; } };
+const saveSongs = (a: Song[]) => { try { localStorage.setItem('hum.songs', JSON.stringify(a)); } catch { /* storage unavailable */ } };
+const fmt = (bars: number, bpm: number) => { const s = Math.round(bars * barSec(bpm)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const stageOf = (song: Song) => STAGES.find((x) => x.id === song.stageId)!;
+
+function setRecUi() {
+  const b = $('recBtn');
+  b.classList.toggle('recording', recording);
+  b.setAttribute('aria-label', recording ? 'Stop recording' : 'Record');
+  $('recLbl').textContent = recording ? '0:00' : 'Record';
+}
+function stopRecording() {
+  if (!session || !session.recorder) return;
+  const song = session.stopRecording({ id: `song_${Date.now()}`, name: autoName(loadSongs().map((x) => x.name)), createdAt: Date.now() });
+  recording = false; setRecUi();
+  if (!song) return;
+  const all = [...loadSongs(), song]; saveSongs(all);
+  toast(`${P.sticker(30)}<span>Song saved: ${song.name}</span>`);
+  renderSongs();
+}
+$('recBtn').addEventListener('click', () => {
+  if (!session || !ready || playMode) return;
+  if (recording) return stopRecording();
+  if (loadSongs().length >= MAX_SONGS) { toast('<span>Song list is full (50). Delete one to record again.</span>'); return; }
+  session.startRecording(); recording = true; setRecUi();
+});
+setInterval(() => {
+  if (!recording || !session?.recorder) return;
+  const bars = Math.max(0, session.lastProvidedBar + 1 - session.recorder.startBar);
+  const secs = Math.round(bars * barSec(stage.bpm));
+  $('recLbl').textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  $('recBtn').classList.toggle('warn', bars >= warnBars(stage.bpm));
+  if (bars >= session.recorder.maxBarCount) stopRecording();
+}, 250);
+
+function renderSongs() {
+  const list = loadSongs();
+  const el = $('songList');
+  if (!list.length) { el.innerHTML = `<div class="empty">${P.sticker(48)}<p>No songs yet. Press Record, play with the singers, press Stop.</p></div>`; return; }
+  el.innerHTML = '';
+  [...list].reverse().forEach((song) => {
+    const st = stageOf(song);
+    const row = document.createElement('div'); row.className = 'srow';
+    row.innerHTML = `<span class="wi">${worldIconSvg(st.id, 30)}</span><div class="sinfo"><input class="sname" value="${song.name.replace(/"/g, '&quot;')}" maxlength="24" aria-label="Song name"><small>${fmt(song.bars, st.bpm)} · ${song.bars} bars · ${new Date(song.createdAt).toLocaleDateString()}</small></div>`;
+    const btn = (label: string, svgHtml: string, fn: () => void, cls = '') => { const b = document.createElement('button'); b.className = `ic ${cls}`; b.setAttribute('aria-label', label); b.title = label; b.innerHTML = svgHtml; b.addEventListener('click', fn); return b; };
+    row.append(
+      btn('Play', P.play(24), () => { $('songs').classList.add('hide'); void playSong(song); }),
+      btn('Share or save audio', '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 15V4M8 8l4-4 4 4M5 12v8h14v-8"/></svg>', () => void exportWav(song)),
+      btn('Delete (tap twice)', '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/></svg>', () => {}, 'del'),
+    );
+    const del = row.querySelector('.del') as HTMLButtonElement;
+    let armed = false;
+    del.addEventListener('click', () => { if (!armed) { armed = true; del.classList.add('armed'); setTimeout(() => { armed = false; del.classList.remove('armed'); }, 2500); return; } saveSongs(loadSongs().filter((x) => x.id !== song.id)); renderSongs(); });
+    (row.querySelector('.sname') as HTMLInputElement).addEventListener('change', (e) => { const name = (e.target as HTMLInputElement).value.trim().slice(0, 24) || song.name; saveSongs(loadSongs().map((x) => (x.id === song.id ? { ...x, name } : x))); });
+    el.append(row);
+  });
+}
+$('songsBtn').addEventListener('click', () => { renderSongs(); $('songs').classList.remove('hide'); });
+$('songs').addEventListener('click', (e) => { if (e.target === $('songs') || (e.target as HTMLElement).closest('.x')) $('songs').classList.add('hide'); });
+
+async function playSong(song: Song) {
+  const st = stageOf(song);
+  ready = false;
+  engine.stop();
+  stageIdx = STAGES.indexOf(st); stage = st;
+  document.querySelectorAll('#worlds button').forEach((b, k) => b.classList.toggle('on', k === stageIdx));
+  placedAnim.clear(); drags = []; returning = []; celebration = null; popup = null; recording = false; setRecUi();
+  await engine.init();
+  await Promise.all([engine.loadStage(st), loadAtlas(st.id)]);
+  const fake = { state: stateAtBar(song, 0), recorder: null, countIn: false, lastProvidedBar: 0, goals: { progress: () => [] }, discoveredInStage: 0, dispatch() {}, replayCombo() {}, startRecording() {}, setEvents() {} } as unknown as Session;
+  session = fake;
+  playMode = { song };
+  $('playbar').classList.remove('hide');
+  const provider = songProvider(st, song);
+  const seen = new Set<string>();
+  engine.start(st.bpm, (bar) => {
+    const state = stateAtBar(song, bar);
+    const now = performance.now();
+    placedAnim.clear();
+    state.spots.forEach((id) => { if (id && !seen.has(id)) { placedAnim.set(id, { since: now, from: { x: layout.slotPos[st.creatures.findIndex((c) => c.id === id)]!.x, y: layout.slotPos[0]!.y } }); } });
+    seen.clear(); state.spots.forEach((id) => { if (id) seen.add(id); });
+    fake.state = state;
+    const cid = comboStartsAt(song, bar);
+    if (cid) { const combo = st.combos.find((c) => c.id === cid)!; celebration = { comboId: cid, creatureIds: [...combo.creatureIds], startBeat: bar * 4 }; }
+    else if (celebration && bar * 4 - celebration.startBeat >= 32) celebration = null;
+    if (bar > song.bars) setTimeout(stopPlayback, 0);
+    return provider(bar);
+  });
+}
+function stopPlayback() {
+  if (!playMode) return;
+  playMode = null; $('playbar').classList.add('hide');
+  void openStage(stageIdx);
+}
+$('stopPlay').addEventListener('click', stopPlayback);
+
+async function exportWav(song: Song) {
+  const st = stageOf(song);
+  toast('<span>Preparing audio…</span>');
+  try {
+    await engine.init();
+    const files = [...st.creatures.map((c) => c.loopFile), ...st.combos.map((c) => c.bonusLoopFile)];
+    const bank = await engine.decodeBank(files, samplesPerBar(st.bpm) * st.loopBars);
+    const { samples } = renderSong(st, song, bank);
+    const blob = new Blob([encodeWav(samples, 48000) as BlobPart], { type: 'audio/wav' });
+    const file = new File([blob], `Hummlings - ${song.name}.wav`, { type: 'audio/wav' });
+    const nav = navigator as Navigator & { canShare?: (d: object) => boolean; share?: (d: object) => Promise<void> };
+    if (nav.canShare?.({ files: [file] })) { await nav.share!({ files: [file], title: song.name }); return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.append(a); a.click(); a.remove();
+    toast('<span>Audio file created. If nothing downloaded, your browser blocks it here; the app shares it.</span>');
+  } catch { toast('<span>Could not prepare the audio file.</span>'); }
+}
+renderSongs();

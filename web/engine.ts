@@ -50,7 +50,16 @@ export class WebEngine implements AudioEngine {
     await Promise.all(files.filter((f) => !this.buffers.has(f)).map(async (f) => this.buffers.set(f, await this.load(`audio/${f.replace('.m4a', '.mp3')}`))));
     for (const k of [...this.buffers.keys()]) if (!files.includes(k)) this.buffers.delete(k);
   }
-  async decodeBank(): Promise<Record<string, Float32Array>> { return {}; }
+  async decodeBank(files: string[], loopSamples: number): Promise<Record<string, Float32Array>> {
+    const out: Record<string, Float32Array> = {};
+    for (const f of files) {
+      const buf = this.buffers.get(f) ?? (await this.load(`audio/${f.replace('.m4a', '.mp3')}`));
+      const a = new Float32Array(loopSamples);
+      a.set(buf.getChannelData(0).subarray(0, loopSamples));
+      out[f] = a;
+    }
+    return out;
+  }
   start(bpm: number, provider: BarProvider): void {
     this.stop();
     this.bpm = bpm; this.provider = provider; this.nextBar = 0;
