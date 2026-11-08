@@ -53,3 +53,4 @@
 - Global font-scale cap 1.3 and icon-button caption auto-fit: large system fonts must not break the landscape layout.
 - Dev overlay shows an FPS meter, so the 60 fps target can be measured on device. Stage-singer per-frame paint caching deliberately deferred until measured (no blind optimisation).
 - Per-world scenery, decor and tap toy (ripple/spark/star on empty-stage tap) ported from the web canvas to Skia (src/ui/draw/scenery.ts) so app and demo match.
+- Web demo side columns: one translucent pill per group, red record button, divider before Clear, current world outlined, combo strip icon changed to a star (book icon was duplicated).

@@ -150,6 +150,17 @@ button.ic svg{width:26px;height:26px;flex:none}button.ic .off{display:none}butto
 #sideR #recBtn.recording #recLbl{display:inline!important;font-variant-numeric:tabular-nums}
 #sideL button svg,#sideR button svg{width:26px;height:26px}
 #worlds .wi svg{width:30px;height:30px}
+/* side columns: one pill per group, aligned with the top row, never touching the tray */
+#sideL,#sideR{top:10px;padding:6px;border-radius:28px;background:rgba(27,19,64,.72);box-shadow:0 2px 14px rgba(0,0,0,.35);backdrop-filter:blur(6px);gap:6px}
+#sideL{left:max(10px,env(safe-area-inset-left,0px))}
+#sideR{right:max(10px,env(safe-area-inset-right,0px))}
+#sideL button,#sideR button{background:rgba(255,255,255,.1);box-shadow:none}
+#sideR #recBtn{background:#FF4D6D}#sideR #recBtn svg circle{fill:#fff}
+#sideR #recBtn.recording{background:#FF4D6D;animation:recp 1s ease-in-out infinite}
+@keyframes recp{50%{box-shadow:0 0 0 6px rgba(255,77,109,.3)}}
+#sideR #clear{margin-top:6px;position:relative}#sideR #clear::before{content:"";position:absolute;top:-6px;left:10px;right:10px;height:1px;background:rgba(255,255,255,.2)}
+#worlds button.on,#worlds button[aria-pressed=true]{outline:2px solid #FFE8A3;outline-offset:1px}
+@media (max-height:540px){#sideL,#sideR{top:6px;padding:4px;gap:4px;border-radius:24px}#sideL button,#sideR button,#worlds button{width:40px;min-width:40px;height:40px;min-height:40px}#sideL button svg,#sideR button svg{width:22px;height:22px}#worlds .wi svg{width:26px;height:26px}#sideR #clear{margin-top:4px}}
 @media (max-height:540px){#sideL button,#sideR button,#worlds button{width:44px;min-width:44px;height:44px;min-height:44px}#sideL,#sideR{gap:5px;top:6px}}
 @media (max-width:700px){#bar{max-width:calc(100% - 112px)}#band b i{width:22px;height:22px}}
 </style>
@@ -164,7 +175,7 @@ button.ic svg{width:26px;height:26px;flex:none}button.ic .off{display:none}butto
 </div>
 <div id="bar">
 <div class="hud"><div id="band" aria-label="Band: layers playing"></div>
-<div id="combos-wrap"><span class="lbl"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg></span><div id="combos" aria-label="Secret combos: a dot lights up for each matching singer on stage"></div></div><i id="beat" aria-hidden="true"></i></div>
+<div id="combos-wrap"><span class="lbl"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg></span><div id="combos" aria-label="Secret combos: a dot lights up for each matching singer on stage"></div></div><i id="beat" aria-hidden="true"></i></div>
 <div class="acts">
 <button id="mute" class="ic lb" aria-label="Pause the music" title="Pause / resume" aria-pressed="false"><svg class="on" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z" class="fill"/><path d="M17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11"/></svg><svg class="off" viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z" class="fill"/><path d="M17 9l5 6M22 9l-5 6"/></svg><span>Sound</span></button>
 <button id="bookBtn" class="ic lb" aria-label="Combo book" title="Combo book"><svg viewBox="0 0 24 24"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v13"/></svg><span>Combos</span></button>
