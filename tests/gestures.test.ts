@@ -194,3 +194,26 @@ describe('tap a singer in the menu', () => {
     expect(nextFreeSpot(s)).toBe(-1);
   });
 });
+
+describe('dragging a singer from the menu to a far spot', () => {
+  it('a shallow diagonal start still becomes a drag once the finger rises; a flat swipe scrolls', () => {
+    const g = new GestureTracker();
+    const slot = layout.slotPos[1]!;
+    g.start(1, slot, 0, world());
+    const a = g.move(1, { x: slot.x + 30, y: slot.y - 4 }, 10, world()); // flat so far: scrolling
+    expect(a[0]).toMatchObject({ type: 'scroll' });
+    const b = g.move(1, { x: slot.x + 70, y: slot.y - 40 }, 30, world()); // rises: pick up
+    expect(b.map((e) => e.type)).toEqual(['scroll', 'pickup']);
+    expect(g.move(1, { x: slot.x + 200, y: slot.y - 100 }, 50, world())[0]).toMatchObject({ type: 'drag' });
+    const spot = layout.spots[2]!;
+    expect(g.end(1, { x: spot.x, y: spot.y - layout.size / 2 }, 80, world())[0]).toMatchObject({ type: 'drop', creatureId: 'c1', spot: 2 });
+  });
+  it('a diagonal at about 20 degrees dragged from a singer on a tablet picks up immediately (nothing to scroll)', () => {
+    const big = computeLayout(1600, 900);
+    const w2: World = { layout: big, scrollX: 0, trayIds: ids, onStage: [null, null, null, null, null, null] };
+    const g = new GestureTracker();
+    const slot = big.slotPos[1]!;
+    g.start(1, slot, 0, w2);
+    expect(g.move(1, { x: slot.x + 30, y: slot.y - 12 }, 10, w2)[0]).toMatchObject({ type: 'pickup' });
+  });
+});

@@ -34,7 +34,7 @@ type Touch =
   | { kind: 'pendingTray'; id: string | null; slot: number; start: Pt; startT: number; scrollStart: number }
   | { kind: 'pendingEmpty'; start: Pt }
   | { kind: 'drag'; id: string; from: 'tray' | 'stage'; last: Pt; lastT: number; vy: number }
-  | { kind: 'scroll'; start: Pt; scrollStart: number }
+  | { kind: 'scroll'; start: Pt; scrollStart: number; id: string | null } // id: the free singer under the first touch, may still be picked up
   | { kind: 'hold'; id: string; startY: number; startVol: number } // long press fired: dragging changes the volume
   | { kind: 'slider'; id: string; start: Pt }
   | { kind: 'popupSolo'; id: string; start: Pt }
@@ -104,13 +104,13 @@ export class GestureTracker {
         if (dist(s.start) <= SLOP) return [];
         const dx = p.x - s.start.x, dy = p.y - s.start.y;
         if (dy > 0 && dy > Math.abs(dx) * 1.2) { this.touches.delete(touch); return [{ type: 'trayHide' }]; } // a downward swipe tucks the menu away
-        const horizontal = Math.abs(dx) > Math.abs(dy) * 1.2;
-        if (s.id && !(horizontal && w.layout.scrollMax > 0 && dy > -SLOP * 2)) {
+        const horizontal = Math.abs(dx) > Math.abs(dy) * 2; // a clearly flat swipe scrolls; anything steeper picks the singer up
+        if (s.id && !(horizontal && w.layout.scrollMax > 0 && dy > -SLOP * 0.8)) {
           this.touches.set(touch, { kind: 'drag', id: s.id, from: 'tray', last: p, lastT: t, vy: 0 });
           return [{ type: 'pickup', touch, creatureId: s.id, from: 'tray', p }];
         }
         if (w.layout.scrollMax > 0) {
-          this.touches.set(touch, { kind: 'scroll', start: s.start, scrollStart: s.scrollStart });
+          this.touches.set(touch, { kind: 'scroll', start: s.start, scrollStart: s.scrollStart, id: s.id });
           return this.scrollTo(s.scrollStart - dx, w);
         }
         return [];
@@ -130,8 +130,15 @@ export class GestureTracker {
         if (Math.abs(p.y - s.startY) < SLOP) return [];
         return [{ type: 'volumeSet', creatureId: s.id, value: Math.min(1, Math.max(0, s.startVol - (p.y - s.startY) / w.layout.size)) }];
       }
-      case 'scroll':
+      case 'scroll': {
+        // a flat swipe that turns upward is a drag after all (dragging to a far spot starts shallow)
+        const up = s.start.y - p.y;
+        if (s.id && up > SLOP * 2.2 && up > Math.abs(p.x - s.start.x) * 0.3) {
+          this.touches.set(touch, { kind: 'drag', id: s.id, from: 'tray', last: p, lastT: t, vy: 0 });
+          return [{ type: 'scroll', scrollX: s.scrollStart }, { type: 'pickup', touch, creatureId: s.id, from: 'tray', p }];
+        }
         return this.scrollTo(s.scrollStart - (p.x - s.start.x), w);
+      }
       case 'drag': {
         const dt = Math.max(1, t - s.lastT);
         const vy = ((p.y - s.last.y) / dt) * 1000;
