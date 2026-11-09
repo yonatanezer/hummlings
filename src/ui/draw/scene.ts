@@ -33,6 +33,7 @@ export interface SceneInput {
   hintSlot: number;
   taps?: TapEffect[]; // tap-the-scenery effects
   reward?: { progress: number } | null; // ring that fills while a complete secret combo is being held
+  backdrop?: SkPicture | null; // pre-recorded static sky/scenery (app only; headless renders draw it directly)
   trayPicture?: SkPicture | null; // pre-recorded singer menu (app only; headless renders draw it directly)
   trayK?: number; // 1 = singer menu shown, 0 = slid away (animated by the screen)
   popup?: { spot: number; creatureId: string; volume: number; solo: boolean } | null; // volume popup after a long press
@@ -46,19 +47,27 @@ export function idHash(id: string): number {
   return h;
 }
 
-export function drawBackground(sk: SkiaApi, c: Canvas, st: Stage, l: Layout, timeMs: number) {
+/** Twinkling stars: the only moving part of the sky, drawn each frame with one shared paint. */
+export function drawStars(sk: SkiaApi, c: Canvas, l: Layout, timeMs: number) {
   'worklet';
-  const { W, H } = l;
-  const pal = st.palette;
-  c.drawRect(sk.XYWHRect(0, 0, W, H), gradientPaint(sk, 0, 0, 0, l.stageH, [mix(pal.sky, '#0B0722', 0.5), pal.sky, mix(pal.sky, pal.floor, 0.5)]));
-  // soft stars
+  const { W } = l;
+  const p = paint(sk, '#FFFFFF', 1);
   for (let i = 0; i < 40; i++) {
     const r1 = Math.sin(i * 12.9898 + 1.7) * 43758.5453, r2 = Math.sin(i * 78.233 + 3.1) * 24634.6345;
     const x = (r1 - Math.floor(r1)) * W;
     const y = (r2 - Math.floor(r2)) * l.stageH * 0.6;
     const tw = 0.5 + 0.5 * Math.sin(timeMs / 900 + i);
-    c.drawCircle(x, y, 1 + (i % 3) * 0.6, paint(sk, '#FFFFFF', 0.3 + 0.5 * tw));
+    p.setAlphaf(0.3 + 0.5 * tw);
+    c.drawCircle(x, y, 1 + (i % 3) * 0.6, p);
   }
+}
+
+/** Everything behind the singers that never moves: sky, spotlights, floor and each world's fixed scenery. Cached as a picture (see SceneCanvas). `bucket` only matters for neon (windows re-roll every 1.8 s). */
+export function drawBackdrop(sk: SkiaApi, c: Canvas, st: Stage, l: Layout, bucket: number) {
+  'worklet';
+  const { W, H } = l;
+  const pal = st.palette;
+  c.drawRect(sk.XYWHRect(0, 0, W, H), gradientPaint(sk, 0, 0, 0, l.stageH, [mix(pal.sky, '#0B0722', 0.5), pal.sky, mix(pal.sky, pal.floor, 0.5)]));
   // warm spotlights from above (about 20%)
   for (let i = 0; i < 3; i++) {
     const x = W * (0.25 + i * 0.25);
@@ -71,6 +80,7 @@ export function drawBackground(sk: SkiaApi, c: Canvas, st: Stage, l: Layout, tim
   const fr = sk.XYWHRect(-W * 0.05, floorY - l.H * 0.2, W * 1.1, l.H * 0.5);
   c.drawOval(fr, gradientPaint(sk, 0, floorY - l.H * 0.2, 0, floorY + l.H * 0.1, [mix(pal.floor, '#FFFFFF', 0.12), pal.floor]));
   c.drawOval(fr, paint(sk, pal.glow, 0.25, STROKE, 2));
+  drawScenery(sk, c, st.id, l, pal, bucket * 1800, 'static');
 }
 
 function spotRing(sk: SkiaApi, c: Canvas, x: number, y: number, S: number, glow: string, hot: boolean) {
@@ -215,8 +225,9 @@ function drawHintHand(sk: SkiaApi, c: Canvas, s: SceneInput, byId: Record<string
 export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   'worklet';
   const { layout: l, stage } = s;
-  drawBackground(sk, c, stage, l, s.timeMs);
-  drawScenery(sk, c, stage.id, l, stage.palette, s.timeMs);
+  if (s.backdrop) c.drawPicture(s.backdrop); else drawBackdrop(sk, c, stage, l, Math.floor(s.timeMs / 1800));
+  drawStars(sk, c, l, s.timeMs);
+  drawScenery(sk, c, stage.id, l, stage.palette, s.timeMs, 'live');
   drawDecor(sk, c, stage.id, l, stage.palette, s.timeMs, s.reduceMotion ? 0 : s.beat);
   const byId: Record<string, Creature> = {};
   for (const cr of stage.creatures) byId[cr.id] = cr;

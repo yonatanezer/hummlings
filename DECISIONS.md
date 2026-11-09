@@ -57,3 +57,4 @@
 - Worklet rule learned on device: a helper used inside a worklet must be defined BEFORE the worklet in the file (the transform captures at definition). drawScene now sits last in scene.ts. paint(), computeLayout, beatBounce and celebration spec() are worklets with literal defaults.
 - Release build on a Samsung A54 measured about 40 fps with 5 singers (58 empty). Next gain: cache the static background and scenery as an image.
 - Windows build notes: repo must live in a short path (C:\h) because of the 260-character limit; Git usr\bin must be on PATH for the audio-api download script.
+- Performance: sky, spotlights, floor and each world's fixed scenery are drawn into one cached Picture (re-recorded only on stage/size change; neon windows every 1.8 s); moving scenery, stars and particles stay live, and hot loops reuse one Paint. Expected gain unmeasured: re-measure with the dev FPS meter on the release build (was ~40 fps with 5 singers).
