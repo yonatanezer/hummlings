@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ElementType } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { STAGES, FREE_STAGE_IDS } from '../content';
@@ -29,8 +29,8 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
   const cardH = Math.min((height - topBarH - 70) * 0.9, cardW * 1.1);
   const row = rtl ? 'row-reverse' : 'row';
   const fits = STAGES.length * cardW + (STAGES.length - 1) * GAP <= availW;
-  const Wrap: any = fits ? View : ScrollView;
-  const wrapProps: any = fits
+  const Wrap = (fits ? View : ScrollView) as ElementType;
+  const wrapProps: Record<string, unknown> = fits
     ? { style: { flexDirection: row, justifyContent: 'center', alignItems: 'flex-start', gap: GAP } }
     : { horizontal: true, showsHorizontalScrollIndicator: false, contentContainerStyle: [styles.cards, { flexDirection: row, paddingHorizontal: 16, gap: GAP }] };
   return (
