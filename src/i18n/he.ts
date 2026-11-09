@@ -15,6 +15,7 @@ export const he: Record<StringKey, string> = {
 
   'songs.title': 'השירים שלי',
   'songs.empty': 'עוד אין שירים',
+  'songs.emptyHint': 'לחצו על כפתור ההקלטה האדום בבמה, נגנו משהו, והשיר יופיע כאן.',
   'songs.rename': 'שינוי שם',
   'songs.share': 'שיתוף',
   'songs.delete': 'מחיקה',

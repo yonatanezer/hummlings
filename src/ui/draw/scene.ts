@@ -110,6 +110,108 @@ export function creatureFeet(s: SceneInput, id: string): { x: number; y: number 
   return p ? s.layout.spots[p.spot]! : null;
 }
 
+/** Small icon marking each colour group in the tray: drum, bass wave, note, mouth. Readable without text. */
+function layerGlyph(sk: SkiaApi, c: Canvas, layer: string, x: number, y: number, color: string) {
+  'worklet';
+  const p = paint(sk, color, 1, STROKE, 2.4);
+  if (layer === 'drums') { c.drawOval(sk.XYWHRect(x - 9, y - 3, 18, 9), p); c.drawLine(x - 7, y - 10, x - 1, y - 2, p); c.drawLine(x + 7, y - 10, x + 1, y - 2, p); }
+  else if (layer === 'bass') { const q = sk.PathBuilder.Make(); q.moveTo(x - 10, y); q.cubicTo(x - 6, y - 10, x - 2, y + 8, x + 1, y); q.cubicTo(x + 4, y - 8, x + 8, y + 8, x + 11, y); c.drawPath(q.build(), p); }
+  else if (layer === 'melody') { c.drawCircle(x - 4, y + 5, 4, paint(sk, color)); c.drawLine(x, y + 5, x, y - 9, p); c.drawLine(x, y - 9, x + 8, y - 6, p); }
+  else { c.drawOval(sk.XYWHRect(x - 10, y - 6, 20, 14), p); c.drawOval(sk.XYWHRect(x - 4, y, 8, 5), paint(sk, color)); }
+}
+
+/** The singer menu as one self-contained drawing (panel, group captions, singers). Static between touches, so the app records it once as a Picture. */
+export function drawTray(sk: SkiaApi, c: Canvas, s: SceneInput) {
+  'worklet';
+  const { layout: l, stage } = s;
+  c.drawRect(sk.XYWHRect(0, l.tray.y, l.W, l.tray.h + 6), paint(sk, mix(stage.palette.sky, '#000000', 0.55), 0.94));
+  c.drawRect(sk.XYWHRect(0, l.tray.y, l.W, 2), paint(sk, stage.palette.glow, 0.25));
+  c.drawRRect(sk.RRectXY(sk.XYWHRect(l.W / 2 - 24, l.tray.y + 5, 48, 5), 2.5, 2.5), paint(sk, '#FFFFFF', 0.35)); // grab bar
+  c.save();
+  c.clipRect(sk.XYWHRect(0, l.tray.y + 2, l.W, l.tray.h), 1, true);
+  const per = stage.creatures.length / 4;
+  [0, 1, 2, 3].forEach((g) => {
+    const a = l.slotPos[g * per]!, b = l.slotPos[g * per + per - 1]!;
+    const layer = stage.creatures[g * per]!.layer;
+    c.drawRRect(sk.RRectXY(sk.XYWHRect(a.x - l.slot * 0.55 - s.scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84), 14, 14), paint(sk, LAYER_COLORS[layer], 0.16));
+    layerGlyph(sk, c, layer, Math.max(a.x - l.slot * 0.55 - s.scrollX, 0) + 16, l.tray.y + l.tray.h * 0.08 + 14, LAYER_COLORS[layer]);
+  });
+  const trayS = Math.min(l.slot * 0.72, (l.tray.h - 36) / 1.4); // leaves a caption row above the tallest singer
+  stage.creatures.forEach((cr, i) => {
+    const p = l.slotPos[i]!;
+    const standing = s.placed.some((q) => q.id === cr.id);
+    const carried = s.drags.some((d) => d.id === cr.id);
+    const base: Partial<Pose> = standing || carried ? { sat: 0, alpha: 0.22, mouth: 0, eyes: 1 } : { mouth: 0 };
+    const pose = { ...IDLE_POSE, ...base, sx: 1, sy: 1 };
+    drawCreature(sk, c, cr, p.x - s.scrollX, l.tray.y + l.tray.h - 10, trayS, pose);
+  });
+  c.restore();
+}
+
+/** Countdown to a secret combo's celebration: a gold ring that fills, with a star that pulses on the beat. */
+function drawRewardRing(sk: SkiaApi, c: Canvas, s: SceneInput) {
+  'worklet';
+  const l = s.layout, p = s.reward!.progress;
+  const cx = l.W / 2, cy = Math.max(l.H * 0.2, 96), r = Math.max(30, l.size * 0.26);
+  const pulse = s.reduceMotion ? 0 : Math.max(0, 1 - (s.beat % 1) * 3);
+  c.drawCircle(cx, cy, r + 8 + pulse * 4, radialPaint(sk, cx, cy, r + 14, ['#FFE066', '#00000000'], 0.25 + 0.5 * p));
+  c.drawCircle(cx, cy, r, paint(sk, '#1B1340', 0.92));
+  c.drawCircle(cx, cy, r - 5, paint(sk, '#FFFFFF', 0.22, STROKE, 7));
+  const ov = sk.XYWHRect(cx - r + 5, cy - r + 5, (r - 5) * 2, (r - 5) * 2);
+  c.drawArc(ov, -90, Math.max(1, 360 * p), false, paint(sk, '#FFC857', 1, STROKE, 7));
+  const q = sk.PathBuilder.Make();
+  const sr = r * (0.5 + 0.06 * pulse);
+  for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? sr * 0.42 : sr; if (k === 0) q.moveTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); else q.lineTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); }
+  q.close();
+  c.drawPath(q.build(), paint(sk, '#FFE066'));
+}
+
+function drawVolumePopup(sk: SkiaApi, c: Canvas, s: SceneInput) {
+  'worklet';
+  const p = s.popup!;
+  const r = popupRects(s.layout, p.spot);
+  const cr = s.stage.creatures.find((q) => q.id === p.creatureId);
+  const col = cr ? LAYER_COLORS[cr.layer] : '#FFC857';
+  c.drawRRect(sk.RRectXY(sk.XYWHRect(r.panel.x, r.panel.y, r.panel.w, r.panel.h), 18, 18), paint(sk, '#1B1340', 0.94));
+  c.drawRRect(sk.RRectXY(sk.XYWHRect(r.panel.x, r.panel.y, r.panel.w, r.panel.h), 18, 18), paint(sk, '#FFFFFF', 0.3, STROKE, 2));
+  // solo star button
+  const cx = r.solo.x + r.solo.w / 2, cy = r.solo.y + r.solo.h / 2, rr = r.solo.w * 0.4;
+  c.drawCircle(cx, cy, rr, paint(sk, p.solo ? '#FFC857' : '#33276E', 1));
+  const q = sk.PathBuilder.Make();
+  for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? rr * 0.4 : rr * 0.78; if (k === 0) q.moveTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); else q.lineTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); }
+  q.close();
+  c.drawPath(q.build(), paint(sk, p.solo ? '#7A4A00' : '#FFE066'));
+  // slider
+  const tw = r.slider.w * 0.34, tx = r.slider.x + (r.slider.w - tw) / 2;
+  c.drawRRect(sk.RRectXY(sk.XYWHRect(tx, r.slider.y, tw, r.slider.h), tw / 2, tw / 2), paint(sk, '#FFFFFF', 0.18));
+  const fh = r.slider.h * p.volume;
+  c.drawRRect(sk.RRectXY(sk.XYWHRect(tx, r.slider.y + r.slider.h - fh, tw, fh), tw / 2, tw / 2), paint(sk, col, 1));
+  c.drawCircle(r.slider.x + r.slider.w / 2, r.slider.y + r.slider.h - fh, r.slider.w * 0.3, paint(sk, '#FFFFFF', 1));
+}
+
+/** First-run: an animated hand drags a creature from the tray to the stage; repeats every 4 s. */
+function drawHintHand(sk: SkiaApi, c: Canvas, s: SceneInput, byId: Record<string, Creature>) {
+  'worklet';
+  const l = s.layout;
+  const t = (s.timeMs % 4000) / 4000;
+  const from = { x: l.slotPos[s.hintSlot]!.x - s.scrollX, y: l.slotPos[s.hintSlot]!.y };
+  const to = { x: l.spots[2]!.x, y: l.spots[2]!.y - l.size * 0.4 };
+  const move = Math.min(1, Math.max(0, (t - 0.15) / 0.55));
+  const e = move * move * (3 - 2 * move);
+  const x = from.x + (to.x - from.x) * e;
+  const y = from.y + (to.y - from.y) * e - Math.sin(e * Math.PI) * l.size * 0.25;
+  const fade = t < 0.08 ? t / 0.08 : t > 0.88 ? (1 - t) / 0.12 : 1;
+  const cr = Object.values(byId).find((q) => q.id === s.stage.creatures[s.hintSlot]!.id);
+  if (cr && move > 0) drawCreature(sk, c, cr, x, y + l.size * 0.45, l.size * 0.9, { ...IDLE_POSE, alpha: 0.85 * fade });
+  // finger
+  const pressed = move > 0 && move < 1 ? 1 : 0;
+  c.drawCircle(x + 3, y + 8, 26, paint(sk, '#000000', 0.25 * fade));
+  c.drawCircle(x, y, 24 - pressed * 2, paint(sk, '#FFFFFF', 0.9 * fade));
+  c.drawCircle(x, y, 24 - pressed * 2, paint(sk, '#FFC857', 0.8 * fade, STROKE, 3));
+  c.drawCircle(x, y, 38 + 6 * Math.sin(t * 40), paint(sk, '#FFFFFF', 0.35 * fade * (1 - move), STROKE, 2));
+}
+
+// Must stay below every helper it calls: the worklet transform captures a function when its definition is reached, so a helper declared later is undefined inside it.
 export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   'worklet';
   const { layout: l, stage } = s;
@@ -230,105 +332,4 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   }
 
   if (s.hint && s.drags.length === 0) drawHintHand(sk, c, s, byId);
-}
-
-/** Small icon marking each colour group in the tray: drum, bass wave, note, mouth. Readable without text. */
-function layerGlyph(sk: SkiaApi, c: Canvas, layer: string, x: number, y: number, color: string) {
-  'worklet';
-  const p = paint(sk, color, 1, STROKE, 2.4);
-  if (layer === 'drums') { c.drawOval(sk.XYWHRect(x - 9, y - 3, 18, 9), p); c.drawLine(x - 7, y - 10, x - 1, y - 2, p); c.drawLine(x + 7, y - 10, x + 1, y - 2, p); }
-  else if (layer === 'bass') { const q = sk.PathBuilder.Make(); q.moveTo(x - 10, y); q.cubicTo(x - 6, y - 10, x - 2, y + 8, x + 1, y); q.cubicTo(x + 4, y - 8, x + 8, y + 8, x + 11, y); c.drawPath(q.build(), p); }
-  else if (layer === 'melody') { c.drawCircle(x - 4, y + 5, 4, paint(sk, color)); c.drawLine(x, y + 5, x, y - 9, p); c.drawLine(x, y - 9, x + 8, y - 6, p); }
-  else { c.drawOval(sk.XYWHRect(x - 10, y - 6, 20, 14), p); c.drawOval(sk.XYWHRect(x - 4, y, 8, 5), paint(sk, color)); }
-}
-
-/** The singer menu as one self-contained drawing (panel, group captions, singers). Static between touches, so the app records it once as a Picture. */
-export function drawTray(sk: SkiaApi, c: Canvas, s: SceneInput) {
-  'worklet';
-  const { layout: l, stage } = s;
-  c.drawRect(sk.XYWHRect(0, l.tray.y, l.W, l.tray.h + 6), paint(sk, mix(stage.palette.sky, '#000000', 0.55), 0.94));
-  c.drawRect(sk.XYWHRect(0, l.tray.y, l.W, 2), paint(sk, stage.palette.glow, 0.25));
-  c.drawRRect(sk.RRectXY(sk.XYWHRect(l.W / 2 - 24, l.tray.y + 5, 48, 5), 2.5, 2.5), paint(sk, '#FFFFFF', 0.35)); // grab bar
-  c.save();
-  c.clipRect(sk.XYWHRect(0, l.tray.y + 2, l.W, l.tray.h), 1, true);
-  const per = stage.creatures.length / 4;
-  [0, 1, 2, 3].forEach((g) => {
-    const a = l.slotPos[g * per]!, b = l.slotPos[g * per + per - 1]!;
-    const layer = stage.creatures[g * per]!.layer;
-    c.drawRRect(sk.RRectXY(sk.XYWHRect(a.x - l.slot * 0.55 - s.scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84), 14, 14), paint(sk, LAYER_COLORS[layer], 0.16));
-    layerGlyph(sk, c, layer, Math.max(a.x - l.slot * 0.55 - s.scrollX, 0) + 16, l.tray.y + l.tray.h * 0.08 + 14, LAYER_COLORS[layer]);
-  });
-  const trayS = Math.min(l.slot * 0.72, (l.tray.h - 36) / 1.4); // leaves a caption row above the tallest singer
-  stage.creatures.forEach((cr, i) => {
-    const p = l.slotPos[i]!;
-    const standing = s.placed.some((q) => q.id === cr.id);
-    const carried = s.drags.some((d) => d.id === cr.id);
-    const base: Partial<Pose> = standing || carried ? { sat: 0, alpha: 0.22, mouth: 0, eyes: 1 } : { mouth: 0 };
-    const pose = { ...IDLE_POSE, ...base, sx: 1, sy: 1 };
-    drawCreature(sk, c, cr, p.x - s.scrollX, l.tray.y + l.tray.h - 10, trayS, pose);
-  });
-  c.restore();
-}
-
-/** Countdown to a secret combo's celebration: a gold ring that fills, with a star that pulses on the beat. */
-function drawRewardRing(sk: SkiaApi, c: Canvas, s: SceneInput) {
-  'worklet';
-  const l = s.layout, p = s.reward!.progress;
-  const cx = l.W / 2, cy = Math.max(l.H * 0.2, 96), r = Math.max(30, l.size * 0.26);
-  const pulse = s.reduceMotion ? 0 : Math.max(0, 1 - (s.beat % 1) * 3);
-  c.drawCircle(cx, cy, r + 8 + pulse * 4, radialPaint(sk, cx, cy, r + 14, ['#FFE066', '#00000000'], 0.25 + 0.5 * p));
-  c.drawCircle(cx, cy, r, paint(sk, '#1B1340', 0.92));
-  c.drawCircle(cx, cy, r - 5, paint(sk, '#FFFFFF', 0.22, STROKE, 7));
-  const ov = sk.XYWHRect(cx - r + 5, cy - r + 5, (r - 5) * 2, (r - 5) * 2);
-  c.drawArc(ov, -90, Math.max(1, 360 * p), false, paint(sk, '#FFC857', 1, STROKE, 7));
-  const q = sk.PathBuilder.Make();
-  const sr = r * (0.5 + 0.06 * pulse);
-  for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? sr * 0.42 : sr; if (k === 0) q.moveTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); else q.lineTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); }
-  q.close();
-  c.drawPath(q.build(), paint(sk, '#FFE066'));
-}
-
-function drawVolumePopup(sk: SkiaApi, c: Canvas, s: SceneInput) {
-  'worklet';
-  const p = s.popup!;
-  const r = popupRects(s.layout, p.spot);
-  const cr = s.stage.creatures.find((q) => q.id === p.creatureId);
-  const col = cr ? LAYER_COLORS[cr.layer] : '#FFC857';
-  c.drawRRect(sk.RRectXY(sk.XYWHRect(r.panel.x, r.panel.y, r.panel.w, r.panel.h), 18, 18), paint(sk, '#1B1340', 0.94));
-  c.drawRRect(sk.RRectXY(sk.XYWHRect(r.panel.x, r.panel.y, r.panel.w, r.panel.h), 18, 18), paint(sk, '#FFFFFF', 0.3, STROKE, 2));
-  // solo star button
-  const cx = r.solo.x + r.solo.w / 2, cy = r.solo.y + r.solo.h / 2, rr = r.solo.w * 0.4;
-  c.drawCircle(cx, cy, rr, paint(sk, p.solo ? '#FFC857' : '#33276E', 1));
-  const q = sk.PathBuilder.Make();
-  for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? rr * 0.4 : rr * 0.78; if (k === 0) q.moveTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); else q.lineTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); }
-  q.close();
-  c.drawPath(q.build(), paint(sk, p.solo ? '#7A4A00' : '#FFE066'));
-  // slider
-  const tw = r.slider.w * 0.34, tx = r.slider.x + (r.slider.w - tw) / 2;
-  c.drawRRect(sk.RRectXY(sk.XYWHRect(tx, r.slider.y, tw, r.slider.h), tw / 2, tw / 2), paint(sk, '#FFFFFF', 0.18));
-  const fh = r.slider.h * p.volume;
-  c.drawRRect(sk.RRectXY(sk.XYWHRect(tx, r.slider.y + r.slider.h - fh, tw, fh), tw / 2, tw / 2), paint(sk, col, 1));
-  c.drawCircle(r.slider.x + r.slider.w / 2, r.slider.y + r.slider.h - fh, r.slider.w * 0.3, paint(sk, '#FFFFFF', 1));
-}
-
-/** First-run: an animated hand drags a creature from the tray to the stage; repeats every 4 s. */
-function drawHintHand(sk: SkiaApi, c: Canvas, s: SceneInput, byId: Record<string, Creature>) {
-  'worklet';
-  const l = s.layout;
-  const t = (s.timeMs % 4000) / 4000;
-  const from = { x: l.slotPos[s.hintSlot]!.x - s.scrollX, y: l.slotPos[s.hintSlot]!.y };
-  const to = { x: l.spots[2]!.x, y: l.spots[2]!.y - l.size * 0.4 };
-  const move = Math.min(1, Math.max(0, (t - 0.15) / 0.55));
-  const e = move * move * (3 - 2 * move);
-  const x = from.x + (to.x - from.x) * e;
-  const y = from.y + (to.y - from.y) * e - Math.sin(e * Math.PI) * l.size * 0.25;
-  const fade = t < 0.08 ? t / 0.08 : t > 0.88 ? (1 - t) / 0.12 : 1;
-  const cr = Object.values(byId).find((q) => q.id === s.stage.creatures[s.hintSlot]!.id);
-  if (cr && move > 0) drawCreature(sk, c, cr, x, y + l.size * 0.45, l.size * 0.9, { ...IDLE_POSE, alpha: 0.85 * fade });
-  // finger
-  const pressed = move > 0 && move < 1 ? 1 : 0;
-  c.drawCircle(x + 3, y + 8, 26, paint(sk, '#000000', 0.25 * fade));
-  c.drawCircle(x, y, 24 - pressed * 2, paint(sk, '#FFFFFF', 0.9 * fade));
-  c.drawCircle(x, y, 24 - pressed * 2, paint(sk, '#FFC857', 0.8 * fade, STROKE, 3));
-  c.drawCircle(x, y, 38 + 6 * Math.sin(t * 40), paint(sk, '#FFFFFF', 0.35 * fade * (1 - move), STROKE, 2));
 }

@@ -13,6 +13,7 @@ export const en = {
 
   'songs.title': 'My songs',
   'songs.empty': 'No songs yet',
+  'songs.emptyHint': 'Tap the red record button on the stage, play something, and your song shows up here.',
   'songs.rename': 'Rename',
   'songs.share': 'Share',
   'songs.delete': 'Delete',

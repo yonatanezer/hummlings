@@ -18,10 +18,16 @@ export interface Layout {
   topBar: number;
 }
 
-const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
+const clamp = (v: number, lo: number, hi: number): number => {
+  'worklet';
+  return Math.min(hi, Math.max(lo, v));
+};
 
 /** Geometry of the stage screen (see LAYOUT.md). W x H = safe-area-reduced window in points. */
-export function computeLayout(W: number, H: number, creatureCount = TUNING.creaturesPerStage, padX = 0, topInset = 0): Layout {
+export function computeLayout(W: number, H: number, creatureCountArg?: number, padX = 0, topInset = 0): Layout {
+  'worklet'; // also called from the help screen's drawing worklet
+  // Default resolved in the body: a default-param expression is not captured into the worklet closure.
+  const creatureCount = creatureCountArg ?? TUNING.creaturesPerStage;
   const u = clamp(Math.min(W / 844, H / 390), 0.8, 2.2);
   const stageH = 0.65 * H;
   // The tallest singer (tall body + ears, about 1.5 x size) must fit between the top overlay and the back row of spots.

@@ -69,7 +69,7 @@ export function SongsScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (s
       )}
       {progress.songs.length >= 50 && <View style={[styles.banner, { flexDirection: row }]}><Icon name="full" color="#fff" size={28} /><Text style={styles.bannerText}>{t('songs.limit')}</Text></View>}
       {progress.songs.length === 0 ? (
-        <View style={styles.empty}><Icon name="note" size={72} color={COLORS.textDim} /><Text style={styles.dim}>{t('songs.empty')}</Text></View>
+        <View style={styles.empty}><Icon name="note" size={72} color={COLORS.textDim} /><Text style={styles.dim}>{t('songs.empty')}</Text><Text style={[styles.dim, { fontSize: 15, maxWidth: 360, textAlign: 'center', opacity: 0.8 }]}>{t('songs.emptyHint')}</Text></View>
       ) : (
         <FlatList
           data={[...progress.songs].reverse()}

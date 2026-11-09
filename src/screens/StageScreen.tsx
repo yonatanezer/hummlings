@@ -159,7 +159,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
   const stopRecording = useCallback(() => {
     if (!session.recorder) return;
     const names = progressRef.current.songs.map((s) => s.name);
-    const song = session.stopRecording({ id: `song_${Date.now()}`, name: autoName(names), createdAt: Date.now() });
+    const song = session.stopRecording({ id: `song_${Date.now()}`, name: autoName(names, (n) => t('songs.defaultName', { n })), createdAt: Date.now() });
     setRecording(false);
     setRecBars(0);
     if (song) { addSong(song); setSaved(song); setExportMsg(null); }

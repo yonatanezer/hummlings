@@ -19,10 +19,10 @@ export const warnBars = (bpm: number): number =>
   Math.max(0, maxBars(bpm) - Math.ceil((TUNING.recordingWarnSec * bpm) / 60 / TUNING.beatsPerBar));
 
 export const clampName = (name: string): string => Array.from(name.trim()).slice(0, TUNING.songNameMax).join('');
-export const autoName = (existing: readonly string[]): string => {
+export const autoName = (existing: readonly string[], nameFor: (n: number) => string = (n) => `Song ${n}`): string => {
   let n = existing.length + 1;
-  while (existing.includes(`Song ${n}`)) n += 1;
-  return `Song ${n}`;
+  while (existing.includes(nameFor(n))) n += 1;
+  return nameFor(n);
 };
 
 /** Collects actions, quantised to the bar in which they become audible. */
