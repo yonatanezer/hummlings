@@ -2,6 +2,7 @@ import { TUNING } from './tuning';
 
 /** Squash-and-stretch amount for the beat: 1 right on the beat, decaying fast. Returns scale offsets. */
 export function beatBounce(beat: number, reduceMotion = false): { sx: number; sy: number } {
+  'worklet';
   if (reduceMotion || beat < 0) return { sx: 1, sy: 1 };
   const inBar = beat % TUNING.beatsPerBar;
   const frac = beat - Math.floor(beat);

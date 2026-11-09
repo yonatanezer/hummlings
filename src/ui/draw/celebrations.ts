@@ -29,7 +29,10 @@ const SPECS: Record<string, Spec> = {
   cel_clouds_3: { dance: 'jump', blocks: ['rings', 'bubbles', 'confetti'], colors: ['#5FE3C0', '#D6F0FF', '#FFC857'] },
 };
 
-const spec = (id: string): Spec => SPECS[id] ?? SPECS['cel_pond_1']!;
+const spec = (id: string): Spec => {
+  'worklet';
+  return SPECS[id] ?? SPECS['cel_pond_1']!;
+};
 
 /** Offset/tilt for the idx-th dancer at `beat` beats since the celebration began (8 bars = 32 beats). */
 export function danceOffset(id: string, idx: number, beat: number, S: number, reduce: boolean) {
