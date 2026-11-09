@@ -30,14 +30,16 @@ export function mix(a: string, b: string, t: number): string {
   return rgbHex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t);
 }
 
-export function paint(sk: SkiaApi, color: string, alpha = 1, style = FILL, width = 0): SkPaint {
+export function paint(sk: SkiaApi, color: string, alpha = 1, style?: number, width = 0): SkPaint {
   'worklet';
+  // Default resolved in the body: a default-param expression is not captured into the worklet closure ('FILL' doesn't exist).
+  const st = style ?? FILL;
   const p = sk.Paint();
   p.setAntiAlias(true);
   p.setColor(sk.Color(color));
   p.setAlphaf(alpha);
-  p.setStyle(style);
-  if (style === STROKE) {
+  p.setStyle(st);
+  if (st === STROKE) {
     p.setStrokeWidth(width);
     p.setStrokeCap(CAP_ROUND);
   }
