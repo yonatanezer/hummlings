@@ -722,7 +722,7 @@ setInterval(() => {
 function renderSongs() {
   const list = loadSongs();
   const el = $('songList');
-  if (!list.length) { el.innerHTML = `<div class="empty">${P.sticker(48)}<p>No songs yet. Press Record, play with the singers, press Stop.</p></div>`; return; }
+  if (!list.length) { el.innerHTML = `<div class="empty">${P.sticker(48)}<p>No songs yet</p><p class="hint">Tap the red record button on the stage, play something, and your song shows up here.</p></div>`; return; }
   el.innerHTML = '';
   [...list].reverse().forEach((song) => {
     const st = stageOf(song);

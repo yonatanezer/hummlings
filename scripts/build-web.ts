@@ -163,6 +163,16 @@ button.ic svg{width:26px;height:26px;flex:none}button.ic .off{display:none}butto
 @media (max-height:540px){#sideL,#sideR{top:6px;padding:4px;gap:4px;border-radius:24px}#sideL button,#sideR button,#worlds button{width:40px;min-width:40px;height:40px;min-height:40px}#sideL button svg,#sideR button svg{width:22px;height:22px}#worlds .wi svg{width:26px;height:26px}#sideR #clear{margin-top:4px}}
 @media (max-height:540px){#sideL button,#sideR button,#worlds button{width:44px;min-width:44px;height:44px;min-height:44px}#sideL,#sideR{gap:5px;top:6px}}
 @media (max-width:700px){#bar{max-width:calc(100% - 112px)}#band b i{width:22px;height:22px}}
+/* ported from the app's device-feel pass: combo book close button clear of the cards, smaller dots; help in two columns on wide screens; songs empty hint */
+.sheet{box-sizing:border-box}#book .sheet{padding-top:60px}#cards .combo{gap:8px}#cards .combo i{width:12px;height:12px}
+#songList .empty .hint{max-width:360px;margin:6px auto 0;font-size:14px;opacity:.8}
+@media (min-aspect-ratio:13/10){
+  #help .sheet{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(200px,1fr);column-gap:24px;align-items:center;max-width:960px;padding-top:56px;text-align:center}
+  #help .sheet h2{grid-column:1/-1;margin:-34px 0 8px}
+  #help #helpVid{grid-column:1;grid-row:2/4;width:100%;height:auto;max-height:60vh;border-radius:14px}
+  #help #helpTxt{grid-column:2;grid-row:2;align-self:end;margin:0 0 12px}
+  #help .nav{grid-column:2;grid-row:3;align-self:start;justify-content:center}
+}
 </style>
 <div id="wrap"><canvas id="game" aria-label="Hummlings stage"></canvas></div>
 <div id="sideL"><div id="worlds" role="group" aria-label="Worlds"></div></div>

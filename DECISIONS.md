@@ -58,3 +58,4 @@
 - Release build on a Samsung A54 measured about 40 fps with 5 singers (58 empty). Next gain: cache the static background and scenery as an image.
 - Windows build notes: repo must live in a short path (C:\h) because of the 260-character limit; Git usr\bin must be on PATH for the audio-api download script.
 - Performance: sky, spotlights, floor and each world's fixed scenery are drawn into one cached Picture (re-recorded only on stage/size change; neon windows every 1.8 s); moving scenery, stars and particles stay live, and hot loops reuse one Paint. Expected gain unmeasured: re-measure with the dev FPS meter on the release build (was ~40 fps with 5 singers).
+- Web demo: ported the app's device-feel layouts (combo book close button clear of cards + smaller dots, two-column help on wide screens, songs empty hint, sheets border-box so they fit short screens).
