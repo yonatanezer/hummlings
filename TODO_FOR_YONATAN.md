@@ -9,6 +9,8 @@ Needs Node 22+, and Xcode (iPhone) or Android Studio + USB debugging (Android). 
 3. Android: `npx expo run:android`  |  iPhone: `npx expo run:ios --device`
 4. Then `npm start` and open the installed Hummlings app on the same Wi-Fi.
 
+Shortcut once the phone is connected and `adb devices` lists it (PowerShell, repo root, e.g. `C:\h`): `.\scripts\device-check.ps1` builds the release APK, installs it, launches it, takes screenshots, and writes FPS (gfxinfo) and error logs to `scripts\out\device\<time>\summary.txt`. Add `-Dev` for a quick dev build, `-SkipBuild` to only reinstall and measure.
+
 ### Device feel checklist (tick each; write down anything that fails)
 - [ ] Music starts softly (hi-hat count) and the animated hand shows on a fresh install
 - [ ] Drag a singer to the stage: it hops on, starts on the next bar, haptic on pick-up (light) and drop (medium)
