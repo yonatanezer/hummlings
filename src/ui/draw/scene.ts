@@ -4,7 +4,7 @@ import { TUNING } from '../../core/tuning';
 import { beatBounce, blinkOpen, breath, hop, onsetPulse } from '../../core/anim';
 import type { Layout } from '../../core/layout';
 import { IDLE_POSE, bodyDims, drawCreature, type Pose } from './creature';
-import { gradientPaint, mix, paint, radialPaint, STROKE, type Canvas, type SkiaApi } from './common';
+import { gradientPaint, mix, freshPaint, paint, radialPaint, STROKE, type Canvas, type SkiaApi } from './common';
 import { drawCelebration, danceOffset } from './celebrations';
 import { drawDecor, drawScenery, drawTaps, type TapEffect } from './scenery';
 import { popupRects } from '../../core/layout';
@@ -51,7 +51,7 @@ export function idHash(id: string): number {
 export function drawStars(sk: SkiaApi, c: Canvas, l: Layout, timeMs: number) {
   'worklet';
   const { W } = l;
-  const p = paint(sk, '#FFFFFF', 1);
+  const p = freshPaint(sk, '#FFFFFF', 1);
   for (let i = 0; i < 40; i++) {
     const r1 = Math.sin(i * 12.9898 + 1.7) * 43758.5453, r2 = Math.sin(i * 78.233 + 3.1) * 24634.6345;
     const x = (r1 - Math.floor(r1)) * W;

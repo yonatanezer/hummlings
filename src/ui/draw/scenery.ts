@@ -1,6 +1,6 @@
 import type { Layout } from '../../core/layout';
 import type { StagePalette } from '../../core/types';
-import { gradientPaint, mix, paint, STROKE, type Canvas, type SkiaApi } from './common';
+import { gradientPaint, mix, freshPaint, paint, STROKE, type Canvas, type SkiaApi } from './common';
 
 const rnd = (i: number): number => {
   'worklet';
@@ -153,7 +153,7 @@ export function drawDecor(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: St
       const k = (t / 40 + i * 20) % 30;
       c.drawOval(sk.XYWHRect(x - 30 - k, y - 8 - k * 0.27, 60 + 2 * k, 16 + 0.54 * k), paint(sk, '#7FE3C4', 0.3, STROKE, 1.5));
     }
-    const fly = paint(sk, '#FFF8AA', 1);
+    const fly = freshPaint(sk, '#FFF8AA', 1);
     for (let i = 0; i < 14; i++) {
       const x = rnd(i + 40) * W + Math.sin(t / 1300 + i) * 18, y = l.stageH * (0.15 + rnd(i + 70) * 0.55) + Math.cos(t / 1700 + i) * 12;
       fly.setAlphaf(0.25 + 0.5 * (0.5 + 0.5 * Math.sin(t / 400 + i * 2)));

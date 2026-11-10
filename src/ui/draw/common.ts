@@ -30,13 +30,32 @@ export function mix(a: string, b: string, t: number): string {
   return rgbHex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t);
 }
 
-export function paint(sk: SkiaApi, color: string, alpha = 1, style?: number, width = 0): SkPaint {
+interface DrawCache { colors: Record<string, unknown>; paints: Record<string, SkPaint>; paintCount: number }
+
+/** Per-runtime cache (UI thread in the app, Node in tests). Lives on globalThis because worklet closures are copies and would not keep a module-level cache between calls. */
+function cache(): DrawCache {
   'worklet';
-  // Default resolved in the body: a default-param expression is not captured into the worklet closure ('FILL' doesn't exist).
+  const g = globalThis as unknown as { __hummDraw?: DrawCache };
+  if (!g.__hummDraw) g.__hummDraw = { colors: {}, paints: {}, paintCount: 0 };
+  return g.__hummDraw;
+}
+
+/** Parsed colour for a '#RRGGBB' string: parsing a string per call was one of the largest per-frame costs on a device. Callers must not mutate the result. */
+export function skColor(sk: SkiaApi, hex: string) {
+  'worklet';
+  const cc = cache().colors;
+  let v = cc[hex];
+  if (v === undefined) { v = sk.Color(hex); cc[hex] = v; }
+  return v as ReturnType<SkiaApi['Color']>;
+}
+
+/** A new paint the caller owns (may be mutated, e.g. to change alpha inside a loop). */
+export function freshPaint(sk: SkiaApi, color: string, alpha = 1, style?: number, width = 0): SkPaint {
+  'worklet';
   const st = style ?? FILL;
   const p = sk.Paint();
   p.setAntiAlias(true);
-  p.setColor(sk.Color(color));
+  p.setColor(skColor(sk, color));
   p.setAlphaf(alpha);
   p.setStyle(st);
   if (st === STROKE) {
@@ -46,11 +65,28 @@ export function paint(sk: SkiaApi, color: string, alpha = 1, style?: number, wid
   return p;
 }
 
+// (freshPaint must stay above paint: a worklet captures helpers declared before it, not after.)
+/** Shared, immutable paint for a colour / alpha / style / width. NEVER mutate the result (use freshPaint for that). Output is pixel-identical to creating a new paint each call. */
+export function paint(sk: SkiaApi, color: string, alpha = 1, style?: number, width = 0): SkPaint {
+  'worklet';
+  // Default resolved in the body: a default-param expression is not captured into the worklet closure ('FILL' doesn't exist).
+  const st = style ?? FILL;
+  const cch = cache();
+  const key = `${color}|${alpha}|${st}|${width}`;
+  const hit = cch.paints[key];
+  if (hit) return hit;
+  if (cch.paintCount > 600) { cch.paints = {}; cch.paintCount = 0; } // continuous alphas (fades) would otherwise grow the cache without bound
+  const p = freshPaint(sk, color, alpha, st, width);
+  cch.paints[key] = p;
+  cch.paintCount++;
+  return p;
+}
+
 export function gradientPaint(sk: SkiaApi, x0: number, y0: number, x1: number, y1: number, colors: string[], alpha = 1): SkPaint {
   'worklet';
   const p = sk.Paint();
   p.setAntiAlias(true);
-  p.setShader(sk.Shader.MakeLinearGradient({ x: x0, y: y0 }, { x: x1, y: y1 }, colors.map((c) => sk.Color(c)), null, TILE_CLAMP));
+  p.setShader(sk.Shader.MakeLinearGradient({ x: x0, y: y0 }, { x: x1, y: y1 }, colors.map((c) => skColor(sk, c)), null, TILE_CLAMP));
   p.setAlphaf(alpha);
   return p;
 }
@@ -59,7 +95,7 @@ export function radialPaint(sk: SkiaApi, cx: number, cy: number, r: number, colo
   'worklet';
   const p = sk.Paint();
   p.setAntiAlias(true);
-  p.setShader(sk.Shader.MakeRadialGradient({ x: cx, y: cy }, r, colors.map((c) => sk.Color(c)), null, TILE_CLAMP));
+  p.setShader(sk.Shader.MakeRadialGradient({ x: cx, y: cy }, r, colors.map((c) => skColor(sk, c)), null, TILE_CLAMP));
   p.setAlphaf(alpha);
   return p;
 }
