@@ -45,6 +45,7 @@
     "content": "tsx scripts/build-content.ts",
     "sounds": "tsx scripts/build-sounds.ts",
     "qa:audit": "tsx scripts/qa-audit.ts",
+    "perf:scene": "tsx scripts/perf-scene.ts",
     "release:check": "tsx scripts/release-check.ts"
   },
   "private": true
