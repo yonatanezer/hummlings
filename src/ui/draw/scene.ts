@@ -4,11 +4,11 @@ import { TUNING } from '../../core/tuning';
 import { beatBounce, blinkOpen, breath, hop, onsetPulse } from '../../core/anim';
 import type { Layout } from '../../core/layout';
 import { IDLE_POSE, bodyDims, drawCreature, type Pose } from './creature';
-import { gradientPaint, mix, freshPaint, paint, radialPaint, STROKE, type Canvas, type SkiaApi } from './common';
+import { gradientPaint, mix, freshPaint, paint, radialPaint, STROKE, type Canvas, type SkiaApi, rect } from './common';
 import { drawCelebration, danceOffset } from './celebrations';
 import { drawDecor, drawScenery, drawTaps, type TapEffect } from './scenery';
 import { popupRects } from '../../core/layout';
-import type { SkPicture } from '@shopify/react-native-skia';
+import type { SkImage, SkPicture } from '@shopify/react-native-skia';
 
 export interface PlacedCreature { id: string; spot: number; since: number; from: { x: number; y: number } }
 export interface DragCreature { id: string; x: number; y: number }
@@ -35,6 +35,9 @@ export interface SceneInput {
   reward?: { progress: number } | null; // ring that fills while a complete secret combo is being held
   backdrop?: SkPicture | null; // pre-recorded static sky/scenery (app only; headless renders draw it directly)
   trayPicture?: SkPicture | null; // pre-recorded singer menu (app only; headless renders draw it directly)
+  backdropImage?: SkImage | null; // the backdrop rasterised once per change (app only): replaying its vector ops every frame was a large part of the UI-thread cost
+  trayImage?: SkImage | null; // the singer menu rasterised once per change (app only)
+  pixelRatio?: number; // device pixels per layout unit that the two images were rendered at
   trayK?: number; // 1 = singer menu shown, 0 = slid away (animated by the screen)
   popup?: { spot: number; creatureId: string; volume: number; solo: boolean } | null; // volume popup after a long press
   volumes?: Record<string, number>;
@@ -67,7 +70,7 @@ export function drawBackdrop(sk: SkiaApi, c: Canvas, st: Stage, l: Layout, bucke
   'worklet';
   const { W, H } = l;
   const pal = st.palette;
-  c.drawRect(sk.XYWHRect(0, 0, W, H), gradientPaint(sk, 0, 0, 0, l.stageH, [mix(pal.sky, '#0B0722', 0.5), pal.sky, mix(pal.sky, pal.floor, 0.5)]));
+  c.drawRect(rect(0, 0, W, H), gradientPaint(sk, 0, 0, 0, l.stageH, [mix(pal.sky, '#0B0722', 0.5), pal.sky, mix(pal.sky, pal.floor, 0.5)]));
   // warm spotlights from above (about 20%)
   for (let i = 0; i < 3; i++) {
     const x = W * (0.25 + i * 0.25);
@@ -77,7 +80,7 @@ export function drawBackdrop(sk: SkiaApi, c: Canvas, st: Stage, l: Layout, bucke
   }
   // stage floor: wide ellipse with a lit rim
   const floorY = l.stageH * 0.93;
-  const fr = sk.XYWHRect(-W * 0.05, floorY - l.H * 0.2, W * 1.1, l.H * 0.5);
+  const fr = rect(-W * 0.05, floorY - l.H * 0.2, W * 1.1, l.H * 0.5);
   c.drawOval(fr, gradientPaint(sk, 0, floorY - l.H * 0.2, 0, floorY + l.H * 0.1, [mix(pal.floor, '#FFFFFF', 0.12), pal.floor]));
   c.drawOval(fr, paint(sk, pal.glow, 0.25, STROKE, 2));
   drawScenery(sk, c, st.id, l, pal, bucket * 1800, 'static');
@@ -85,7 +88,7 @@ export function drawBackdrop(sk: SkiaApi, c: Canvas, st: Stage, l: Layout, bucke
 
 function spotRing(sk: SkiaApi, c: Canvas, x: number, y: number, S: number, glow: string, hot: boolean) {
   'worklet';
-  const r = sk.XYWHRect(x - S * 0.42, y - S * 0.06, S * 0.84, S * 0.14);
+  const r = rect(x - S * 0.42, y - S * 0.06, S * 0.84, S * 0.14);
   c.drawOval(r, paint(sk, glow, hot ? 0.5 : 0.22, STROKE, 2));
 }
 
@@ -124,26 +127,26 @@ export function creatureFeet(s: SceneInput, id: string): { x: number; y: number 
 function layerGlyph(sk: SkiaApi, c: Canvas, layer: string, x: number, y: number, color: string) {
   'worklet';
   const p = paint(sk, color, 1, STROKE, 2.4);
-  if (layer === 'drums') { c.drawOval(sk.XYWHRect(x - 9, y - 3, 18, 9), p); c.drawLine(x - 7, y - 10, x - 1, y - 2, p); c.drawLine(x + 7, y - 10, x + 1, y - 2, p); }
+  if (layer === 'drums') { c.drawOval(rect(x - 9, y - 3, 18, 9), p); c.drawLine(x - 7, y - 10, x - 1, y - 2, p); c.drawLine(x + 7, y - 10, x + 1, y - 2, p); }
   else if (layer === 'bass') { const q = sk.PathBuilder.Make(); q.moveTo(x - 10, y); q.cubicTo(x - 6, y - 10, x - 2, y + 8, x + 1, y); q.cubicTo(x + 4, y - 8, x + 8, y + 8, x + 11, y); c.drawPath(q.build(), p); }
   else if (layer === 'melody') { c.drawCircle(x - 4, y + 5, 4, paint(sk, color)); c.drawLine(x, y + 5, x, y - 9, p); c.drawLine(x, y - 9, x + 8, y - 6, p); }
-  else { c.drawOval(sk.XYWHRect(x - 10, y - 6, 20, 14), p); c.drawOval(sk.XYWHRect(x - 4, y, 8, 5), paint(sk, color)); }
+  else { c.drawOval(rect(x - 10, y - 6, 20, 14), p); c.drawOval(rect(x - 4, y, 8, 5), paint(sk, color)); }
 }
 
 /** The singer menu as one self-contained drawing (panel, group captions, singers). Static between touches, so the app records it once as a Picture. */
 export function drawTray(sk: SkiaApi, c: Canvas, s: SceneInput) {
   'worklet';
   const { layout: l, stage } = s;
-  c.drawRect(sk.XYWHRect(0, l.tray.y, l.W, l.tray.h + 6), paint(sk, mix(stage.palette.sky, '#000000', 0.55), 0.94));
-  c.drawRect(sk.XYWHRect(0, l.tray.y, l.W, 2), paint(sk, stage.palette.glow, 0.25));
-  c.drawRRect(sk.RRectXY(sk.XYWHRect(l.W / 2 - 24, l.tray.y + 5, 48, 5), 2.5, 2.5), paint(sk, '#FFFFFF', 0.35)); // grab bar
+  c.drawRect(rect(0, l.tray.y, l.W, l.tray.h + 6), paint(sk, mix(stage.palette.sky, '#000000', 0.55), 0.94));
+  c.drawRect(rect(0, l.tray.y, l.W, 2), paint(sk, stage.palette.glow, 0.25));
+  c.drawRRect(sk.RRectXY(rect(l.W / 2 - 24, l.tray.y + 5, 48, 5), 2.5, 2.5), paint(sk, '#FFFFFF', 0.35)); // grab bar
   c.save();
-  c.clipRect(sk.XYWHRect(0, l.tray.y + 2, l.W, l.tray.h), 1, true);
+  c.clipRect(rect(0, l.tray.y + 2, l.W, l.tray.h), 1, true);
   const per = stage.creatures.length / 4;
   [0, 1, 2, 3].forEach((g) => {
     const a = l.slotPos[g * per]!, b = l.slotPos[g * per + per - 1]!;
     const layer = stage.creatures[g * per]!.layer;
-    c.drawRRect(sk.RRectXY(sk.XYWHRect(a.x - l.slot * 0.55 - s.scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84), 14, 14), paint(sk, LAYER_COLORS[layer], 0.16));
+    c.drawRRect(sk.RRectXY(rect(a.x - l.slot * 0.55 - s.scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84), 14, 14), paint(sk, LAYER_COLORS[layer], 0.16));
     layerGlyph(sk, c, layer, Math.max(a.x - l.slot * 0.55 - s.scrollX, 0) + 16, l.tray.y + l.tray.h * 0.08 + 14, LAYER_COLORS[layer]);
   });
   const trayS = Math.min(l.slot * 0.72, (l.tray.h - 36) / 1.4); // leaves a caption row above the tallest singer
@@ -167,7 +170,7 @@ function drawRewardRing(sk: SkiaApi, c: Canvas, s: SceneInput) {
   c.drawCircle(cx, cy, r + 8 + pulse * 4, radialPaint(sk, cx, cy, r + 14, ['#FFE066', '#00000000'], 0.25 + 0.5 * p));
   c.drawCircle(cx, cy, r, paint(sk, '#1B1340', 0.92));
   c.drawCircle(cx, cy, r - 5, paint(sk, '#FFFFFF', 0.22, STROKE, 7));
-  const ov = sk.XYWHRect(cx - r + 5, cy - r + 5, (r - 5) * 2, (r - 5) * 2);
+  const ov = rect(cx - r + 5, cy - r + 5, (r - 5) * 2, (r - 5) * 2);
   c.drawArc(ov, -90, Math.max(1, 360 * p), false, paint(sk, '#FFC857', 1, STROKE, 7));
   const q = sk.PathBuilder.Make();
   const sr = r * (0.5 + 0.06 * pulse);
@@ -182,8 +185,8 @@ function drawVolumePopup(sk: SkiaApi, c: Canvas, s: SceneInput) {
   const r = popupRects(s.layout, p.spot);
   const cr = s.stage.creatures.find((q) => q.id === p.creatureId);
   const col = cr ? LAYER_COLORS[cr.layer] : '#FFC857';
-  c.drawRRect(sk.RRectXY(sk.XYWHRect(r.panel.x, r.panel.y, r.panel.w, r.panel.h), 18, 18), paint(sk, '#1B1340', 0.94));
-  c.drawRRect(sk.RRectXY(sk.XYWHRect(r.panel.x, r.panel.y, r.panel.w, r.panel.h), 18, 18), paint(sk, '#FFFFFF', 0.3, STROKE, 2));
+  c.drawRRect(sk.RRectXY(rect(r.panel.x, r.panel.y, r.panel.w, r.panel.h), 18, 18), paint(sk, '#1B1340', 0.94));
+  c.drawRRect(sk.RRectXY(rect(r.panel.x, r.panel.y, r.panel.w, r.panel.h), 18, 18), paint(sk, '#FFFFFF', 0.3, STROKE, 2));
   // solo star button
   const cx = r.solo.x + r.solo.w / 2, cy = r.solo.y + r.solo.h / 2, rr = r.solo.w * 0.4;
   c.drawCircle(cx, cy, rr, paint(sk, p.solo ? '#FFC857' : '#33276E', 1));
@@ -193,9 +196,9 @@ function drawVolumePopup(sk: SkiaApi, c: Canvas, s: SceneInput) {
   c.drawPath(q.build(), paint(sk, p.solo ? '#7A4A00' : '#FFE066'));
   // slider
   const tw = r.slider.w * 0.34, tx = r.slider.x + (r.slider.w - tw) / 2;
-  c.drawRRect(sk.RRectXY(sk.XYWHRect(tx, r.slider.y, tw, r.slider.h), tw / 2, tw / 2), paint(sk, '#FFFFFF', 0.18));
+  c.drawRRect(sk.RRectXY(rect(tx, r.slider.y, tw, r.slider.h), tw / 2, tw / 2), paint(sk, '#FFFFFF', 0.18));
   const fh = r.slider.h * p.volume;
-  c.drawRRect(sk.RRectXY(sk.XYWHRect(tx, r.slider.y + r.slider.h - fh, tw, fh), tw / 2, tw / 2), paint(sk, col, 1));
+  c.drawRRect(sk.RRectXY(rect(tx, r.slider.y + r.slider.h - fh, tw, fh), tw / 2, tw / 2), paint(sk, col, 1));
   c.drawCircle(r.slider.x + r.slider.w / 2, r.slider.y + r.slider.h - fh, r.slider.w * 0.3, paint(sk, '#FFFFFF', 1));
 }
 
@@ -221,11 +224,20 @@ function drawHintHand(sk: SkiaApi, c: Canvas, s: SceneInput, byId: Record<string
   c.drawCircle(x, y, 38 + 6 * Math.sin(t * 40), paint(sk, '#FFFFFF', 0.35 * fade * (1 - move), STROKE, 2));
 }
 
+/** Draws a pre-rasterised image 1:1 in device pixels (it was rendered at pixelRatio x the layout size). */
+function drawRaster(c: Canvas, img: SkImage, ratio: number) {
+  'worklet';
+  c.save();
+  c.scale(1 / ratio, 1 / ratio);
+  c.drawImage(img, 0, 0);
+  c.restore();
+}
+
 // Must stay below every helper it calls: the worklet transform captures a function when its definition is reached, so a helper declared later is undefined inside it.
 export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   'worklet';
   const { layout: l, stage } = s;
-  if (s.backdrop) c.drawPicture(s.backdrop); else drawBackdrop(sk, c, stage, l, Math.floor(s.timeMs / 1800));
+  if (s.backdropImage) drawRaster(c, s.backdropImage, s.pixelRatio ?? 1); else if (s.backdrop) c.drawPicture(s.backdrop); else drawBackdrop(sk, c, stage, l, Math.floor(s.timeMs / 1800));
   drawStars(sk, c, l, s.timeMs);
   drawScenery(sk, c, stage.id, l, stage.palette, s.timeMs, 'live');
   drawDecor(sk, c, stage.id, l, stage.palette, s.timeMs, s.reduceMotion ? 0 : s.beat);
@@ -243,8 +255,8 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   l.spots.forEach((p, i) => {
     const occupied = s.placed.some((q) => q.spot === i);
     if (i === target) {
-      c.drawOval(sk.XYWHRect(p.x - l.size * 0.55, p.y - l.size * 0.12, l.size * 1.1, l.size * 0.28), radialPaint(sk, p.x, p.y, l.size * 0.55, ['#FFFFFF', stage.palette.glow, '#00000000'], 0.6));
-      c.drawOval(sk.XYWHRect(p.x - l.size * 0.5, p.y - l.size * 0.09, l.size, l.size * 0.22), paint(sk, '#FFFFFF', 0.95, STROKE, 3));
+      c.drawOval(rect(p.x - l.size * 0.55, p.y - l.size * 0.12, l.size * 1.1, l.size * 0.28), radialPaint(sk, p.x, p.y, l.size * 0.55, ['#FFFFFF', stage.palette.glow, '#00000000'], 0.6));
+      c.drawOval(rect(p.x - l.size * 0.5, p.y - l.size * 0.09, l.size, l.size * 0.22), paint(sk, '#FFFFFF', 0.95, STROKE, 3));
     } else spotRing(sk, c, p.x, p.y, l.size, stage.palette.glow, occupied);
     if (!occupied && s.placed.length < 3 && !s.drags.length && !s.reduceMotion) {
       const a = 0.3 + 0.2 * Math.sin(s.timeMs / 500 + i);
@@ -260,9 +272,9 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
     if (f) {
       const p = sk.PathBuilder.Make();
       p.moveTo(f.x - 8, 0); p.lineTo(f.x + 8, 0); p.lineTo(f.x + l.size * 0.9, f.y + 6); p.lineTo(f.x - l.size * 0.9, f.y + 6); p.close();
-      c.drawRect(sk.XYWHRect(0, 0, l.W, l.stageH), paint(sk, '#05031A', 0.45));
+      c.drawRect(rect(0, 0, l.W, l.stageH), paint(sk, '#05031A', 0.45));
       c.drawPath(p.build(), gradientPaint(sk, 0, 0, 0, f.y, [stage.palette.glow, mix(stage.palette.glow, '#FFFFFF', 0.4)], 0.32));
-      c.drawOval(sk.XYWHRect(f.x - l.size * 0.7, f.y - l.size * 0.08, l.size * 1.4, l.size * 0.2), radialPaint(sk, f.x, f.y, l.size * 0.7, [mix(stage.palette.glow, '#FFFFFF', 0.5), '#00000000'], 0.5));
+      c.drawOval(rect(f.x - l.size * 0.7, f.y - l.size * 0.08, l.size * 1.4, l.size * 0.2), radialPaint(sk, f.x, f.y, l.size * 0.7, [mix(stage.palette.glow, '#FFFFFF', 0.5), '#00000000'], 0.5));
     }
   }
 
@@ -313,12 +325,12 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   const trayDy = (1 - trayK) * (l.tray.h + 6);
   c.save();
   c.translate(0, trayDy);
-  if (s.trayPicture) c.drawPicture(s.trayPicture); else drawTray(sk, c, s);
+  if (s.trayImage) drawRaster(c, s.trayImage, s.pixelRatio ?? 1); else if (s.trayPicture) c.drawPicture(s.trayPicture); else drawTray(sk, c, s);
   c.restore(); // end of the sliding tray
   if (trayK < 0.98) {
     const hy = l.H - 34 * (1 - trayK);
-    c.drawRRect(sk.RRectXY(sk.XYWHRect(l.W / 2 - 42, hy, 84, 40), 14, 14), paint(sk, '#1B1340', 0.95));
-    c.drawRRect(sk.RRectXY(sk.XYWHRect(l.W / 2 - 42, hy, 84, 40), 14, 14), paint(sk, '#FFFFFF', 0.5, STROKE, 2));
+    c.drawRRect(sk.RRectXY(rect(l.W / 2 - 42, hy, 84, 40), 14, 14), paint(sk, '#1B1340', 0.95));
+    c.drawRRect(sk.RRectXY(rect(l.W / 2 - 42, hy, 84, 40), 14, 14), paint(sk, '#FFFFFF', 0.5, STROKE, 2));
     const q = sk.PathBuilder.Make();
     q.moveTo(l.W / 2 - 12, hy + 20); q.lineTo(l.W / 2, hy + 10); q.lineTo(l.W / 2 + 12, hy + 20);
     c.drawPath(q.build(), paint(sk, '#FFFFFF', 1, STROKE, 3.2));

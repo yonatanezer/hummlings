@@ -1,7 +1,7 @@
 import type { Layout } from '../../core/layout';
 import type { StagePalette } from '../../core/types';
 import { TUNING } from '../../core/tuning';
-import { gradientPaint, mix, paint, type Canvas, type SkiaApi } from './common';
+import { gradientPaint, mix, paint, type Canvas, type SkiaApi, rect } from './common';
 
 type Dance = 'wave' | 'spin' | 'jump' | 'conga';
 interface Spec { dance: Dance; blocks: ('beams' | 'confetti' | 'stars' | 'bubbles' | 'rings' | 'lanterns')[]; colors: string[] }
@@ -82,7 +82,7 @@ export function drawCelebration(sk: SkiaApi, c: Canvas, id: string, l: Layout, p
         c.save();
         c.translate(sx + sway, y);
         c.rotate(reduce ? 0 : (t * 200 + i * 40) % 360, 0, 0);
-        c.drawRect(sk.XYWHRect(-4, -2.5, 8, 5), paint(sk, sp.colors[i % sp.colors.length]!, 0.9 * f));
+        c.drawRect(rect(-4, -2.5, 8, 5), paint(sk, sp.colors[i % sp.colors.length]!, 0.9 * f));
         c.restore();
       }
     } else if (b === 'stars') {

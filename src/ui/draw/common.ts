@@ -30,6 +30,12 @@ export function mix(a: string, b: string, t: number): string {
   return rgbHex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t);
 }
 
+/** A rect as a plain object: Skia accepts it everywhere a rect is taken, and it avoids creating a JSI host object per call (sk.XYWHRect was ~11% of the UI thread). */
+export function rect(x: number, y: number, width: number, height: number) {
+  'worklet';
+  return { x, y, width, height };
+}
+
 interface DrawCache { colors: Record<string, unknown>; paints: Record<string, SkPaint>; paintCount: number }
 
 /** Per-runtime cache (UI thread in the app, Node in tests). Lives on globalThis because worklet closures are copies and would not keep a module-level cache between calls. */

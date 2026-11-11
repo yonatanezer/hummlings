@@ -1,5 +1,5 @@
 import type { BodyShape, Creature } from '../../core/types';
-import { STROKE, gradientPaint, mix, paint, radialPaint, saturationLayerPaint, type Canvas, type SkiaApi } from './common';
+import { STROKE, gradientPaint, mix, paint, radialPaint, saturationLayerPaint, type Canvas, type SkiaApi, rect } from './common';
 
 /** Everything that changes from frame to frame for one creature. */
 export interface Pose {
@@ -34,7 +34,7 @@ export function bodyDims(shape: BodyShape): { w: number; h: number } {
 
 function oval(sk: SkiaApi, cx: number, cy: number, rx: number, ry: number) {
   'worklet';
-  return sk.XYWHRect(cx - rx, cy - ry, rx * 2, ry * 2);
+  return rect(cx - rx, cy - ry, rx * 2, ry * 2);
 }
 
 function tri(sk: SkiaApi, c: Canvas, x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, p: ReturnType<typeof paint>) {
@@ -214,8 +214,8 @@ function drawAccessory(sk: SkiaApi, c: Canvas, cr: Creature, S: number, w: numbe
     }
     case 'scarf': {
       const y = -h * S * 0.2;
-      c.drawRRect(sk.RRectXY(sk.XYWHRect(-hw * 0.72, y, hw * 1.44, S * 0.08), S * 0.04, S * 0.04), paint(sk, mix(color, '#FFFFFF', 0.55), 0.95));
-      c.drawRRect(sk.RRectXY(sk.XYWHRect(hw * 0.25, y, S * 0.065, S * 0.17), S * 0.03, S * 0.03), paint(sk, mix(color, '#FFFFFF', 0.45), 0.95));
+      c.drawRRect(sk.RRectXY(rect(-hw * 0.72, y, hw * 1.44, S * 0.08), S * 0.04, S * 0.04), paint(sk, mix(color, '#FFFFFF', 0.55), 0.95));
+      c.drawRRect(sk.RRectXY(rect(hw * 0.25, y, S * 0.065, S * 0.17), S * 0.03, S * 0.03), paint(sk, mix(color, '#FFFFFF', 0.45), 0.95));
       break;
     }
     case 'star': {
@@ -243,11 +243,11 @@ export function drawCreature(sk: SkiaApi, c: Canvas, cr: Creature, x: number, y:
     const lineY = y - pose.lift - pose.level * h * S;
     const top = y - S * 3.2;
     c.save();
-    c.clipRect(sk.XYWHRect(x - S * 1.6, top, S * 3.2, lineY - top), 1, true);
+    c.clipRect(rect(x - S * 1.6, top, S * 3.2, lineY - top), 1, true);
     drawCreature(sk, c, cr, x, y, S, { ...pose, level: 1, sat: pose.sat * 0.08, alpha: pose.alpha * 0.3 });
     c.restore();
     c.save();
-    c.clipRect(sk.XYWHRect(x - S * 1.6, lineY, S * 3.2, y + S - lineY), 1, true);
+    c.clipRect(rect(x - S * 1.6, lineY, S * 3.2, y + S - lineY), 1, true);
     drawCreature(sk, c, cr, x, y, S, { ...pose, level: 1 });
     c.restore();
     if (pose.level > 0.01) c.drawLine(x - w * S * 0.42, lineY, x + w * S * 0.42, lineY, paint(sk, '#FFFFFF', 0.55, STROKE, 2));
@@ -283,7 +283,7 @@ export function drawCreature(sk: SkiaApi, c: Canvas, cr: Creature, x: number, y:
   const body = oval(sk, 0, -h * S * 0.5 - S * 0.02, (w * S) / 2, (h * S) / 2);
   const bodyR = cr.shape.body === 'tall' ? (w * S) / 2 : 0;
   const drawBody = (p: ReturnType<typeof paint>) => {
-    if (bodyR > 0) c.drawRRect(sk.RRectXY(sk.XYWHRect(-(w * S) / 2, -h * S - S * 0.02, w * S, h * S), bodyR, bodyR * 1.15), p);
+    if (bodyR > 0) c.drawRRect(sk.RRectXY(rect(-(w * S) / 2, -h * S - S * 0.02, w * S, h * S), bodyR, bodyR * 1.15), p);
     else c.drawOval(body, p);
   };
   const look = cr.shape.look;
@@ -300,7 +300,7 @@ export function drawCreature(sk: SkiaApi, c: Canvas, cr: Creature, x: number, y:
     : [mix(color, '#FFFFFF', 0.3), color, deep]));
   if (look === 'neon' || look === 'frost') { // surface detail clipped to the body: scanlines + circuit (neon) or ice facets + sparkles (frost)
     c.save();
-    c.clipRRect(sk.RRectXY(sk.XYWHRect(-(w * S) / 2, -h * S - S * 0.02, w * S, h * S), (w * S) / 2, cr.shape.body === 'tall' ? (w * S) / 2 : (h * S) / 2), 1, true);
+    c.clipRRect(sk.RRectXY(rect(-(w * S) / 2, -h * S - S * 0.02, w * S, h * S), (w * S) / 2, cr.shape.body === 'tall' ? (w * S) / 2 : (h * S) / 2), 1, true);
     if (look === 'neon') {
       for (let k = 0; k < 9; k++) c.drawLine(-w * S, -h * S + k * h * S * 0.12, w * S, -h * S + k * h * S * 0.12, paint(sk, color, 0.14, STROKE, 1.5));
       c.drawLine(-w * S * 0.4, -h * S * 0.18, -w * S * 0.15, -h * S * 0.18, paint(sk, color, 0.9, STROKE, 2));
@@ -314,7 +314,7 @@ export function drawCreature(sk: SkiaApi, c: Canvas, cr: Creature, x: number, y:
   }
   if (look === 'candy') { // hard candy: diagonal stripes and sprinkles
     c.save();
-    c.clipRRect(sk.RRectXY(sk.XYWHRect(-(w * S) / 2, -h * S - S * 0.02, w * S, h * S), cr.shape.body === 'tall' ? (w * S) / 2 : (w * S) / 2, cr.shape.body === 'tall' ? (w * S) / 2 : (h * S) / 2), 1, true);
+    c.clipRRect(sk.RRectXY(rect(-(w * S) / 2, -h * S - S * 0.02, w * S, h * S), cr.shape.body === 'tall' ? (w * S) / 2 : (w * S) / 2, cr.shape.body === 'tall' ? (w * S) / 2 : (h * S) / 2), 1, true);
     for (let k = -3; k <= 3; k++) {
       const x = k * w * S * 0.3;
       const b = sk.PathBuilder.Make();
@@ -327,7 +327,7 @@ export function drawCreature(sk: SkiaApi, c: Canvas, cr: Creature, x: number, y:
       hsh = (Math.imul(hsh, 1103515245) + 12345) >>> 0;
       const px = ((hsh % 1000) / 1000 - 0.5) * w * S * 0.8, py = -h * S * (0.2 + (((hsh >>> 10) % 1000) / 1000) * 0.6);
       c.save(); c.translate(px, py); c.rotate(hsh % 180, 0, 0);
-      c.drawRRect(sk.RRectXY(sk.XYWHRect(-S * 0.03, -S * 0.012, S * 0.06, S * 0.024), S * 0.012, S * 0.012), paint(sk, cols[k % 4]!, 0.9));
+      c.drawRRect(sk.RRectXY(rect(-S * 0.03, -S * 0.012, S * 0.06, S * 0.024), S * 0.012, S * 0.012), paint(sk, cols[k % 4]!, 0.9));
       c.restore();
     }
     c.restore();

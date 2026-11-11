@@ -1,6 +1,6 @@
 import type { Layout } from '../../core/layout';
 import type { StagePalette } from '../../core/types';
-import { gradientPaint, mix, freshPaint, paint, STROKE, type Canvas, type SkiaApi } from './common';
+import { gradientPaint, mix, freshPaint, paint, STROKE, type Canvas, type SkiaApi, rect } from './common';
 
 const rnd = (i: number): number => {
   'worklet';
@@ -11,7 +11,7 @@ const rnd = (i: number): number => {
 function floorClip(sk: SkiaApi, c: Canvas, l: Layout) {
   'worklet';
   const fy = l.stageH * 0.93 + l.H * 0.055;
-  c.clipRRect(sk.RRectXY(sk.XYWHRect(l.W / 2 - l.W * 0.55, fy - l.H * 0.25, l.W * 1.1, l.H * 0.5), l.W * 0.55, l.H * 0.25), 1, true);
+  c.clipRRect(sk.RRectXY(rect(l.W / 2 - l.W * 0.55, fy - l.H * 0.25, l.W * 1.1, l.H * 0.5), l.W * 0.55, l.H * 0.25), 1, true);
 }
 
 function poly(sk: SkiaApi, c: Canvas, pts: number[], p: ReturnType<typeof paint>) {
@@ -42,7 +42,7 @@ export function drawScenery(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: 
       const bx = W * x, by = l.stageH * 0.84, sway = Math.sin(t / 900 + x * 9) * 6;
       const b = sk.PathBuilder.Make(); b.moveTo(bx, by); b.quadTo(bx + sway, by - H * hgt * 0.5, bx + 6, by - H * hgt);
       c.drawPath(b.build(), paint(sk, '#5FE3C0', 0.7, STROKE, 3));
-      c.drawOval(sk.XYWHRect(bx + 3, by - H * hgt - 8, 6, 16), paint(sk, '#B07A4C'));
+      c.drawOval(rect(bx + 3, by - H * hgt - 8, 6, 16), paint(sk, '#B07A4C'));
     }
     c.save(); floorClip(sk, c, l);
     if (L) for (let i = 0; i < 9; i++) {
@@ -51,7 +51,7 @@ export function drawScenery(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: 
       for (let x = 14; x <= W; x += 14) b.lineTo(x, y + Math.sin(x / 40 + t / 700 + i) * 2.2);
       c.drawPath(b.build(), paint(sk, '#9FE8FF', 0.18, STROKE, 1.5));
     }
-    if (S) c.drawRect(sk.XYWHRect(mx - mr * 0.5, fy - H * 0.2, mr, H * 0.3), gradientPaint(sk, 0, fy - H * 0.2, 0, fy + H * 0.05, ['#FFF6C8', '#00000000'], 0.22));
+    if (S) c.drawRect(rect(mx - mr * 0.5, fy - H * 0.2, mr, H * 0.3), gradientPaint(sk, 0, fy - H * 0.2, 0, fy + H * 0.05, ['#FFF6C8', '#00000000'], 0.22));
     c.restore();
   } else if (id === 'fair') {
     const cx = W * 0.17, cy = l.stageH * 0.46, R = H * 0.19, a0 = t / 9000;
@@ -65,12 +65,12 @@ export function drawScenery(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: 
     if (L) for (let i = 0; i < 8; i++) {
       const a = a0 + (i * Math.PI) / 4, x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R;
       c.drawLine(cx, cy, x, y, paint(sk, '#FFD6E8', 0.55, STROKE, 2.5));
-      c.drawRRect(sk.RRectXY(sk.XYWHRect(x - 8, y, 16, 13), 4, 4), paint(sk, cols[i % 4]!, 0.85));
+      c.drawRRect(sk.RRectXY(rect(x - 8, y, 16, 13), 4, 4), paint(sk, cols[i % 4]!, 0.85));
     }
     if (S) for (let i = 0; i < 2; i++) {
       const x = W * 0.83 + i * 70, base = l.stageH * 0.55;
       poly(sk, c, [x - 35, base, x, base - 52, x + 35, base], paint(sk, i ? '#FFC857' : '#FF7AA8', 0.66));
-      c.drawRect(sk.XYWHRect(x - 35, base, 70, 26), paint(sk, '#FFFFFF', 0.13));
+      c.drawRect(rect(x - 35, base, 70, 26), paint(sk, '#FFFFFF', 0.13));
     }
     c.save(); floorClip(sk, c, l);
     if (S) for (let i = -12; i < 14; i++) poly(sk, c, [W / 2 + i * 60 - 20, fy - H * 0.25, W / 2 + i * 60 + 40, fy - H * 0.25, W / 2 + i * 90 + 70, fy + H * 0.3, W / 2 + i * 90 - 20, fy + H * 0.3], paint(sk, i % 2 ? '#FFFFFF' : '#000000', i % 2 ? 0.07 : 0.09));
@@ -85,10 +85,10 @@ export function drawScenery(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: 
       const hx = W * (0.08 + i * 0.16) + (i % 2) * 14, hy = l.stageH * 0.62, hw = 34 + (i % 3) * 8, hh = 26 + (i % 2) * 12;
       if (S) {
         for (const [dx, dy, r] of [[0, 8, 30], [26, 12, 24], [-24, 12, 22]] as const) c.drawCircle(hx + dx, hy + dy, r, paint(sk, '#E8F6FF', 0.8));
-        c.drawRect(sk.XYWHRect(hx - hw / 2, hy - hh, hw, hh), paint(sk, '#FFE8A3'));
+        c.drawRect(rect(hx - hw / 2, hy - hh, hw, hh), paint(sk, '#FFE8A3'));
         poly(sk, c, [hx - hw / 2 - 4, hy - hh, hx, hy - hh - 18, hx + hw / 2 + 4, hy - hh], paint(sk, '#7A8CFF'));
       }
-      if (L) c.drawRect(sk.XYWHRect(hx - 4, hy - hh * 0.65, 8, 9), paint(sk, '#FFAA3C', 0.6 + 0.3 * Math.sin(t / 700 + i)));
+      if (L) c.drawRect(rect(hx - 4, hy - hh * 0.65, 8, 9), paint(sk, '#FFAA3C', 0.6 + 0.3 * Math.sin(t / 700 + i)));
     }
     c.save(); floorClip(sk, c, l);
     if (S) for (let i = 0; i < 18; i++) c.drawCircle(W * (i / 17), fy - H * 0.17 + (i % 3) * 10, 26, paint(sk, '#FFFFFF', 0.11));
@@ -102,18 +102,18 @@ export function drawScenery(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: 
     }
     if (S) for (let i = 0; i < 13; i++) {
       const bw = W * (0.045 + ((i * 37) % 5) * 0.008), bx = W * (i / 13) + 4, bh = l.stageH * (0.22 + ((i * 53) % 7) * 0.05);
-      c.drawRect(sk.XYWHRect(bx, hor - bh, bw, bh), paint(sk, '#0D1530'));
-      c.drawRect(sk.XYWHRect(bx, hor - bh, bw, bh), paint(sk, cols[i % 4]!, 0.4, STROKE, 1.5));
+      c.drawRect(rect(bx, hor - bh, bw, bh), paint(sk, '#0D1530'));
+      c.drawRect(rect(bx, hor - bh, bw, bh), paint(sk, cols[i % 4]!, 0.4, STROKE, 1.5));
       for (let wy = 0; wy < bh - 10; wy += 14) for (let wx = 5; wx < bw - 8; wx += 11) {
         const on = Math.sin(i * 7.3 + wy * 0.9 + wx * 1.7 + Math.floor(t / 1800)) > 0.2;
-        c.drawRect(sk.XYWHRect(bx + wx, hor - bh + wy + 6, 5, 6), paint(sk, on ? cols[(i + wy) % 4]! : '#FFFFFF', on ? 0.8 : 0.06));
+        c.drawRect(rect(bx + wx, hor - bh + wy + 6, 5, 6), paint(sk, on ? cols[(i + wy) % 4]! : '#FFFFFF', on ? 0.8 : 0.06));
       }
     }
     // a neon sign made of bars (no text needed)
     if (L) {
       const sx = W * 0.07, sy = l.stageH * 0.26, flick = 0.7 + 0.3 * Math.sin(t / 220);
-      c.drawRRect(sk.RRectXY(sk.XYWHRect(sx, sy, 70, 30), 8, 8), paint(sk, '#7DF9FF', 0.3 * flick, STROKE, 8));
-      c.drawRRect(sk.RRectXY(sk.XYWHRect(sx, sy, 70, 30), 8, 8), paint(sk, '#7DF9FF', flick, STROKE, 3));
+      c.drawRRect(sk.RRectXY(rect(sx, sy, 70, 30), 8, 8), paint(sk, '#7DF9FF', 0.3 * flick, STROKE, 8));
+      c.drawRRect(sk.RRectXY(rect(sx, sy, 70, 30), 8, 8), paint(sk, '#7DF9FF', flick, STROKE, 3));
       c.drawLine(sx + 14, sy + 10, sx + 56, sy + 10, paint(sk, '#FF4DD2', flick, STROKE, 3));
       c.drawLine(sx + 14, sy + 20, sx + 40, sy + 20, paint(sk, '#FFE066', flick, STROKE, 3));
     }
@@ -135,7 +135,7 @@ export function drawScenery(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: 
       poly(sk, c, [bx + bw / 2, top, bx + bw * 0.4, top + (base - top) * 0.28, bx + bw * 0.5, top + (base - top) * 0.22, bx + bw * 0.6, top + (base - top) * 0.3], paint(sk, '#EAF6FF'));
     }
     c.save(); floorClip(sk, c, l);
-    if (S) c.drawRect(sk.XYWHRect(0, fy - H * 0.2, W, H * 0.5), paint(sk, '#FFFFFF', 0.13));
+    if (S) c.drawRect(rect(0, fy - H * 0.2, W, H * 0.5), paint(sk, '#FFFFFF', 0.13));
     if (S) for (let i = 0; i < 30; i++) c.drawCircle(rnd(i + 200) * W, fy - H * 0.18 + rnd(i + 300) * H * 0.3, 1.5, paint(sk, '#FFFFFF', 0.27));
     c.restore();
   }
@@ -149,9 +149,9 @@ export function drawDecor(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: St
   if (id === 'pond') {
     for (let i = 0; i < 4; i++) {
       const x = W * (0.12 + i * 0.26), y = l.stageH * (0.88 + 0.03 * (i % 2));
-      c.drawOval(sk.XYWHRect(x - 30, y - 8, 60, 16), paint(sk, '#2C6F6A', 0.6));
+      c.drawOval(rect(x - 30, y - 8, 60, 16), paint(sk, '#2C6F6A', 0.6));
       const k = (t / 40 + i * 20) % 30;
-      c.drawOval(sk.XYWHRect(x - 30 - k, y - 8 - k * 0.27, 60 + 2 * k, 16 + 0.54 * k), paint(sk, '#7FE3C4', 0.3, STROKE, 1.5));
+      c.drawOval(rect(x - 30 - k, y - 8 - k * 0.27, 60 + 2 * k, 16 + 0.54 * k), paint(sk, '#7FE3C4', 0.3, STROKE, 1.5));
     }
     const fly = freshPaint(sk, '#FFF8AA', 1);
     for (let i = 0; i < 14; i++) {
@@ -170,7 +170,7 @@ export function drawDecor(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: St
     for (let i = 0; i < 5; i++) {
       const x = W * (0.08 + i * 0.21) + Math.sin(t / 1500 + i) * 10, y = l.stageH * (0.3 + 0.08 * Math.sin(t / 1100 + i * 2));
       c.drawLine(x, y + 18, x, y + 70, paint(sk, '#FFFFFF', 0.27, STROKE, 1.5));
-      c.drawOval(sk.XYWHRect(x - 13, y - 17, 26, 34), paint(sk, cols[(i + 1) % 4]!, 0.66));
+      c.drawOval(rect(x - 13, y - 17, 26, 34), paint(sk, cols[(i + 1) % 4]!, 0.66));
     }
   } else if (id === 'clouds') {
     for (let i = 0; i < 5; i++) {
@@ -193,7 +193,7 @@ export function drawDecor(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: St
   // the floor rim breathes with the beat
   const fy = l.stageH * 0.93 + H * 0.055;
   const b = Math.max(0, 1 - (beat % 1) * 3);
-  c.drawOval(sk.XYWHRect(W / 2 - W * 0.55, fy - H * 0.25, W * 1.1, H * 0.5), paint(sk, pal.glow, (40 + 90 * b) / 255, STROKE, 3));
+  c.drawOval(rect(W / 2 - W * 0.55, fy - H * 0.25, W * 1.1, H * 0.5), paint(sk, pal.glow, (40 + 90 * b) / 255, STROKE, 3));
   void mix;
 }
 
@@ -207,7 +207,7 @@ export function drawTaps(sk: SkiaApi, c: Canvas, taps: TapEffect[], t: number) {
     if (age < 0 || age > 1.3) continue;
     const fade = 1 - age / 1.3;
     if (e.kind === 'ripple') {
-      for (let k = 0; k < 3; k++) { const a = age - k * 0.16; if (a < 0) continue; const r = 10 + 90 * a; c.drawOval(sk.XYWHRect(e.x - r, e.y - r * 0.35, r * 2, r * 0.7), paint(sk, '#B4F0FF', 0.7 * (1 - a / 1.1 > 0 ? 1 - a / 1.1 : 0), STROKE, 2.5)); }
+      for (let k = 0; k < 3; k++) { const a = age - k * 0.16; if (a < 0) continue; const r = 10 + 90 * a; c.drawOval(rect(e.x - r, e.y - r * 0.35, r * 2, r * 0.7), paint(sk, '#B4F0FF', 0.7 * (1 - a / 1.1 > 0 ? 1 - a / 1.1 : 0), STROKE, 2.5)); }
     } else {
       const n = e.kind === 'spark' ? 14 : 9;
       const cols = e.kind === 'spark' ? ['#FF7AA8', '#FFC857', '#5FE3C0', '#7A8CFF'] : ['#FFFFFF', '#D6F0FF', '#FFE8A3'];
