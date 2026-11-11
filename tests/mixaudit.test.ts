@@ -1,9 +1,12 @@
+import { spawnSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { TUNING } from '../src/core/tuning';
 import { auditStageMixes, decodeLoop, loadStages, loopLufs } from '../scripts/qa-lib';
 
 // Fast version of the full audit (the 9 loudest loops in every 6-combination plus 120 random ones); the full 8,008 run in `npm run qa:audit`.
-describe('mix audit (sampled)', () => {
+// The loops are decoded with ffmpeg; without it these tests cannot run, so they are skipped instead of failing.
+const hasFfmpeg = spawnSync('ffmpeg', ['-version']).status === 0;
+describe.skipIf(!hasFfmpeg)('mix audit (sampled)', () => {
   for (const stage of loadStages()) {
     it(`${stage.id}: loops at -20 LUFS, mixes stay under the limiter ceiling`, () => {
       const bank: Record<string, Float32Array> = {};

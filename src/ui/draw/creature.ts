@@ -234,52 +234,9 @@ function drawAccessory(sk: SkiaApi, c: Canvas, cr: Creature, S: number, w: numbe
   }
 }
 
-/** Draws one gummy creature standing with its feet at (x, y). S is the body box size in px. Original vector art. */
-export function drawCreature(sk: SkiaApi, c: Canvas, cr: Creature, x: number, y: number, S: number, pose: Pose) {
+/** Everything about the body that never changes for a creature at a given size: gradient fill, surface detail, belly, outline, highlights. Recorded once as a Picture (see cachedPic). */
+function drawBodyStatic(sk: SkiaApi, c: Canvas, cr: Creature, S: number, w: number, h: number, color: string, light: string, deep: string) {
   'worklet';
-  const { w, h } = DIM[cr.shape.body];
-  if (pose.level < 0.995) {
-    // Volume as a fill level: coloured up to the level, drained (grey, a little see-through) above it.
-    const lineY = y - pose.lift - pose.level * h * S;
-    const top = y - S * 3.2;
-    c.save();
-    c.clipRect(rect(x - S * 1.6, top, S * 3.2, lineY - top), 1, true);
-    drawCreature(sk, c, cr, x, y, S, { ...pose, level: 1, sat: pose.sat * 0.08, alpha: pose.alpha * 0.3 });
-    c.restore();
-    c.save();
-    c.clipRect(rect(x - S * 1.6, lineY, S * 3.2, y + S - lineY), 1, true);
-    drawCreature(sk, c, cr, x, y, S, { ...pose, level: 1 });
-    c.restore();
-    if (pose.level > 0.01) c.drawLine(x - w * S * 0.42, lineY, x + w * S * 0.42, lineY, paint(sk, '#FFFFFF', 0.55, STROKE, 2));
-    return;
-  }
-  const color = cr.color;
-  const dark = mix(color, '#2A1233', 0.82);
-  const light = mix(color, '#FFFFFF', 0.5);
-  const deep = mix(color, '#2A1F5C', 0.32);
-  const alpha = pose.alpha * (pose.muted ? 0.4 : 1);
-
-  c.drawOval(oval(sk, x, y + S * 0.02, w * S * 0.46 * (1 - pose.lift / (S * 3)), S * 0.055), paint(sk, '#0A0620', 0.35 * pose.alpha));
-  const needsLayer = pose.muted || pose.sat < 0.999 || alpha < 0.999;
-  if (needsLayer) c.saveLayer(saturationLayerPaint(sk, pose.muted ? 0.15 : pose.sat, alpha));
-  c.save();
-  c.translate(x, y - pose.lift);
-  c.rotate((pose.tilt * 180) / Math.PI, 0, 0);
-  c.scale(pose.sx, pose.sy);
-
-  if (pose.glow > 0.01) c.drawCircle(0, -h * S * 0.5, S * 0.85, radialPaint(sk, 0, -h * S * 0.5, S * 0.85, ['#FFFFFF', color, '#00000000'], 0.45 * pose.glow));
-
-  const wave = pose.time !== 0 ? Math.sin(pose.time / 170) : 0; // ears, tail, gills sway continuously
-  drawBack(sk, c, cr, S, w, h, color, pose.arms * 0.7 + wave);
-  for (const d of [-1, 1]) c.drawOval(oval(sk, d * w * S * 0.22, -S * 0.025, S * 0.085, S * 0.05), paint(sk, deep));
-  const armSwing = pose.arms;
-  for (const d of [-1, 1]) {
-    c.save();
-    c.rotate(d * (22 + armSwing * 26), d * w * S * 0.46, -h * S * 0.4);
-    c.drawOval(oval(sk, d * (w * S * 0.48 + S * 0.025), -h * S * 0.34, S * 0.055, S * 0.085), paint(sk, deep));
-    c.restore();
-  }
-
   const body = oval(sk, 0, -h * S * 0.5 - S * 0.02, (w * S) / 2, (h * S) / 2);
   const bodyR = cr.shape.body === 'tall' ? (w * S) / 2 : 0;
   const drawBody = (p: ReturnType<typeof paint>) => {
@@ -342,10 +299,82 @@ export function drawCreature(sk: SkiaApi, c: Canvas, cr: Creature, x: number, y:
   c.drawOval(oval(sk, 0, 0, w * S * 0.16, h * S * 0.07), paint(sk, '#FFFFFF', look === 'cloud' ? 0.3 : look === 'neon' ? 0.2 : look === 'candy' ? 0.8 : 0.6));
   c.restore();
   c.drawCircle(-w * S * 0.36, -h * S * 0.68, S * 0.016, paint(sk, '#FFFFFF', 0.7));
+}
 
-  drawFace(sk, c, cr, S, w, h, pose, dark);
+function drawTopStatic(sk: SkiaApi, c: Canvas, cr: Creature, S: number, w: number, h: number, color: string) {
+  'worklet';
   if (cr.shape.species === 'sheep') drawWool(sk, c, S, w, h);
   drawAccessory(sk, c, cr, S, w, h, color);
+}
+
+/** Draws a creature part from a Picture recorded on first use (per creature and size) instead of re-issuing ~60 draw calls through JSI every frame. */
+function cachedPic(sk: SkiaApi, c: Canvas, key: string, S: number, draw: (rc: Canvas) => void) {
+  'worklet';
+  const g = globalThis as unknown as { __hummPics?: { m: Record<string, unknown>; n: number } };
+  if (!g.__hummPics) g.__hummPics = { m: {}, n: 0 };
+  const st = g.__hummPics;
+  let pic = st.m[key] as ReturnType<ReturnType<SkiaApi['PictureRecorder']>['finishRecordingAsPicture']> | undefined;
+  if (!pic) {
+    if (st.n > 150) { st.m = {}; st.n = 0; }
+    const rec = sk.PictureRecorder();
+    const rc = rec.beginRecording(rect(-S * 2, -S * 3, S * 4, S * 4));
+    draw(rc as unknown as Canvas);
+    pic = rec.finishRecordingAsPicture();
+    st.m[key] = pic; st.n++;
+  }
+  c.drawPicture(pic);
+}
+
+/** Draws one gummy creature standing with its feet at (x, y). S is the body box size in px. Original vector art. */
+export function drawCreature(sk: SkiaApi, c: Canvas, cr: Creature, x: number, y: number, S: number, pose: Pose) {
+  'worklet';
+  const { w, h } = DIM[cr.shape.body];
+  if (pose.level < 0.995) {
+    // Volume as a fill level: coloured up to the level, drained (grey, a little see-through) above it.
+    const lineY = y - pose.lift - pose.level * h * S;
+    const top = y - S * 3.2;
+    c.save();
+    c.clipRect(rect(x - S * 1.6, top, S * 3.2, lineY - top), 1, true);
+    drawCreature(sk, c, cr, x, y, S, { ...pose, level: 1, sat: pose.sat * 0.08, alpha: pose.alpha * 0.3 });
+    c.restore();
+    c.save();
+    c.clipRect(rect(x - S * 1.6, lineY, S * 3.2, y + S - lineY), 1, true);
+    drawCreature(sk, c, cr, x, y, S, { ...pose, level: 1 });
+    c.restore();
+    if (pose.level > 0.01) c.drawLine(x - w * S * 0.42, lineY, x + w * S * 0.42, lineY, paint(sk, '#FFFFFF', 0.55, STROKE, 2));
+    return;
+  }
+  const color = cr.color;
+  const dark = mix(color, '#2A1233', 0.82);
+  const light = mix(color, '#FFFFFF', 0.5);
+  const deep = mix(color, '#2A1F5C', 0.32);
+  const alpha = pose.alpha * (pose.muted ? 0.4 : 1);
+
+  c.drawOval(oval(sk, x, y + S * 0.02, w * S * 0.46 * (1 - pose.lift / (S * 3)), S * 0.055), paint(sk, '#0A0620', 0.35 * pose.alpha));
+  const needsLayer = pose.muted || pose.sat < 0.999 || alpha < 0.999;
+  if (needsLayer) c.saveLayer(saturationLayerPaint(sk, pose.muted ? 0.15 : pose.sat, alpha));
+  c.save();
+  c.translate(x, y - pose.lift);
+  c.rotate((pose.tilt * 180) / Math.PI, 0, 0);
+  c.scale(pose.sx, pose.sy);
+
+  if (pose.glow > 0.01) c.drawCircle(0, -h * S * 0.5, S * 0.85, radialPaint(sk, 0, -h * S * 0.5, S * 0.85, ['#FFFFFF', color, '#00000000'], 0.45 * pose.glow));
+
+  const wave = pose.time !== 0 ? Math.sin(pose.time / 170) : 0; // ears, tail, gills sway continuously
+  drawBack(sk, c, cr, S, w, h, color, pose.arms * 0.7 + wave);
+  for (const d of [-1, 1]) c.drawOval(oval(sk, d * w * S * 0.22, -S * 0.025, S * 0.085, S * 0.05), paint(sk, deep));
+  const armSwing = pose.arms;
+  for (const d of [-1, 1]) {
+    c.save();
+    c.rotate(d * (22 + armSwing * 26), d * w * S * 0.46, -h * S * 0.4);
+    c.drawOval(oval(sk, d * (w * S * 0.48 + S * 0.025), -h * S * 0.34, S * 0.055, S * 0.085), paint(sk, deep));
+    c.restore();
+  }
+
+  cachedPic(sk, c, `${cr.id}|${S.toFixed(2)}|b`, S, (rc) => drawBodyStatic(sk, rc, cr, S, w, h, color, light, deep));
+
+  drawFace(sk, c, cr, S, w, h, pose, dark);
+  cachedPic(sk, c, `${cr.id}|${S.toFixed(2)}|t`, S, (rc) => drawTopStatic(sk, rc, cr, S, w, h, color));
   c.restore();
   if (needsLayer) c.restore();
 }

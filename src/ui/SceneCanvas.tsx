@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { PixelRatio } from 'react-native';
 import { Canvas, Picture, Skia, type SkPicture } from '@shopify/react-native-skia';
-import { useDerivedValue, useFrameCallback, useSharedValue, type SharedValue } from 'react-native-reanimated';
+import { useDerivedValue, useFrameCallback, useSharedValue, type FrameInfo, type SharedValue } from 'react-native-reanimated';
 import type { Layout } from '../core/layout';
 import type { Stage } from '../core/types';
 import { drawBackdrop, drawScene, drawTray, type DragCreature, type PlacedCreature, type ReturningCreature, type SceneInput } from './draw/scene';
@@ -83,9 +83,19 @@ function memoPicture<T>(uid: string, name: string, key: string, make: () => T): 
 export function SceneCanvas({ sv, width, height }: { sv: SceneValues; width: number; height: number }) {
   const clock = sv.timeMs;
   const uid = useRef(Math.random().toString(36).slice(2)).current;
-  useFrameCallback((info) => {
-    clock.value = info.timeSinceFirstFrame;
-  });
+  // The clock must never go backwards: creatures, hops and taps are stamped with it. useFrameCallback re-registers whenever its callback changes (and an inline one
+  // changes on every render, i.e. on every drop), which restarted timeSinceFirstFrame at 0 and left earlier stamps "in the future": creatures froze where they were
+  // dropped. So the callback is stable and the clock comes from the frame's absolute timestamp.
+  const clockBase = useSharedValue(-1);
+  const onFrame = useCallback((info: FrameInfo) => {
+    'worklet';
+    if (clockBase.value < 0) clockBase.value = info.timestamp - clock.value;
+    const t = info.timestamp - clockBase.value;
+    // Every tick redraws the whole scene. The display can run at 120 Hz but the art only needs 60: ticking at most every ~15 ms halves the UI-thread work.
+    if (t - clock.value < 15) return;
+    clock.value = t;
+  }, [clock, clockBase]);
+  useFrameCallback(onFrame);
   // The singer menu only changes on touches, so it is recorded once per change instead of every frame.
   // Each static layer is recorded as a Picture AND rasterised once into a device-resolution image, together, only when its key changes: replaying their vector ops every frame used to be a large share of the UI-thread time.
   const ratio = PixelRatio.get();
@@ -106,8 +116,8 @@ export function SceneCanvas({ sv, width, height }: { sv: SceneValues; width: num
       const rec = Skia.PictureRecorder();
       const canvas = rec.beginRecording(Skia.XYWHRect(0, 0, width, height));
       drawTray(Skia, canvas, input);
-      const pic = rec.finishRecordingAsPicture();
-      return { pic, img: rasterise(pic) };
+      // Not rasterised: the key includes the scroll offset, so a full-screen image per scroll tick (~10 MB each) blew the app up to >1 GB.
+      return { pic: rec.finishRecordingAsPicture(), img: null as ReturnType<typeof rasterise> };
     });
   });
   // Sky, spotlights, floor and fixed scenery are recorded once per stage/size (neon windows once per 1.8 s) instead of every frame.
@@ -119,7 +129,8 @@ export function SceneCanvas({ sv, width, height }: { sv: SceneValues; width: num
       const canvas = rec.beginRecording(Skia.XYWHRect(0, 0, width, height));
       drawBackdrop(Skia, canvas, stage, layout, bucket.value);
       const pic = rec.finishRecordingAsPicture();
-      return { pic, img: rasterise(pic) };
+      // Neon re-rolls its windows every 1.8 s: keep that one as a picture too, rather than allocating a ~10 MB image each time.
+      return { pic, img: stage.id === 'neon' ? null : rasterise(pic) };
     });
   });
   const picture = useDerivedValue(() => {

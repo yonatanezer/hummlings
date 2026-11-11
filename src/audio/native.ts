@@ -167,7 +167,10 @@ export class NativeEngine implements AudioEngine {
     src.connect(g); g.connect(this.master);
     src.start(when);
   }
-  playSfx(kind: SfxKind, rate = 1): void { this.sfxAt(kind, 0, rate, TUNING.sfxGain); }
+  playSfx(kind: SfxKind, rate = 1): void {
+    if (this.state === 'idle') void this.ctx?.resume();
+    this.sfxAt(kind, 0, rate, TUNING.sfxGain);
+  }
 
   setVoiceGain(creatureId: string, gain: number): void {
     const v = this.voices.get(creatureId);
@@ -181,6 +184,7 @@ export class NativeEngine implements AudioEngine {
     for (const v of this.voices.values()) { try { v.src.stop(); } catch { /* already stopped */ } }
     this.voices.clear();
     this.state = 'idle';
+    void this.ctx?.suspend(); // an idle context still mixes silence on the audio thread (~40% of a core measured); playSfx resumes it
   }
   positionBeats(): number {
     const ctx = this.ctx;

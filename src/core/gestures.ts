@@ -196,6 +196,8 @@ export class GestureTracker {
     }
     return out;
   }
+  /** Fingers currently down. */
+  get activeCount(): number { return this.touches.size; }
   get hasPendingLongPress(): boolean {
     for (const s of this.touches.values()) if (s.kind === 'pendingStage' && !s.fired) return true;
     return false;

@@ -22,28 +22,37 @@ export function rgbHex(r: number, g: number, b: number): string {
   return `#${c(r)}${c(g)}${c(b)}`;
 }
 
-/** Mix two hex colours: t=0 -> a, t=1 -> b. */
-export function mix(a: string, b: string, t: number): string {
-  'worklet';
-  const [ar, ag, ab] = hexRgb(a);
-  const [br, bg, bb] = hexRgb(b);
-  return rgbHex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t);
-}
-
 /** A rect as a plain object: Skia accepts it everywhere a rect is taken, and it avoids creating a JSI host object per call (sk.XYWHRect was ~11% of the UI thread). */
 export function rect(x: number, y: number, width: number, height: number) {
   'worklet';
   return { x, y, width, height };
 }
 
-interface DrawCache { colors: Record<string, unknown>; paints: Record<string, SkPaint>; paintCount: number }
+interface DrawCache { colors: Record<string, unknown>; paints: Record<string, SkPaint>; paintCount: number; mixes: Record<string, string>; mixCount: number }
 
 /** Per-runtime cache (UI thread in the app, Node in tests). Lives on globalThis because worklet closures are copies and would not keep a module-level cache between calls. */
 function cache(): DrawCache {
   'worklet';
   const g = globalThis as unknown as { __hummDraw?: DrawCache };
-  if (!g.__hummDraw) g.__hummDraw = { colors: {}, paints: {}, paintCount: 0 };
+  if (!g.__hummDraw) g.__hummDraw = { colors: {}, paints: {}, paintCount: 0, mixes: {}, mixCount: 0 };
   return g.__hummDraw;
+}
+
+/** Mix two hex colours: t=0 -> a, t=1 -> b. Results are cached: creatures asked for the same ~10 mixes every frame, each one parsing and formatting strings. */
+export function mix(a: string, b: string, t: number): string {
+  'worklet';
+  const mc = cache().mixes;
+  const key = `${a}|${b}|${t}`;
+  const hit = mc[key];
+  if (hit !== undefined) return hit;
+  const [ar, ag, ab] = hexRgb(a);
+  const [br, bg, bb] = hexRgb(b);
+  const out = rgbHex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t);
+  const cc = cache();
+  if (cc.mixCount > 1500) { cc.mixes = {}; cc.mixCount = 0; }
+  cc.mixes[key] = out;
+  cc.mixCount++;
+  return out;
 }
 
 /** Parsed colour for a '#RRGGBB' string: parsing a string per call was one of the largest per-frame costs on a device. Callers must not mutate the result. */

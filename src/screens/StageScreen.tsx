@@ -134,8 +134,10 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
       if (s !== 'active') { engine.pause(); setPaused(true); if (session.recorder) stopRecording(); }
     });
     let raf = 0;
+    let lastBeat = -1;
     const loop = () => {
-      sv.beat.value = engine.state === 'running' ? engine.positionBeats() : sv.beat.value;
+      // Every write re-runs the scene on the UI thread, so only write when the beat moved enough to be seen (~16 ms of music).
+      if (engine.state === 'running') { const b = engine.positionBeats(); if (Math.abs(b - lastBeat) >= 0.02) { lastBeat = b; sv.beat.value = b; } }
       const rw = session.reward;
       if (rw && !session.celebrating) {
         const total = Math.max(1, rw.startBeat - rw.fromBeat);
@@ -273,7 +275,9 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
   };
 
   const touchFn = (kind: 'start' | 'move' | 'end' | 'cancel') => (e: GestureResponderEvent) => {
-    if (!ready || paused) return;
+    // Lift/cancel events must always be handled: dropping them while paused left a creature stuck in the "dragged" list, drawn big and forever.
+    if ((!ready || paused) && kind !== 'end' && kind !== 'cancel') return;
+    if (kind === 'start' && tracker.activeCount === 0 && sv.drags.value.length) sv.drags.value = [];
     const ts = Date.now();
     for (const tc of e.nativeEvent.changedTouches) {
       const p = { x: tc.pageX, y: tc.pageY };
@@ -283,6 +287,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
         kind === 'move' ? tracker.move(id, p, ts, world()) :
         kind === 'end' ? tracker.end(id, p, ts, world()) : tracker.cancel(id, world());
       evs.forEach(apply);
+      if ((kind === 'end' || kind === 'cancel') && tracker.activeCount === 0 && sv.drags.value.length) sv.drags.value = []; // no finger is down, so nothing can still be dragged
       if (kind === 'start' && tracker.hasPendingLongPress) setTimeout(() => tracker.tick(Date.now(), world()).forEach(apply), TUNING.longPressMs + 10);
     }
   };

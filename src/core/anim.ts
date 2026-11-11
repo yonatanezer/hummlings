@@ -35,14 +35,17 @@ export function breath(timeMs: number, phase: number): number {
 /** Deterministic blink schedule: returns eye openness 0 (closed) .. 1 (open) at time t for a creature seed. */
 export function blinkOpen(timeMs: number, seed: number): number {
   'worklet';
-  // Blinks happen at pseudo-random intervals of 3-6 s; each lasts 140 ms. Computed from the seed so it needs no state.
-  let a = (seed * 2654435761) >>> 0;
-  const r = () => { a = (Math.imul(a ^ (a >>> 15), 2246822507) + 0x6d2b79f5) >>> 0; return (a >>> 8) / 16777216; };
-  let t = r() * TUNING.blinkMaxMs;
-  const limit = timeMs;
-  let guard = 0;
-  while (t + 140 < limit && guard++ < 10000) t += TUNING.blinkMinMs + r() * (TUNING.blinkMaxMs - TUNING.blinkMinMs);
-  const d = timeMs - t;
+  // One blink per cycle of (min+max)/2 ms, started at a pseudo-random point in the first (max-min)/2 ms of the cycle, so blinks are always min..max apart
+  // (3-6 s, spec) and last 140 ms. Computed directly from the cycle number: the earlier version walked every blink since time 0 on every call, so it got
+  // slower the longer the game ran.
+  const period = (TUNING.blinkMinMs + TUNING.blinkMaxMs) / 2;
+  const spread = (TUNING.blinkMaxMs - TUNING.blinkMinMs) / 2; // gap = period +/- spread
+  const n = Math.floor(timeMs / period);
+  let a = (Math.imul(seed, 2654435761) ^ Math.imul(n + 1, 40503)) >>> 0;
+  a = (Math.imul(a ^ (a >>> 15), 2246822507) + 0x6d2b79f5) >>> 0;
+  a = (Math.imul(a ^ (a >>> 13), 3266489909) + 0x1b873593) >>> 0;
+  const r = (a >>> 8) / 16777216;
+  const d = timeMs - (n * period + r * spread);
   if (d < 0 || d > 140) return 1;
   return Math.abs(d - 70) / 70; // closes and re-opens
 }
