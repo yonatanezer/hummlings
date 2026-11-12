@@ -3,6 +3,7 @@ import { LAYER_COLORS } from '../../core/types';
 import { TUNING } from '../../core/tuning';
 import { beatBounce, blinkOpen, breath, hop, onsetPulse } from '../../core/anim';
 import type { Layout } from '../../core/layout';
+import type { CoachCue } from '../../core/coach';
 import { IDLE_POSE, bodyDims, drawCreature, type Pose } from './creature';
 import { gradientPaint, mix, freshPaint, paint, radialPaint, STROKE, type Canvas, type SkiaApi, rect } from './common';
 import { drawCelebration, danceOffset } from './celebrations';
@@ -31,6 +32,7 @@ export interface SceneInput {
   hint: boolean; // first-run animated hand
   recordingBeat: number | null; // for the REC pulse (null = not recording)
   hintSlot: number;
+  coach?: CoachCue | null; // the wordless coach: a hand that shows the next step
   taps?: TapEffect[]; // tap-the-scenery effects
   reward?: { progress: number } | null; // ring that fills while a complete secret combo is being held
   backdrop?: SkPicture | null; // pre-recorded static sky/scenery (app only; headless renders draw it directly)
@@ -224,6 +226,47 @@ function drawHintHand(sk: SkiaApi, c: Canvas, s: SceneInput, byId: Record<string
   c.drawCircle(x, y, 38 + 6 * Math.sin(t * 40), paint(sk, '#FFFFFF', 0.35 * fade * (1 - move), STROKE, 2));
 }
 
+/**
+ * The wordless coach for children who cannot read: a hand that shows the next step.
+ * 'drag': a singer is carried from the tray to a spot (the slot pulses first); 'tap': a finger taps a singer on stage twice.
+ */
+function drawCoachHand(sk: SkiaApi, c: Canvas, s: SceneInput, cue: CoachCue, byId: Record<string, Creature>) {
+  'worklet';
+  const l = s.layout;
+  if (cue.kind === 'tap') {
+    const t = (s.timeMs % 2600) / 2600;
+    const k = (t * 2) % 1; // two taps per loop
+    const press = k > 0.25 && k < 0.6 ? Math.sin(((k - 0.25) / 0.35) * Math.PI) : 0;
+    const p = l.spots[cue.spot]!;
+    const x = p.x + l.size * 0.12, y = p.y - l.size * 0.5 + (1 - press) * l.size * 0.28;
+    const fade = t > 0.9 ? (1 - t) / 0.1 : 1;
+    c.drawCircle(x + 3, y + 8, 26, paint(sk, '#000000', 0.25 * fade));
+    c.drawCircle(x, y, 24 - press * 3, paint(sk, '#FFFFFF', 0.92 * fade));
+    c.drawCircle(x, y, 24 - press * 3, paint(sk, '#FFC857', 0.85 * fade, STROKE, 3));
+    if (press > 0.5) c.drawCircle(x, y, 30 + (press - 0.5) * 70, paint(sk, '#FFFFFF', 0.5 * (1 - press) * 2 * fade, STROKE, 3));
+    return;
+  }
+  const t = (s.timeMs % 4000) / 4000;
+  const from = { x: l.slotPos[cue.slot]!.x - s.scrollX, y: l.slotPos[cue.slot]!.y };
+  const to = { x: l.spots[cue.spot]!.x, y: l.spots[cue.spot]!.y - l.size * 0.4 };
+  const move = Math.min(1, Math.max(0, (t - 0.15) / 0.55));
+  const e = move * move * (3 - 2 * move);
+  const x = from.x + (to.x - from.x) * e;
+  const y = from.y + (to.y - from.y) * e - Math.sin(e * Math.PI) * l.size * 0.25;
+  const fade = t < 0.08 ? t / 0.08 : t > 0.88 ? (1 - t) / 0.12 : 1;
+  // the slot of the singer that moves glows, and the spot it goes to shows a ring, so the eye finds both ends
+  const glow = 0.5 + 0.5 * Math.sin(s.timeMs / 220);
+  c.drawCircle(from.x, from.y, l.slot * (0.55 + 0.05 * glow), paint(sk, '#FFE8A3', 0.5 * fade * (move < 0.05 ? 1 : 0.4), STROKE, 4));
+  c.drawOval(rect(l.spots[cue.spot]!.x - l.size * 0.55, l.spots[cue.spot]!.y - l.size * 0.14, l.size * 1.1, l.size * 0.3), paint(sk, '#FFE8A3', 0.55 * fade, STROKE, 4));
+  const cr = byId[s.stage.creatures[cue.slot]!.id];
+  if (cr && move > 0) drawCreature(sk, c, cr, x, y + l.size * 0.45, l.size * 0.9, { ...IDLE_POSE, alpha: 0.85 * fade });
+  const pressed = move > 0 && move < 1 ? 1 : 0;
+  c.drawCircle(x + 3, y + 8, 26, paint(sk, '#000000', 0.25 * fade));
+  c.drawCircle(x, y, 24 - pressed * 2, paint(sk, '#FFFFFF', 0.92 * fade));
+  c.drawCircle(x, y, 24 - pressed * 2, paint(sk, '#FFC857', 0.85 * fade, STROKE, 3));
+  c.drawCircle(x, y, 38 + 6 * Math.sin(t * 40), paint(sk, '#FFFFFF', 0.35 * fade * (1 - move), STROKE, 2));
+}
+
 /** Draws a pre-rasterised image 1:1 in device pixels (it was rendered at pixelRatio x the layout size). */
 function drawRaster(c: Canvas, img: SkImage, ratio: number) {
   'worklet';
@@ -355,4 +398,5 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   }
 
   if (s.hint && s.drags.length === 0) drawHintHand(sk, c, s, byId);
+  if (s.coach && s.drags.length === 0 && !s.popup) drawCoachHand(sk, c, s, s.coach, byId);
 }

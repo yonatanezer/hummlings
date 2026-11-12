@@ -10,6 +10,8 @@ export interface Progress {
   firstDropDone: boolean;
   goals: string[]; // earned stickers, `${stageId}:${goal}`
   helpSeen: boolean; // the how-to-play guide was opened at least once
+  coachMoreDone: boolean; // three singers were on stage at once (the hand stops asking for more)
+  coachTapDone: boolean; // a singer was tapped once (the hand stops showing the tap)
 }
 
 export interface Settings {
@@ -28,6 +30,8 @@ export const defaultProgress = (): Progress => ({
   firstDropDone: false,
   goals: [],
   helpSeen: false,
+  coachMoreDone: false,
+  coachTapDone: false,
 });
 
 /** Tolerant loader: unknown / corrupt data becomes defaults, known fields are kept. */
@@ -50,6 +54,8 @@ export function parseProgress(raw: unknown): Progress {
     firstDropDone: r.firstDropDone === true,
     goals: Array.isArray(r.goals) ? r.goals.filter((x) => typeof x === 'string') : [],
     helpSeen: r.helpSeen === true,
+    coachMoreDone: r.coachMoreDone === true,
+    coachTapDone: r.coachTapDone === true,
   };
 }
 

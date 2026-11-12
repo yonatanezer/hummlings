@@ -18,10 +18,16 @@ export function HelpScreen({ onBack }: { onBack: () => void }) {
   const { rtl } = useLang();
   const { update } = useProgress();
   const [step, setStep] = useState(0);
+  const [auto, setAuto] = useState(true); // plays through by itself (for someone who cannot read) until the arrows are used
   const time = useSharedValue(0);
   const stepSV = useSharedValue(0);
   useFrameCallback((i) => { time.value = i.timeSinceFirstFrame; });
   useEffect(() => { stepSV.value = step; }, [step, stepSV]);
+  useEffect(() => {
+    if (!auto || step >= HELP_STEPS - 1) return;
+    const id = setTimeout(() => setStep((n) => Math.min(HELP_STEPS - 1, n + 1)), 5200);
+    return () => clearTimeout(id);
+  }, [auto, step]);
   useEffect(() => { update((p) => (p.helpSeen ? p : { ...p, helpSeen: true })); }, [update]);
 
   const stage = STAGES[0]!;
@@ -51,11 +57,11 @@ export function HelpScreen({ onBack }: { onBack: () => void }) {
         <View style={{ width: textW, alignItems: 'center', gap: 12 }}>
         <Text style={[styles.caption, { width: textW }]} accessibilityLiveRegion="polite">{t(`help.step${step + 1}` as StringKey)}</Text>
         <View style={{ flexDirection: row, alignItems: 'center', gap: 20 }}>
-          <IconButton icon="back" label={t('a11y.prev')} onPress={() => setStep((s) => Math.max(0, s - 1))} bg={step === 0 ? 'rgba(255,255,255,0.08)' : undefined} />
+          <IconButton icon="back" label={t('a11y.prev')} onPress={() => { setAuto(false); setStep((s) => Math.max(0, s - 1)); }} bg={step === 0 ? 'rgba(255,255,255,0.08)' : undefined} />
           <View style={{ flexDirection: row, gap: 8 }}>
             {Array.from({ length: HELP_STEPS }, (_, i) => <View key={i} style={[styles.dot, i === step && styles.dotOn]} />)}
           </View>
-          <IconButton icon={last ? 'check' : 'next'} label={last ? t('help.dontShow') : t('a11y.next')} bg={last ? COLORS.ok : undefined} color={last ? '#10282A' : undefined} onPress={() => (last ? onBack() : setStep((s) => s + 1))} />
+          <IconButton icon={last ? 'check' : 'next'} label={last ? t('help.dontShow') : t('a11y.next')} bg={last ? COLORS.ok : undefined} color={last ? '#10282A' : undefined} onPress={() => { setAuto(false); if (last) onBack(); else setStep((s) => s + 1); }} />
         </View>
         </View>
       </View>

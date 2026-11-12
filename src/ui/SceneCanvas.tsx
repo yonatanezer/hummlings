@@ -1,3 +1,4 @@
+import type { CoachCue } from '../core/coach';
 import { useCallback, useEffect, useRef } from 'react';
 import { PixelRatio } from 'react-native';
 import { Canvas, Picture, Skia, type SkPicture } from '@shopify/react-native-skia';
@@ -20,6 +21,7 @@ export interface SceneValues {
   celebration: SharedValue<SceneInput['celebration']>;
   hint: SharedValue<boolean>;
   hintSlot: SharedValue<number>;
+  coach: SharedValue<CoachCue | null>;
   popup: SharedValue<SceneInput['popup']>;
   trayK: SharedValue<number>;
   reward: SharedValue<SceneInput['reward']>;
@@ -43,6 +45,7 @@ export function useSceneValues(stage: Stage, layout: Layout, reduceMotion: boole
     celebration: useSharedValue<SceneInput['celebration']>(null),
     hint: useSharedValue(false),
     hintSlot: useSharedValue(0),
+    coach: useSharedValue<CoachCue | null>(null),
     popup: useSharedValue<SceneInput['popup']>(null),
     trayK: useSharedValue(1),
     reward: useSharedValue<SceneInput['reward']>(null),
@@ -137,7 +140,7 @@ export function SceneCanvas({ sv, width, height }: { sv: SceneValues; width: num
     const input: SceneInput = {
       layout: sv.layout.value, stage: sv.stage.value, placed: sv.placed.value, muted: sv.muted.value, solo: sv.solo.value,
       drags: sv.drags.value, returning: sv.returning.value, scrollX: sv.scrollX.value, beat: sv.beat.value, timeMs: clock.value,
-      reduceMotion: sv.reduceMotion.value, celebration: sv.celebration.value, hint: sv.hint.value, hintSlot: sv.hintSlot.value, popup: sv.popup.value, backdrop: backdropLayer.value.pic, trayPicture: trayLayer.value.pic, backdropImage: backdropLayer.value.img, trayImage: trayLayer.value.img, pixelRatio: ratio, trayK: sv.trayK.value, reward: sv.reward.value, taps: sv.taps.value, volumes: sv.volumes.value, recordingBeat: null,
+      reduceMotion: sv.reduceMotion.value, celebration: sv.celebration.value, hint: sv.hint.value, hintSlot: sv.hintSlot.value, coach: sv.coach.value, popup: sv.popup.value, backdrop: backdropLayer.value.pic, trayPicture: trayLayer.value.pic, backdropImage: backdropLayer.value.img, trayImage: trayLayer.value.img, pixelRatio: ratio, trayK: sv.trayK.value, reward: sv.reward.value, taps: sv.taps.value, volumes: sv.volumes.value, recordingBeat: null,
     };
     const rec = Skia.PictureRecorder();
     const canvas = rec.beginRecording(Skia.XYWHRect(0, 0, width, height));

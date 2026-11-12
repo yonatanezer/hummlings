@@ -37,6 +37,8 @@ function WorldCard({ stage, index, cardW, cardH, locked, found, hint, still, onP
     else pulse.value = 0;
   }, [hint, still]);
   const lift = useAnimatedStyle(() => ({ opacity: enter.value, transform: [{ translateY: (1 - enter.value) * 26 - bob.value * 5 }, { scale: 0.92 + enter.value * 0.08 }] }));
+  // For someone who cannot read: a finger bobs on the card they should press (same look as the hand on the stage)
+  const fingerStyle = useAnimatedStyle(() => ({ opacity: hint ? 1 : 0, transform: [{ translateY: -pulse.value * 12 }, { scale: 1 - pulse.value * 0.1 }] }));
   const ring = useAnimatedStyle(() => ({ opacity: hint ? 0.45 + pulse.value * 0.55 : 0, transform: [{ scale: 1 + pulse.value * 0.025 }] }));
   const total = stage.combos.length;
   const em = Math.min(56, cardH * 0.52);
@@ -56,9 +58,7 @@ function WorldCard({ stage, index, cardW, cardH, locked, found, hint, still, onP
           <StageCardArt stage={stage} locked={locked} width={cardW} height={cardH} />
           <View style={[styles.emblem, { width: em, height: em, borderRadius: em / 2 }]}><WorldIcon stageId={stage.id} size={em * 0.7} /></View>
           {locked && <View style={[styles.lock, { width: lk, height: lk, borderRadius: lk / 2 }]}><Icon name="lock" size={lk * 0.58} color="#FFE8A3" /></View>}
-          {hint && (
-            <View style={styles.hintPill}><Icon name="play" size={16} color="#10282A" /><Text style={styles.hintText} numberOfLines={1}>{t('select.tapToPlay')}</Text></View>
-          )}
+          {hint && <Animated.View pointerEvents="none" style={[styles.finger, { top: cardH * 0.42 }, fingerStyle]} />}
         </View>
         <Text numberOfLines={2} style={[styles.name, { fontSize: fs, maxWidth: cardW, minHeight: fs * 2.6, textAlign: 'center' }]}>{name}</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -186,8 +186,7 @@ const styles = StyleSheet.create({
   emblem: { position: 'absolute', top: 10, left: 10, width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(27,19,64,0.92)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)', alignItems: 'center', justifyContent: 'center' },
   lock: { position: 'absolute', top: 10, right: 10, width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(27,19,64,0.8)', alignItems: 'center', justifyContent: 'center' },
   ring: { position: 'absolute', top: -6, left: -6, borderWidth: 3, borderColor: COLORS.glow },
-  hintPill: { position: 'absolute', bottom: 10, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: COLORS.glow, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
-  hintText: { color: '#10282A', fontSize: 14, fontWeight: '800' },
+  finger: { position: 'absolute', alignSelf: 'center', width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255,255,255,0.94)', borderWidth: 4, borderColor: '#FFC857' },
   dot: { width: 14, height: 14, borderRadius: 7 },
   dotOn: { backgroundColor: COLORS.glow },
   dotOff: { backgroundColor: 'rgba(255,255,255,0.18)' },

@@ -8,6 +8,7 @@ import { computeLayout } from '../core/layout';
 import { Session } from '../core/session';
 import { popRate } from '../core/sfx';
 import { randomBand } from '../core/surprise';
+import { coachKind, pickSlot, pickSpot, pickTapSpot, type CoachCue } from '../core/coach';
 import { audibleIds, nextFreeSpot, type StageState } from '../core/stageState';
 import { autoName, warnBars, type Song } from '../core/timeline';
 import { TUNING, barSec } from '../core/tuning';
@@ -70,6 +71,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
   layoutRef.current = layout;
   const progressRef = useRef(progress);
   progressRef.current = progress;
+  const lastTouch = useRef(Date.now()); // the coach waits for a pause before it shows the next step
 
   useEffect(() => { setHapticsEnabled(progress.settings.haptics); engine.setVolume(progress.settings.musicVolume); }, [engine, progress.settings.haptics, progress.settings.musicVolume]);
   useEffect(() => {
@@ -102,7 +104,6 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
   useEffect(() => {
     let alive = true;
     session.countIn = !progressRef.current.firstDropDone;
-    sv.hint.value = !progressRef.current.firstDropDone;
     session.setEvents({
       onState: () => syncScene(),
       onCelebration: (id, bar) => {
@@ -126,7 +127,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
       if (before) {
         before.spots.forEach((id, spot) => { if (id) { session.dispatch({ kind: 'drop', creatureId: id, spot }); const v = before.volume[id]; if (v !== undefined) session.dispatch({ kind: 'volume', creatureId: id, value: v }); if (before.muted[id]) session.dispatch({ kind: 'mute', creatureId: id }); } });
         syncScene();
-        if (before.spots.some(Boolean)) { session.countIn = false; sv.hint.value = false; }
+        if (before.spots.some(Boolean)) session.countIn = false;
       }
       setReady(true);
     })();
@@ -203,7 +204,6 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
         session.dispatch({ kind: 'drop', creatureId: ev.creatureId, spot: ev.spot });
         if (!progressRef.current.firstDropDone) {
           session.countIn = false;
-          sv.hint.value = false;
           update((p) => ({ ...p, firstDropDone: true }));
         }
         syncScene();
@@ -223,6 +223,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
         break;
       case 'tap':
         hapticLight();
+        if (!progressRef.current.coachTapDone) update((p) => ({ ...p, coachTapDone: true }));
         engine.playSfx(session.state.muted[ev.creatureId] ? 'unmute' : 'mute');
         session.dispatch({ kind: 'mute', creatureId: ev.creatureId });
         syncScene();
@@ -278,6 +279,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
   const touchFn = (kind: 'start' | 'move' | 'end' | 'cancel') => (e: GestureResponderEvent) => {
     // Lift/cancel events must always be handled: dropping them while paused left a creature stuck in the "dragged" list, drawn big and forever.
     if ((!ready || paused) && kind !== 'end' && kind !== 'cancel') return;
+    lastTouch.current = Date.now();
     if (kind === 'start' && tracker.activeCount === 0 && sv.drags.value.length) sv.drags.value = [];
     const ts = Date.now();
     for (const tc of e.nativeEvent.changedTouches) {
@@ -292,6 +294,26 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
       if (kind === 'start' && tracker.hasPendingLongPress) setTimeout(() => tracker.tick(Date.now(), world()).forEach(apply), TUNING.longPressMs + 10);
     }
   };
+
+  // The wordless coach (see core/coach.ts): every half second decide whether a hand should show the next step, and which one.
+  useEffect(() => {
+    const id = setInterval(() => {
+      const pr = progressRef.current;
+      const st = session.state;
+      const onStage = st.spots.filter(Boolean).length;
+      if (onStage >= 3 && !pr.coachMoreDone) update((p) => (p.coachMoreDone ? p : { ...p, coachMoreDone: true }));
+      let cue: CoachCue | null = null;
+      if (ready && !paused && !book && !recording && !gate && !sv.popup.value) {
+        const kind = coachKind({ onStage, firstDropDone: pr.firstDropDone, moreDone: pr.coachMoreDone || onStage >= 3, tapDone: pr.coachTapDone, idleMs: Date.now() - lastTouch.current });
+        const l = layoutRef.current;
+        if (kind === 'drag') cue = { kind, slot: pickSlot(stage.creatures.map((c) => c.id), new Set(st.spots.filter((x): x is string => !!x)), l.slotPos.map((p) => p.x - sv.scrollX.value), l.W), spot: pickSpot(st.spots) };
+        else if (kind === 'tap') cue = { kind, slot: -1, spot: pickTapSpot(st.spots, st.muted) };
+      }
+      const cur = sv.coach.value;
+      if ((cue?.kind ?? null) !== (cur?.kind ?? null) || (cue?.spot ?? -1) !== (cur?.spot ?? -1) || (cue?.slot ?? -1) !== (cur?.slot ?? -1)) sv.coach.value = cue;
+    }, 500);
+    return () => clearInterval(id);
+  }, [ready, paused, book, recording, gate, session, sv, stage, update]);
 
   const onStageCount = session.state.spots.filter(Boolean).length;
   const row = rtl ? 'row-reverse' : 'row';
