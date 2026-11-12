@@ -12,6 +12,9 @@ export const he: Record<StringKey, string> = {
   'stage.frost': 'פסגות הכפור',
 
   'select.locked': 'נעול',
+  'select.title': 'בחרו עולם',
+  'select.tapToPlay': 'לחצו כדי לשחק',
+  'select.found': '{n} מתוך {m} קומבואים',
 
   'songs.title': 'השירים שלי',
   'songs.empty': 'עוד אין שירים',

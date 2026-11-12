@@ -72,11 +72,12 @@ export function PlayerScreen({ song, onBack }: { song: Song; onBack: () => void 
       <SceneCanvas sv={sv} width={width} height={height} />
       <View pointerEvents="box-none" style={[styles.top, { top: insets.top + 6, left: insets.left + 10, right: insets.right + 10, flexDirection: row }]}>
         <IconButton icon="back" label={t('a11y.back')} onPress={onBack} />
-      </View>
-      <View pointerEvents="box-none" style={[styles.bar, { bottom: insets.bottom + 10, flexDirection: row }]}>
-        <IconButton icon={playing ? 'pause' : 'play'} label={playing ? t('a11y.pause') : t('a11y.play')} size={72} onPress={() => { if (playing) { engine.stop(); setPlaying(false); } else play(); }} />
-        <IconButton icon="share" label={t('a11y.share')} caption={t('songs.share')} onPress={() => ask(() => void exportSong(engine, stage, song))} />
-        <IconButton icon="download" label={t('rec.saveDevice')} caption={t('rec.saveDevice')} onPress={() => ask(() => void saveSongToDevice(engine, stage, song))} />
+        <View style={{ flex: 1 }} />
+        <View style={[styles.bar, { flexDirection: row }]}>
+          <IconButton icon={playing ? 'pause' : 'play'} label={playing ? t('a11y.pause') : t('a11y.play')} onPress={() => { if (playing) { engine.stop(); setPlaying(false); } else play(); }} />
+          <IconButton icon="share" label={t('a11y.share')} onPress={() => ask(() => void exportSong(engine, stage, song))} />
+          <IconButton icon="download" label={t('rec.saveDevice')} onPress={() => ask(() => void saveSongToDevice(engine, stage, song))} />
+        </View>
       </View>
       {!ready && <View style={StyleSheet.absoluteFill} />}
       {gate}
@@ -86,5 +87,5 @@ export function PlayerScreen({ song, onBack }: { song: Song; onBack: () => void 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.sky },
   top: { position: 'absolute', alignItems: 'center' },
-  bar: { position: 'absolute', alignSelf: 'center', gap: 20, alignItems: 'center' },
+  bar: { gap: 14, alignItems: 'center' },
 });

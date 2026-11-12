@@ -32,10 +32,10 @@ export function computeLayout(W: number, H: number, creatureCountArg?: number, p
   const stageH = 0.65 * H;
   // The tallest singer (tall body + ears, about 1.5 x size) must fit between the top overlay and the back row of spots.
   const sizeByTop = (0.48 * H - topInset) / 1.5;
-  const size = clamp(Math.min(0.32 * H, (0.8 * W) / TUNING.maxSpots, sizeByTop), TUNING.minTouchPt, 200);
+  const size = clamp(Math.min(0.32 * H, (0.76 * W) / TUNING.maxSpots, sizeByTop), TUNING.minTouchPt, 200);
   const spots: Pt[] = Array.from({ length: TUNING.maxSpots }, (_, i) => {
     const t = (i + 0.5) / TUNING.maxSpots;
-    return { x: W * (0.1 + 0.8 * t), y: 0.6 * H - 0.12 * H * 4 * t * (1 - t) };
+    return { x: W * (0.12 + 0.76 * t), y: 0.6 * H - 0.12 * H * 4 * t * (1 - t) };
   });
   const tray: Rect = { x: 0, y: stageH, w: W, h: H - stageH };
   const groupGap = 16 * u;

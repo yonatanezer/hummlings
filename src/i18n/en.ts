@@ -10,6 +10,9 @@ export const en = {
   'stage.frost': 'Frosty Peaks',
 
   'select.locked': 'Locked',
+  'select.title': 'Pick a world',
+  'select.tapToPlay': 'Tap to play',
+  'select.found': '{n} of {m} combos',
 
   'songs.title': 'My songs',
   'songs.empty': 'No songs yet',

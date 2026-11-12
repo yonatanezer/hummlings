@@ -15,7 +15,13 @@ import { IconButton } from '../ui/IconButton';
 import { useParentalGate } from '../ui/ParentalGate';
 import { COLORS } from '../ui/theme';
 
-const fmtLen = (song: Song, bpm: number): string => {
+/** Songs saved by an older build under another language keep the "Song N" name; show them in the current language. */
+const shownName = (name: string): string => {
+  const m = /^Song (\d+)$/.exec(name);
+  return m ? t('songs.defaultName', { n: Number(m[1]) }) : name;
+};
+
+const fmtLen =(song: Song, bpm: number): string => {
   const s = Math.round(song.bars * barSec(bpm));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
@@ -82,7 +88,7 @@ export function SongsScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (s
                 <View style={{ flex: 1 }}>
                   {renaming === item.id ? (
                     <TextInput autoFocus value={draft} maxLength={24} onChangeText={setDraft} onSubmitEditing={() => commit(item)} onBlur={() => commit(item)} style={styles.input} accessibilityLabel={t('songs.rename')} />
-                  ) : <Text style={styles.name}>{item.name}</Text>}
+                  ) : <Text style={styles.name}>{shownName(item.name)}</Text>}
                   <Text style={styles.dim}>{t(stage.nameKey as StringKey)} · {fmtLen(item, stage.bpm)} · {t('songs.bars', { n: item.bars })} · {new Date(item.createdAt).toLocaleDateString()}</Text>
                 </View>
                 <IconButton icon="play" label={t('a11y.play')} onPress={() => onPlay(item.id)} />

@@ -19,7 +19,7 @@ from the bottom edge, name (24 pt) under the card art, padlock badge 40u top cor
 top-trailing, songs button top-leading next to nothing else (back not shown).
 
 ## 3 Stage
-- Stage area: top `0.65H`. 6 spots on an arc: `t=(i+0.5)/6`, `x = W*(0.10+0.80t)`, `y = 0.65H - 0.10H - 0.14H*4t(1-t)`.
+- Stage area: top `0.65H`. 6 spots on an arc: `t=(i+0.5)/6`, `x = W*(0.12+0.76t)`, `y = 0.65H - 0.10H - 0.14H*4t(1-t)`.
   Creature size `S = min(0.40H, 0.9*W/6)` (SE: ~150 -> clamp 56..200). Spot ring shown when empty (dashed, 0.8S).
 - Tray: bottom `0.35H`. 16 slots, `0.56*trayH` (>=56) wide, 4 colour groups of 4 (group gap 16u). Scrolls horizontally if
   total width > W - 2*inset. Occupied slot shows a faded silhouette (25% opacity).

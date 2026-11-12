@@ -316,7 +316,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
           <IconButton icon="help" label={t('a11y.help')} caption={t('ui.help')} onPress={onHelp} />
         </View>
       </View>
-      <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 84, top: layout.stageH - 70 }]}>
+      <View pointerEvents="box-none" style={[styles.clear, { left: insets.left + 14, top: layout.stageH - 70 }]}>
         <IconButton icon="dice" label={t('a11y.surprise')} caption={t('ui.surprise')} onPress={() => {
           const l = layoutRef.current;
           rememberForUndo();
