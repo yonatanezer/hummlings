@@ -29,13 +29,15 @@ export function computeLayout(W: number, H: number, creatureCountArg?: number, p
   // Default resolved in the body: a default-param expression is not captured into the worklet closure.
   const creatureCount = creatureCountArg ?? TUNING.creaturesPerStage;
   const u = clamp(Math.min(W / 844, H / 390), 0.8, 2.2);
-  const stageH = 0.65 * H;
+  // The singer menu is as low as it can be: a touch-sized slot plus a little air above the singers (it used to be 35 % of the height, far too much of a phone held sideways).
+  const trayH = clamp(0.2 * H, TUNING.minTouchPt + 20, 130);
+  const stageH = H - trayH;
   // The tallest singer (tall body + ears, about 1.5 x size) must fit between the top overlay and the back row of spots.
   const sizeByTop = (0.48 * H - topInset) / 1.5;
   const size = clamp(Math.min(0.32 * H, (0.76 * W) / TUNING.maxSpots, sizeByTop), TUNING.minTouchPt, 200);
   const spots: Pt[] = Array.from({ length: TUNING.maxSpots }, (_, i) => {
     const t = (i + 0.5) / TUNING.maxSpots;
-    return { x: W * (0.12 + 0.76 * t), y: 0.6 * H - 0.12 * H * 4 * t * (1 - t) };
+    return { x: W * (0.12 + 0.76 * t), y: 0.68 * H - 0.12 * H * 4 * t * (1 - t) };
   });
   const tray: Rect = { x: 0, y: stageH, w: W, h: H - stageH };
   const groupGap = 16 * u;
@@ -48,7 +50,7 @@ export function computeLayout(W: number, H: number, creatureCountArg?: number, p
   const trayContentW = pad * 2 + creatureCount * slot + (groups - 1) * groupGap;
   const slotPos: Pt[] = Array.from({ length: creatureCount }, (_, i) => ({
     x: pad + slot / 2 + i * slot + Math.floor(i / per) * groupGap,
-    y: tray.y + tray.h / 2,
+    y: tray.y + tray.h * 0.56, // a little below the middle: the air is above the singers, not below
   }));
   // When everything fits, centre the row.
   const offset = trayContentW < W ? (W - trayContentW) / 2 : 0;
