@@ -9,6 +9,7 @@ export const en = {
   'stage.neon': 'Neon City',
   'stage.frost': 'Frosty Peaks',
 
+  'goals.title': 'Stickers',
   'select.locked': 'Locked',
   'select.title': 'Pick a world',
   'select.tapToPlay': 'Tap to play',

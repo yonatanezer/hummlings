@@ -69,7 +69,7 @@ function WorldCard({ stage, index, cardW, cardH, locked, found, hint, still, onP
   );
 }
 
-export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHelp }: { onPick: (id: string) => void; onLocked: () => void; onSettings: () => void; onSongs: () => void; onHelp: () => void }) {
+export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHelp }: { onPick: (id: string) => void; onLocked: (id: string) => void; onSettings: () => void; onSongs: () => void; onHelp: () => void }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { rtl } = useLang();
@@ -169,7 +169,7 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
             return (
               <WorldCard key={st.id} stage={st} index={i} cardW={cardW} cardH={cardH} locked={locked} found={found} still={still}
                 hint={firstVisit && FREE_STAGE_IDS.includes(st.id)}
-                onPress={() => { hapticLight(); if (locked) onLocked(); else onPick(st.id); }} />
+                onPress={() => { hapticLight(); if (locked) onLocked(st.id); else onPick(st.id); }} />
             );
           })}
         </Wrap>

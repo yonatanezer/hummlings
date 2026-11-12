@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, AppState, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
-import { Easing, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getEngine } from '../audio';
 import { GestureTracker, type GestureEvent, type World } from '../core/gestures';
@@ -34,6 +34,17 @@ interface Props {
   onHelp: () => void;
   onPlay: (songId: string) => void;
   onDebug?: (s: string) => void;
+}
+
+/** The coach's last step: a ring that pulses around the record button (for someone who cannot read the label). */
+function RecordPulse({ on }: { on: boolean }) {
+  const k = useSharedValue(0);
+  useEffect(() => {
+    if (on) k.value = withRepeat(withSequence(withTiming(1, { duration: 650 }), withTiming(0, { duration: 650 })), -1);
+    else { cancelAnimation(k); k.value = 0; }
+  }, [on, k]);
+  const st = useAnimatedStyle(() => ({ opacity: on ? 0.35 + k.value * 0.65 : 0, transform: [{ scale: 1 + k.value * 0.14 }] }));
+  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: -5, left: -5, width: 66, height: 66, borderRadius: 33, borderWidth: 4, borderColor: COLORS.rec }, st]} />;
 }
 
 export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }: Props) {
@@ -71,6 +82,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
   layoutRef.current = layout;
   const progressRef = useRef(progress);
   progressRef.current = progress;
+  const [recordCue, setRecordCue] = useState(false); // the record button pulses (the coach's last step)
   const lastTouch = useRef(Date.now()); // the coach waits for a pause before it shows the next step
 
   useEffect(() => { setHapticsEnabled(progress.settings.haptics); engine.setVolume(progress.settings.musicVolume); }, [engine, progress.settings.haptics, progress.settings.musicVolume]);
@@ -174,6 +186,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
     if (progressRef.current.songs.length >= TUNING.maxSongs) return setLimitMsg(true);
     session.startRecording();
     setRecording(true);
+    if (!progressRef.current.coachRecordDone) update((p) => ({ ...p, coachRecordDone: true }));
   };
 
   const world = (): World => ({ layout: layoutRef.current, scrollX: sv.scrollX.value, trayIds: stage.creatures.map((c) => c.id), onStage: session.state.spots, popup: sv.popup.value ? { spot: sv.popup.value.spot, creatureId: sv.popup.value.creatureId } : null, volumeOf: (id) => session.state.volume[id] ?? 1, trayHidden: !trayOpen.current });
@@ -230,6 +243,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
         break;
       case 'longPress': {
         hapticMedium();
+        if (!progressRef.current.coachHoldDone) update((p) => ({ ...p, coachHoldDone: true }));
         const spot = session.state.spots.indexOf(ev.creatureId);
         if (spot >= 0) sv.popup.value = { spot, creatureId: ev.creatureId, volume: session.state.volume[ev.creatureId] ?? 1, solo: session.state.solo === ev.creatureId };
         break;
@@ -304,11 +318,12 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
       if (onStage >= 3 && !pr.coachMoreDone) update((p) => (p.coachMoreDone ? p : { ...p, coachMoreDone: true }));
       let cue: CoachCue | null = null;
       if (ready && !paused && !book && !recording && !gate && !sv.popup.value) {
-        const kind = coachKind({ onStage, firstDropDone: pr.firstDropDone, moreDone: pr.coachMoreDone || onStage >= 3, tapDone: pr.coachTapDone, idleMs: Date.now() - lastTouch.current });
+        const kind = coachKind({ onStage, firstDropDone: pr.firstDropDone, moreDone: pr.coachMoreDone || onStage >= 3, tapDone: pr.coachTapDone, holdDone: pr.coachHoldDone, recordDone: pr.coachRecordDone || pr.songs.length > 0, idleMs: Date.now() - lastTouch.current });
         const l = layoutRef.current;
         if (kind === 'drag') cue = { kind, slot: pickSlot(stage.creatures.map((c) => c.id), new Set(st.spots.filter((x): x is string => !!x)), l.slotPos.map((p) => p.x - sv.scrollX.value), l.W), spot: pickSpot(st.spots) };
-        else if (kind === 'tap') cue = { kind, slot: -1, spot: pickTapSpot(st.spots, st.muted) };
-      }
+        else if (kind === 'tap' || kind === 'hold') cue = { kind, slot: -1, spot: pickTapSpot(st.spots, st.muted) };
+        setRecordCue(kind === 'record');
+      } else setRecordCue(false);
       const cur = sv.coach.value;
       if ((cue?.kind ?? null) !== (cur?.kind ?? null) || (cue?.spot ?? -1) !== (cur?.spot ?? -1) || (cue?.slot ?? -1) !== (cur?.slot ?? -1)) sv.coach.value = cue;
     }, 500);
@@ -333,8 +348,8 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
             const warn = recBars >= warnBars(stage.bpm);
             return <Text style={[styles.rec, warn && styles.recWarn]} accessibilityLabel={`${t('rec.recording')} ${secs}`}>{`${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`}</Text>;
           })()}
-          <IconButton icon={recording ? 'stop' : 'record'} label={recording ? t('a11y.stopRecord') : t('a11y.record')} caption={recording ? t('ui.stop') : t('ui.record')} color={recording ? '#FFFFFF' : COLORS.rec} bg={recording ? COLORS.rec : undefined} onPress={onRecord} />
-          <IconButton icon="book" label={t('a11y.comboBook')} caption={t('ui.combos')} onPress={() => setBook(true)} />
+          <View><RecordPulse on={recordCue && !recording} /><IconButton icon={recording ? 'stop' : 'record'} label={recording ? t('a11y.stopRecord') : t('a11y.record')} caption={recording ? t('ui.stop') : t('ui.record')} color={recording ? '#FFFFFF' : COLORS.rec} bg={recording ? COLORS.rec : undefined} onPress={onRecord} /></View>
+          <IconButton icon="combos" label={t('a11y.comboBook')} caption={t('ui.combos')} onPress={() => setBook(true)} />
           <IconButton icon="note" label={t('a11y.songs')} caption={t('ui.songs')} onPress={onSongs} />
           <IconButton icon="help" label={t('a11y.help')} caption={t('ui.help')} onPress={onHelp} />
         </View>

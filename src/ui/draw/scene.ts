@@ -233,6 +233,26 @@ function drawHintHand(sk: SkiaApi, c: Canvas, s: SceneInput, byId: Record<string
 function drawCoachHand(sk: SkiaApi, c: Canvas, s: SceneInput, cue: CoachCue, byId: Record<string, Creature>) {
   'worklet';
   const l = s.layout;
+  if (cue.kind === 'hold') {
+    // press and hold: the finger stays down while a ring fills, then the volume slider opens beside the singer
+    const t = (s.timeMs % 3600) / 3600;
+    const p = l.spots[cue.spot]!;
+    const x = p.x + l.size * 0.1, y = p.y - l.size * 0.5;
+    const fade = t > 0.92 ? (1 - t) / 0.08 : 1;
+    const fill = Math.min(1, Math.max(0, (t - 0.1) / 0.45));
+    c.drawCircle(x + 3, y + 8, 26, paint(sk, '#000000', 0.25 * fade));
+    c.drawCircle(x, y, 22, paint(sk, '#FFFFFF', 0.92 * fade));
+    c.drawCircle(x, y, 22, paint(sk, '#FFC857', 0.85 * fade, STROKE, 3));
+    c.drawCircle(x, y, 28 + fill * 22, paint(sk, '#FFE8A3', (0.25 + 0.5 * (1 - fill)) * fade, STROKE, 4));
+    if (t > 0.55) {
+      const open = Math.min(1, (t - 0.55) / 0.12);
+      const tx = p.x + l.size * 0.62, top = y - l.size * 0.45, hh = l.size * 0.9;
+      c.drawRRect(sk.RRectXY(rect(tx - 5, top, 10, hh), 5, 5), paint(sk, '#FFFFFF', 0.35 * open * fade));
+      const knob = top + hh * (0.15 + 0.7 * Math.min(1, Math.max(0, (t - 0.68) / 0.22)));
+      c.drawCircle(tx, knob, 13, paint(sk, '#FFE8A3', open * fade));
+    }
+    return;
+  }
   if (cue.kind === 'tap') {
     const t = (s.timeMs % 2600) / 2600;
     const k = (t * 2) % 1; // two taps per loop

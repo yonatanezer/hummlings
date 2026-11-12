@@ -11,6 +11,7 @@ export const he: Record<StringKey, string> = {
   'stage.neon': 'עיר הניאון',
   'stage.frost': 'פסגות הכפור',
 
+  'goals.title': 'מדבקות',
   'select.locked': 'נעול',
   'select.title': 'בחרו עולם',
   'select.tapToPlay': 'לחצו כדי לשחק',

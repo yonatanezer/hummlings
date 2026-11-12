@@ -18,6 +18,7 @@ import { HelpScreen } from './src/screens/HelpScreen';
 import { UnlockScreen } from './src/screens/UnlockScreen';
 import { ErrorBoundary } from './src/ui/ErrorBoundary';
 import { ParentalGate } from './src/ui/ParentalGate';
+import { WorldPreview } from './src/ui/WorldPreview';
 import { DevOverlay } from './src/ui/DevOverlay';
 import { COLORS } from './src/ui/theme';
 
@@ -32,6 +33,7 @@ function Root() {
   const { progress, ready, update } = useProgress();
   const [route, setRoute] = useState<Route>({ name: 'splash' });
   const [gateFor, setGateFor] = useState<null | 'unlock'>(null);
+  const [previewFor, setPreviewFor] = useState<string | null>(null); // a locked world being listened to
   const [debug, setDebug] = useState('');
 
   // Language: user choice or device locale. The stage never mirrors; text screens do (see useLang).
@@ -53,6 +55,7 @@ function Root() {
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (gateFor) { setGateFor(null); return true; }
+      if (previewFor) { setPreviewFor(null); return true; }
       switch (route.name) {
         case 'splash': return true;
         case 'select': return false; // exits the app
@@ -63,14 +66,14 @@ function Root() {
       }
     });
     return () => sub.remove();
-  }, [route, gateFor]);
+  }, [route, gateFor, previewFor]);
   if (!ready) return <View style={{ flex: 1, backgroundColor: COLORS.sky }} />;
 
   const songs = (from: Route) => setRoute({ name: 'songs', from });
   let screen;
   switch (route.name) {
     case 'splash': screen = <SplashScreen onDone={done} />; break;
-    case 'select': screen = <StageSelectScreen onPick={(id) => setRoute({ name: 'stage', stageId: id })} onLocked={() => setGateFor('unlock')} onSettings={() => setRoute({ name: 'settings' })} onSongs={() => songs(route)} onHelp={() => setRoute({ name: 'help', from: route })} />; break;
+    case 'select': screen = <StageSelectScreen onPick={(id) => setRoute({ name: 'stage', stageId: id })} onLocked={(id) => setPreviewFor(id)} onSettings={() => setRoute({ name: 'settings' })} onSongs={() => songs(route)} onHelp={() => setRoute({ name: 'help', from: route })} />; break;
     case 'stage': screen = <StageScreen key={route.stageId} stage={getStage(route.stageId)} onBack={() => setRoute({ name: 'select' })} onSongs={() => songs(route)} onHelp={() => setRoute({ name: 'help', from: route })} onPlay={(id) => setRoute({ name: 'player', songId: id })} onDebug={setDebug} />; break;
     case 'songs': screen = <SongsScreen onBack={() => setRoute(route.from.name === 'stage' ? { name: 'select' } : route.from)} onPlay={(id) => setRoute({ name: 'player', songId: id })} />; break;
     case 'player': {
@@ -85,6 +88,7 @@ function Root() {
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.sky }}>
       {screen}
+      {previewFor && <WorldPreview stage={getStage(previewFor)} onClose={() => setPreviewFor(null)} onUnlock={() => { setPreviewFor(null); setGateFor('unlock'); }} />}
       {gateFor === 'unlock' && <ParentalGate onPass={() => { setGateFor(null); setRoute({ name: 'unlock' }); }} onCancel={() => setGateFor(null)} />}
       <DevOverlay screen={route.name} info={debug || `${STAGES.length} stages`} />
     </View>

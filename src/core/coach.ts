@@ -2,29 +2,36 @@
  * The wordless coach: an animated hand that shows what to do next, for children who cannot read.
  * Pure rules (no UI): what to show, which tray singer to move and where to.
  */
-export type CoachKind = 'drag' | 'tap';
-export interface CoachCue { kind: CoachKind; slot: number; spot: number }
+export type CoachKind = 'drag' | 'tap' | 'hold' | 'record';
+/** What the scene draws. 'record' is not drawn there: the record button itself pulses. */
+export interface CoachCue { kind: Exclude<CoachKind, 'record'>; slot: number; spot: number }
 
 export interface CoachInput {
   onStage: number; // singers on the stage
   firstDropDone: boolean;
   moreDone: boolean; // the player has had at least three singers on stage once
   tapDone: boolean; // the player has tapped a singer once (to silence or wake it)
+  holdDone: boolean; // ... and held one once (volume slider)
+  recordDone: boolean; // ... and started a recording once (or already has songs)
   idleMs: number; // since the last touch
 }
 
-export const COACH_IDLE_MS = { more: 4000, tap: 5000, again: 9000 } as const;
+export const COACH_IDLE_MS = { more: 4000, tap: 5000, hold: 6000, record: 7000, again: 9000 } as const;
 
 /**
  * 1. Nobody on stage: the very first time the hand shows at once; later only after a long pause.
  * 2. One or two on stage and never reached three: after a short pause the hand moves another one.
  * 3. Three or more reached but a tap never tried: the hand taps a singer.
+ * 4. Tapped but never held: the hand holds a singer (the volume slider opens).
+ * 5. Held but never recorded: the record button pulses.
  * Anything else: no coaching.
  */
 export function coachKind(i: CoachInput): CoachKind | null {
   if (i.onStage === 0) return !i.firstDropDone || i.idleMs >= COACH_IDLE_MS.again ? 'drag' : null;
   if (!i.moreDone && i.onStage < 3) return i.idleMs >= COACH_IDLE_MS.more ? 'drag' : null;
   if (i.moreDone && !i.tapDone && i.onStage >= 2) return i.idleMs >= COACH_IDLE_MS.tap ? 'tap' : null;
+  if (i.tapDone && !i.holdDone && i.onStage >= 2) return i.idleMs >= COACH_IDLE_MS.hold ? 'hold' : null;
+  if (i.tapDone && i.holdDone && !i.recordDone && i.onStage >= 2) return i.idleMs >= COACH_IDLE_MS.record ? 'record' : null;
   return null;
 }
 

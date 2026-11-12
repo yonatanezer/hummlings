@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { COACH_IDLE_MS, coachKind, pickSlot, pickSpot, pickTapSpot } from '../src/core/coach';
 
-const base = { onStage: 0, firstDropDone: false, moreDone: false, tapDone: false, idleMs: 0 };
+const base = { onStage: 0, firstDropDone: false, moreDone: false, tapDone: false, holdDone: false, recordDone: false, idleMs: 0 };
 
 describe('coach: what the hand shows', () => {
   it('shows the first drag at once on a new player and only after a pause later', () => {
@@ -16,12 +16,28 @@ describe('coach: what the hand shows', () => {
     expect(coachKind({ ...one, onStage: 2, idleMs: COACH_IDLE_MS.more })).toBe('drag');
     expect(coachKind({ ...one, onStage: 3, idleMs: 99999 })).toBeNull();
   });
-  it('shows a tap once three were reached, never before, and stops once a tap was made', () => {
+  it('shows a tap once three were reached, never before, and moves on once a tap was made', () => {
     const three = { ...base, onStage: 3, firstDropDone: true, moreDone: true };
     expect(coachKind(three)).toBeNull();
     expect(coachKind({ ...three, idleMs: COACH_IDLE_MS.tap })).toBe('tap');
-    expect(coachKind({ ...three, tapDone: true, idleMs: 99999 })).toBeNull();
+    expect(coachKind({ ...three, tapDone: true, idleMs: 99999 })).not.toBe('tap'); // the next lesson (hold) takes over
     expect(coachKind({ ...three, onStage: 1, idleMs: 99999 })).toBeNull();
+  });
+});
+
+describe('coach: hold and record', () => {
+  const tapped = { ...base, onStage: 3, firstDropDone: true, moreDone: true, tapDone: true };
+  it('shows a hold after the tap, then pulses the record button, then stops', () => {
+    expect(coachKind({ ...tapped, idleMs: COACH_IDLE_MS.hold })).toBe('hold');
+    expect(coachKind({ ...tapped, idleMs: 1000 })).toBeNull();
+    const held = { ...tapped, holdDone: true };
+    expect(coachKind({ ...held, idleMs: COACH_IDLE_MS.record })).toBe('record');
+    expect(coachKind({ ...held, recordDone: true, idleMs: 99999 })).toBeNull();
+  });
+  it('never jumps ahead: no hold before the tap, no record before the hold', () => {
+    const three = { ...base, onStage: 3, firstDropDone: true, moreDone: true };
+    expect(coachKind({ ...three, holdDone: true, idleMs: 99999 })).toBe('tap');
+    expect(coachKind({ ...three, tapDone: true, recordDone: false, idleMs: COACH_IDLE_MS.hold })).toBe('hold');
   });
 });
 

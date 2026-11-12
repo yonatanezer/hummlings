@@ -12,6 +12,8 @@ export interface Progress {
   helpSeen: boolean; // the how-to-play guide was opened at least once
   coachMoreDone: boolean; // three singers were on stage at once (the hand stops asking for more)
   coachTapDone: boolean; // a singer was tapped once (the hand stops showing the tap)
+  coachHoldDone: boolean; // a singer was held once (the volume slider opened)
+  coachRecordDone: boolean; // a recording was started once
 }
 
 export interface Settings {
@@ -32,6 +34,8 @@ export const defaultProgress = (): Progress => ({
   helpSeen: false,
   coachMoreDone: false,
   coachTapDone: false,
+  coachHoldDone: false,
+  coachRecordDone: false,
 });
 
 /** Tolerant loader: unknown / corrupt data becomes defaults, known fields are kept. */
@@ -56,6 +60,8 @@ export function parseProgress(raw: unknown): Progress {
     helpSeen: r.helpSeen === true,
     coachMoreDone: r.coachMoreDone === true,
     coachTapDone: r.coachTapDone === true,
+    coachHoldDone: r.coachHoldDone === true,
+    coachRecordDone: r.coachRecordDone === true,
   };
 }
 

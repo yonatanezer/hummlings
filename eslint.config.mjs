@@ -8,7 +8,7 @@ const uiImports = [
 ];
 
 export default tseslint.config(
-  { ignores: ['src/content/loopAssets.ts', 'node_modules/**', 'dist/**', '.expo/**', 'android/**', 'ios/**', 'assets/**', 'scripts/out/**'] },
+  { ignores: ['src/content/loopAssets.ts', 'src/ui/iconAssets.ts', 'node_modules/**', 'dist/**', '.expo/**', 'android/**', 'ios/**', 'assets/**', 'scripts/out/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
