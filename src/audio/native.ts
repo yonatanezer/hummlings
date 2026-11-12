@@ -1,0 +1,236 @@
+import { AudioContext, AudioManager } from 'react-native-audio-api';
+import type { AudioBuffer, AudioBufferSourceNode, GainNode } from 'react-native-audio-api';
+import type { AudioEngine, BarPlan, BarProvider, EngineState, SfxKind } from '../core/engine';
+import { softClipCurve } from '../core/mix';
+import { TUNING, barSec, beatSec, masterTrim } from '../core/tuning';
+import type { Stage } from '../core/types';
+import { LOOP_ASSETS } from '../content/loopAssets';
+import { SFX_ASSETS, SFX_TICK, SFX_TICK_ACCENT } from '../content/sfxAssets';
+
+const LOOKAHEAD_S = 0.15; // schedule bars this far ahead of the audio clock
+const TIMER_MS = 25;
+const START_DELAY_S = 0.12; // gap between start() and bar 0
+const BONUS = '__bonus';
+const AMBIENCE = '__ambience';
+
+interface Voice { src: AudioBufferSourceNode; gain: GainNode; vol: GainNode }
+
+/** Sample-accurate engine on react-native-audio-api: looped PCM buffers scheduled on one shared AudioContext clock. */
+export class NativeEngine implements AudioEngine {
+  state: EngineState = 'idle';
+  private ctx: AudioContext | null = null;
+  private master: GainNode | null = null;
+  private buffers = new Map<string, AudioBuffer>();
+  private voices = new Map<string, Voice>();
+  private tickBuf: AudioBuffer | null = null;
+  private tickAccentBuf: AudioBuffer | null = null;
+  private origin = 0;
+  private nextBar = 0;
+  private bpm = 100;
+  private provider: BarProvider | null = null;
+  private timer: ReturnType<typeof setInterval> | null = null;
+  private volume = 0.8;
+  private interrupted = new Set<() => void>();
+  private fileIndex = new Map<string, string>(); // creature id -> loop file
+  private sfxBuf = new Map<string, AudioBuffer>();
+  private ambFile = '';
+
+  async init(): Promise<void> {
+    if (this.ctx) return;
+    // Plays with the iOS silent switch (music app); no recording, no microphone.
+    AudioManager.setSystemOptions({ ios: { category: 'playback', mode: 'default' } });
+    AudioManager.observeAudioInterruptions(true);
+    AudioManager.addSystemEventListener('interruption', (e) => {
+      if (e.type === 'began') { this.pause(); this.interrupted.forEach((l) => l()); }
+    });
+    await AudioManager.setAudioSessionActivity(true);
+    const ctx = new AudioContext({ sampleRate: TUNING.sampleRate });
+    const master = ctx.createGain();
+    const shaper = ctx.createWaveShaper();
+    shaper.curve = softClipCurve();
+    master.connect(shaper);
+    shaper.connect(ctx.destination);
+    this.ctx = ctx;
+    this.master = master;
+    this.setVolume(this.volume);
+    this.tickBuf = await ctx.decodeAudioData(SFX_TICK);
+    this.tickAccentBuf = await ctx.decodeAudioData(SFX_TICK_ACCENT);
+    for (const [k, asset] of Object.entries(SFX_ASSETS)) this.sfxBuf.set(k, await ctx.decodeAudioData(asset));
+  }
+
+  private pending = new Map<string, Promise<void>>(); // loops being decoded right now (so a second request waits for the first instead of decoding twice)
+  private wanted = new Set<string>(); // the loops of the stage that was asked for last; anything else is dropped (memory cap)
+
+  private decodeLoop(file: string): Promise<void> {
+    if (this.buffers.has(file)) return Promise.resolve();
+    const hit = this.pending.get(file);
+    if (hit) return hit;
+    const job = this.ctx!.decodeAudioData(LOOP_ASSETS[file]!).then((buf) => {
+      if (this.wanted.has(file)) this.buffers.set(file, buf); // the player may have moved on to another world meanwhile
+    }).finally(() => { this.pending.delete(file); });
+    this.pending.set(file, job);
+    return job;
+  }
+
+  /** Decodes `files` a few at a time, in the given order, so the first singers' loops are ready after a moment instead of all of them after the longest wait. */
+  private async decodeInOrder(files: string[], parallel: number): Promise<void> {
+    let next = 0;
+    const worker = async () => {
+      while (next < files.length) {
+        const f = files[next++]!;
+        if (!this.wanted.has(f)) return; // another world was asked for meanwhile
+        await this.decodeLoop(f);
+      }
+    };
+    await Promise.all(Array.from({ length: parallel }, worker));
+  }
+
+  /**
+   * Decodes the stage's loops. By default it resolves when all of them are ready. With `background` it resolves as soon as the world's bed is ready and the singers'
+   * loops keep decoding while the stage already plays: a singer whose loop is not ready yet simply joins at the next bar (see apply()), so opening a world no longer
+   * waits for ~20 decodes.
+   */
+  async loadStage(stage: Stage, opts?: { background?: boolean }): Promise<void> {
+    this.fileIndex = new Map(stage.creatures.map((c) => [c.id, c.loopFile]));
+    this.ambFile = stage.ambienceFile;
+    const files = [...stage.creatures.map((c) => c.loopFile), ...stage.combos.map((c) => c.bonusLoopFile), stage.ambienceFile];
+    this.wanted = new Set(files);
+    // Memory cap: keep only this stage's buffers.
+    for (const k of [...this.buffers.keys()]) if (!this.wanted.has(k)) this.buffers.delete(k);
+    if (opts?.background) {
+      await this.decodeLoop(stage.ambienceFile);
+      // the singers first (in tray order), then the combo bonus loops
+      void this.decodeInOrder(files.filter((f) => f !== stage.ambienceFile), 3).catch(() => undefined);
+      return;
+    }
+    await Promise.all(files.map((f) => this.decodeLoop(f)));
+  }
+
+  async decodeBank(files: string[], loopSamples: number): Promise<Record<string, Float32Array>> {
+    const ctx = this.ctx!;
+    const out: Record<string, Float32Array> = {};
+    for (const f of files) {
+      const buf = await ctx.decodeAudioData(LOOP_ASSETS[f]!);
+      const ch = buf.getChannelData(0);
+      const a = new Float32Array(loopSamples);
+      a.set(ch.subarray(0, Math.min(loopSamples, ch.length)));
+      out[f] = a;
+    }
+    return out;
+  }
+
+  start(bpm: number, provider: BarProvider): void {
+    this.stop();
+    const ctx = this.ctx!;
+    this.bpm = bpm; this.provider = provider; this.nextBar = 0;
+    this.origin = ctx.currentTime + START_DELAY_S;
+    this.state = 'running';
+    void ctx.resume();
+    this.timer = setInterval(() => this.pump(), TIMER_MS);
+    this.pump();
+  }
+
+  private pump(): void {
+    const ctx = this.ctx;
+    if (!ctx || this.state !== 'running' || !this.provider) return;
+    const bs = barSec(this.bpm);
+    while (this.origin + this.nextBar * bs < ctx.currentTime + LOOKAHEAD_S) {
+      const bar = this.nextBar++;
+      this.apply(bar, this.origin + bar * bs, this.provider(bar));
+    }
+  }
+
+  private apply(bar: number, t: number, plan: BarPlan): void {
+    const ctx = this.ctx!;
+    const bs = barSec(this.bpm);
+    const wanted = new Set(plan.ids);
+    if (plan.bonusFile) wanted.add(BONUS);
+    wanted.add(AMBIENCE); // the world's bed always plays
+    for (const [id, v] of this.voices) {
+      if (wanted.has(id)) continue;
+      v.gain.gain.cancelScheduledValues(t);
+      v.gain.gain.setValueAtTime(1, t);
+      v.gain.gain.linearRampToValueAtTime(0, t + TUNING.fadeOutMs / 1000);
+      v.src.stop(t + TUNING.fadeOutMs / 1000 + 0.02);
+      this.voices.delete(id);
+    }
+    const launch = (key: string, file: string) => {
+      if (this.voices.has(key)) return;
+      const buf = this.buffers.get(file);
+      if (!buf) return;
+      const src = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      src.buffer = buf;
+      src.loop = true;
+      src.loopStart = 0;
+      src.loopEnd = bs * TUNING.loopBars; // exact loop length: absorbs any encoder padding at the end of the file
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(1, t + TUNING.fadeInMs / 1000);
+      const vol = ctx.createGain();
+      vol.gain.value = plan.gains[key] ?? 1;
+      src.connect(gain);
+      gain.connect(vol);
+      vol.connect(this.master!);
+      // Always in phase with the global clock: a late joiner enters at its place in the 4-bar chord loop.
+      src.start(t, (bar % TUNING.loopBars) * bs);
+      this.voices.set(key, { src, gain, vol });
+    };
+    for (const [id, v] of this.voices) if (id in plan.gains || v.vol.gain.value !== 1) v.vol.gain.setValueAtTime(plan.gains[id] ?? 1, t);
+    for (const id of plan.ids) launch(id, this.fileOf(id));
+    if (plan.bonusFile) launch(BONUS, plan.bonusFile);
+    launch(AMBIENCE, this.ambFile);
+    if (plan.fill) for (let k = 0; k < 4; k++) this.sfxAt('snare', t + (3.5 + k * 0.125) * beatSec(this.bpm), 1, TUNING.fillGain * (0.6 + 0.13 * k));
+    if (plan.tick === 'soft') {
+      for (let k = 0; k < TUNING.beatsPerBar; k++) {
+        const src = ctx.createBufferSource();
+        const g = ctx.createGain();
+        src.buffer = k === 0 ? this.tickAccentBuf : this.tickBuf;
+        g.gain.value = TUNING.tickGain;
+        src.connect(g);
+        g.connect(this.master!);
+        src.start(t + k * beatSec(this.bpm));
+      }
+    }
+  }
+
+  private fileOf(id: string): string { return this.fileIndex.get(id) ?? ''; }
+
+  private sfxAt(kind: SfxKind, when: number, rate: number, gain: number): void {
+    const ctx = this.ctx, buf = this.sfxBuf.get(kind);
+    if (!ctx || !buf || !this.master) return;
+    const src = ctx.createBufferSource(), g = ctx.createGain();
+    src.buffer = buf; src.playbackRate.value = rate; g.gain.value = gain;
+    src.connect(g); g.connect(this.master);
+    src.start(when);
+  }
+  playSfx(kind: SfxKind, rate = 1): void {
+    if (this.state === 'idle') void this.ctx?.resume();
+    this.sfxAt(kind, 0, rate, TUNING.sfxGain);
+  }
+
+  setVoiceGain(creatureId: string, gain: number): void {
+    const v = this.voices.get(creatureId);
+    if (v && this.ctx) v.vol.gain.setTargetAtTime(gain, this.ctx.currentTime, 0.03);
+  }
+  pause(): void { if (this.state === 'running') { this.state = 'paused'; void this.ctx?.suspend(); } }
+  resume(): void { if (this.state === 'paused') { this.state = 'running'; void this.ctx?.resume(); } }
+  stop(): void {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
+    for (const v of this.voices.values()) { try { v.src.stop(); } catch { /* already stopped */ } }
+    this.voices.clear();
+    this.state = 'idle';
+    void this.ctx?.suspend(); // an idle context still mixes silence on the audio thread (~40% of a core measured); playSfx resumes it
+  }
+  positionBeats(): number {
+    const ctx = this.ctx;
+    if (!ctx || this.state === 'idle') return 0;
+    const latency = (ctx as unknown as { outputLatency?: number }).outputLatency ?? 0;
+    return Math.max(0, (ctx.currentTime - latency - this.origin) / beatSec(this.bpm));
+  }
+  setVolume(v: number): void {
+    this.volume = v;
+    if (this.master) this.master.gain.value = v * masterTrim();
+  }
+  onInterrupted(cb: () => void): () => void { this.interrupted.add(cb); return () => this.interrupted.delete(cb); }
+}
