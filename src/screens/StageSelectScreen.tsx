@@ -42,7 +42,7 @@ function WorldCard({ stage, index, cardW, cardH, locked, found, hint, still, onP
   const ring = useAnimatedStyle(() => ({ opacity: hint ? 0.45 + pulse.value * 0.55 : 0, transform: [{ scale: 1 + pulse.value * 0.025 }] }));
   const total = stage.combos.length;
   const em = Math.min(56, cardH * 0.52);
-  const lk = Math.min(48, cardH * 0.46);
+  const lk = Math.min(44, cardH * 0.42);
   const fs = Math.min(18, cardW * 0.12);
   const name = t(stage.nameKey as StringKey);
   return (
@@ -57,11 +57,11 @@ function WorldCard({ stage, index, cardW, cardH, locked, found, hint, still, onP
           <Animated.View pointerEvents="none" style={[styles.ring, { width: cardW + 12, height: cardH + 12, borderRadius: 26 }, ring]} />
           <StageCardArt stage={stage} locked={locked} width={cardW} height={cardH} />
           <View style={[styles.emblem, { width: em, height: em, borderRadius: em / 2 }]}><WorldIcon stageId={stage.id} size={em * 0.7} /></View>
-          {locked && <View style={[styles.lock, { width: lk, height: lk, borderRadius: lk / 2 }]}><Icon name="lock" size={lk * 0.58} color="#FFE8A3" /></View>}
+          {locked && <View style={[styles.lock, { width: lk * 0.66, height: lk * 0.66, borderRadius: lk * 0.33 }]}><Icon name="lock" size={lk * 0.4} color="#FFE8A3" /></View>}
           {locked && <View style={[styles.listen, { width: lk * 0.85, height: lk * 0.85, borderRadius: lk * 0.43 }]}><Icon name="note" size={lk * 0.5} color="#10282A" /></View>}
           {hint && <Animated.View pointerEvents="none" style={[styles.finger, { top: cardH * 0.42 }, fingerStyle]} />}
         </View>
-        <Text numberOfLines={2} style={[styles.name, { fontSize: fs, maxWidth: cardW, minHeight: fs * 2.6, textAlign: 'center' }]}>{name}</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.name, { fontSize: fs, width: cardW, textAlign: 'center' }]}>{name}</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {stage.combos.map((c, i) => <View key={c.id} style={[styles.dot, i < found ? styles.dotOn : styles.dotOff]} />)}
         </View>
@@ -89,7 +89,7 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
   const availW = (areaW || width) - insets.left * 2 - insets.right - 32;
   const fitW = (availW - GAP * (STAGES.length - 1)) / STAGES.length;
   const cardW = Math.min(Math.max(fitW, 110), 220);
-  const nameBlock = Math.min(18, cardW * 0.12) * 2.8 + 12 + 24; // two-line name, dots, gaps and the float of the card
+  const nameBlock = Math.min(18, cardW * 0.12) * 1.5 + 12 + 24; // one-line name, dots, gaps and the float of the card
   const cardH = Math.max(52, Math.min(height - cardsTop - 8 - nameBlock, cardW * 0.92));
   const row = rtl ? 'row-reverse' : 'row';
   const fits = STAGES.length * cardW + (STAGES.length - 1) * GAP <= availW;
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   cards: { justifyContent: 'center', alignItems: 'flex-start' },
   name: { color: '#fff', fontSize: 22, fontWeight: '700' },
   emblem: { position: 'absolute', top: 10, left: 10, width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(27,19,64,0.92)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)', alignItems: 'center', justifyContent: 'center' },
-  lock: { position: 'absolute', top: 10, right: 10, width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(27,19,64,0.8)', alignItems: 'center', justifyContent: 'center' },
+  lock: { position: 'absolute', top: 8, right: 8, width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(27,19,64,0.8)', alignItems: 'center', justifyContent: 'center' },
   ring: { position: 'absolute', top: -6, left: -6, borderWidth: 3, borderColor: COLORS.glow },
   listen: { position: 'absolute', right: 10, bottom: 10, backgroundColor: COLORS.ok, alignItems: 'center', justifyContent: 'center' }, // a locked world can be listened to first
   finger: { position: 'absolute', alignSelf: 'center', width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255,255,255,0.94)', borderWidth: 4, borderColor: '#FFC857' },

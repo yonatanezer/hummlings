@@ -23,8 +23,15 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
   const [note, setNote] = useState('');
   const align = rtl ? 'row-reverse' : 'row';
 
-  const Row = ({ label, icon, children }: { label: string; icon: IconName; children: React.ReactNode }) => (
-    <View style={[styles.row, { flexDirection: align }]}><View style={{ flexDirection: align, alignItems: 'center', gap: 12 }}><Icon name={icon} size={30} color="#FFE8A3" /><Text style={styles.label}>{label}</Text></View>{children}</View>
+  // `icon` is the row's own picture; rows whose button already shows the same picture leave it out (the glyph was shown twice). `danger` sets a destructive row apart.
+  const Row = ({ label, icon, danger, children }: { label: string; icon?: IconName; danger?: boolean; children: React.ReactNode }) => (
+    <View style={[styles.row, { flexDirection: align }, danger && styles.rowDanger]}>
+      <View style={{ flexDirection: align, alignItems: 'center', gap: 12 }}>
+        {icon ? <Icon name={icon} size={30} color="#FFE8A3" /> : null}
+        <Text style={[styles.label, danger && { color: COLORS.danger }]}>{label}</Text>
+      </View>
+      {children}
+    </View>
   );
   const langs: Settings['language'][] = ['system', 'en', 'he'];
 
@@ -59,9 +66,9 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
             ))}
           </View>
         </Row>
-        <Row label={t('settings.restore')} icon="restore"><IconButton icon="restore" label={t('settings.restore')} onPress={() => setGate('restore')} /></Row>
-        <Row label={t('settings.privacy')} icon="info"><IconButton icon="info" label={t('settings.privacy')} onPress={() => setGate('privacy')} /></Row>
-        <Row label={t('settings.reset')} icon="trash"><IconButton icon="trash" label={t('settings.reset')} color={COLORS.danger} onPress={() => Alert.alert(t('settings.reset'), t('settings.resetConfirm'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.confirm'), style: 'destructive', onPress: reset }])} /></Row>
+        <Row label={t('settings.restore')}><IconButton icon="restore" label={t('settings.restore')} onPress={() => setGate('restore')} /></Row>
+        <Row label={t('settings.privacy')}><IconButton icon="info" label={t('settings.privacy')} onPress={() => setGate('privacy')} /></Row>
+        <Row label={t('settings.reset')} danger><IconButton icon="trash" label={t('settings.reset')} color={COLORS.danger} onPress={() => Alert.alert(t('settings.reset'), t('settings.resetConfirm'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.confirm'), style: 'destructive', onPress: reset }])} /></Row>
         {note ? <Text style={styles.note}>{note}</Text> : null}
         <View style={styles.about}>
           <Text style={styles.label}>{t('settings.about')}</Text>
@@ -79,6 +86,7 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', gap: 16, paddingBottom: 8 },
   title: { color: '#fff', fontSize: 28, fontWeight: '800' },
   body: { alignSelf: 'center', width: '100%', maxWidth: 620, padding: 16, gap: 10 },
+  rowDanger: { marginTop: 22, borderWidth: 2, borderColor: 'rgba(255,111,145,0.55)', backgroundColor: 'rgba(255,111,145,0.08)' },
   row: { minHeight: 64, alignItems: 'center', justifyContent: 'space-between', gap: 16, backgroundColor: COLORS.panel, borderRadius: 18, paddingHorizontal: 18 },
   label: { color: '#fff', fontSize: 18, fontWeight: '600' },
   seg: { paddingHorizontal: 14, minHeight: 48, borderRadius: 14, backgroundColor: COLORS.floor, justifyContent: 'center' },

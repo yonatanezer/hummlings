@@ -61,7 +61,9 @@ export function PlayerScreen({ song, onBack }: { song: Song; onBack: () => void 
     let alive = true;
     void (async () => { await engine.init(); await engine.loadStage(stage); if (alive) { setReady(true); play(); } })();
     let raf = 0;
-    const loop = () => { if (engine.state === 'running') sv.beat.value = engine.positionBeats(); raf = requestAnimationFrame(loop); };
+    let lastBeat = -1;
+    // about 30 writes a second: each one re-runs the scene on the UI thread
+    const loop = () => { if (engine.state === 'running') { const b = engine.positionBeats(); if (Math.abs(b - lastBeat) >= 0.055) { lastBeat = b; sv.beat.value = b; } } raf = requestAnimationFrame(loop); };
     raf = requestAnimationFrame(loop);
     return () => { alive = false; cancelAnimationFrame(raf); engine.stop(); };
   }, []);

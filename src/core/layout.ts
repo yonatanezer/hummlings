@@ -101,7 +101,9 @@ export function popupRects(l: Layout, spot: number): PopupRects {
   const onRight = spot < l.spots.length / 2; // open toward the middle of the screen
   const x = onRight ? sp.x + l.size * 0.55 : sp.x - l.size * 0.55 - w;
   const sliderH = Math.max(0.75 * l.size, 96);
-  const bottom = sp.y;
+  // In a small drawing (the how-to lesson) the popup would start above the top edge: slide it down until it fits. On a real stage this is 0.
+  const dy = Math.max(0, 4 - (sp.y - sliderH - w - 8 - 6));
+  const bottom = sp.y + dy;
   const solo: Rect = { x, y: bottom - sliderH - w - 8, w, h: w };
   const slider: Rect = { x, y: bottom - sliderH, w, h: sliderH };
   const panel: Rect = { x: x - 6, y: solo.y - 6, w: w + 12, h: sliderH + w + 8 + 12 };

@@ -39,6 +39,8 @@ export interface SceneInput {
   trayPicture?: SkPicture | null; // pre-recorded singer menu (app only; headless renders draw it directly)
   backdropImage?: SkImage | null; // the backdrop rasterised once per change (app only): replaying its vector ops every frame was a large part of the UI-thread cost
   trayImage?: SkImage | null; // the singer menu rasterised once per change (app only)
+  trayStrip?: SkImage | null; // the scrolling singers only, rasterised once at scroll 0 and slid by scrollX (app only)
+  trayStripRatio?: number; // pixels per unit of that strip
   pixelRatio?: number; // device pixels per layout unit that the two images were rendered at
   trayK?: number; // 1 = singer menu shown, 0 = slid away (animated by the screen)
   popup?: { spot: number; creatureId: string; volume: number; solo: boolean } | null; // volume popup after a long press
@@ -128,12 +130,25 @@ export function creatureFeet(s: SceneInput, id: string): { x: number; y: number 
 /** The singer menu as one self-contained drawing (panel, group captions, singers). Static between touches, so the app records it once as a Picture. */
 export function drawTray(sk: SkiaApi, c: Canvas, s: SceneInput) {
   'worklet';
+  drawTrayPanel(sk, c, s);
+  drawTrayStrip(sk, c, s);
+}
+
+/** The fixed part of the singer menu: dark panel, glow line and grab bar. Three cheap shapes, so it is drawn every frame. */
+export function drawTrayPanel(sk: SkiaApi, c: Canvas, s: SceneInput) {
+  'worklet';
   const { layout: l, stage } = s;
   c.drawRect(rect(0, l.tray.y, l.W, l.tray.h + 6), paint(sk, mix(stage.palette.sky, '#000000', 0.55), 0.94));
   c.drawRect(rect(0, l.tray.y, l.W, 2), paint(sk, stage.palette.glow, 0.25));
   c.drawRRect(sk.RRectXY(rect(l.W / 2 - 24, l.tray.y + 5, 48, 5), 2.5, 2.5), paint(sk, '#FFFFFF', 0.35)); // grab bar
+}
+
+/** The scrolling part: group backdrops and singers, shifted by scrollX. With scrollX = 0 this is what the app rasterises once into a strip and slides. */
+export function drawTrayStrip(sk: SkiaApi, c: Canvas, s: SceneInput) {
+  'worklet';
+  const { layout: l, stage } = s;
   c.save();
-  c.clipRect(rect(0, l.tray.y + 2, l.W, l.tray.h), 1, true);
+  c.clipRect(rect(0, l.tray.y + 2, Math.max(l.W, l.trayContentW + 2 * l.slot), l.tray.h), 1, true); // as wide as the whole row: the app rasterises it unscrolled
   const per = stage.creatures.length / 4;
   [0, 1, 2, 3].forEach((g) => {
     const a = l.slotPos[g * per]!, b = l.slotPos[g * per + per - 1]!;
@@ -377,7 +392,15 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   const trayDy = (1 - trayK) * (l.tray.h + 6);
   c.save();
   c.translate(0, trayDy);
-  if (s.trayImage) drawRaster(c, s.trayImage, s.pixelRatio ?? 1); else if (s.trayPicture) c.drawPicture(s.trayPicture); else drawTray(sk, c, s);
+  if (s.trayStrip) {
+    drawTrayPanel(sk, c, s);
+    c.save();
+    c.clipRect(rect(0, l.tray.y + 2, l.W, l.tray.h), 1, true);
+    c.translate(-s.scrollX, l.tray.y);
+    c.scale(1 / (s.trayStripRatio ?? 1), 1 / (s.trayStripRatio ?? 1));
+    c.drawImage(s.trayStrip, 0, 0);
+    c.restore();
+  } else if (s.trayImage) drawRaster(c, s.trayImage, s.pixelRatio ?? 1); else if (s.trayPicture) c.drawPicture(s.trayPicture); else drawTray(sk, c, s);
   c.restore(); // end of the sliding tray
   if (trayK < 0.98) {
     const hy = l.H - 34 * (1 - trayK);
