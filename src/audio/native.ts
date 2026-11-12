@@ -58,16 +58,52 @@ export class NativeEngine implements AudioEngine {
     for (const [k, asset] of Object.entries(SFX_ASSETS)) this.sfxBuf.set(k, await ctx.decodeAudioData(asset));
   }
 
-  async loadStage(stage: Stage): Promise<void> {
-    const ctx = this.ctx!;
+  private pending = new Map<string, Promise<void>>(); // loops being decoded right now (so a second request waits for the first instead of decoding twice)
+  private wanted = new Set<string>(); // the loops of the stage that was asked for last; anything else is dropped (memory cap)
+
+  private decodeLoop(file: string): Promise<void> {
+    if (this.buffers.has(file)) return Promise.resolve();
+    const hit = this.pending.get(file);
+    if (hit) return hit;
+    const job = this.ctx!.decodeAudioData(LOOP_ASSETS[file]!).then((buf) => {
+      if (this.wanted.has(file)) this.buffers.set(file, buf); // the player may have moved on to another world meanwhile
+    }).finally(() => { this.pending.delete(file); });
+    this.pending.set(file, job);
+    return job;
+  }
+
+  /** Decodes `files` a few at a time, in the given order, so the first singers' loops are ready after a moment instead of all of them after the longest wait. */
+  private async decodeInOrder(files: string[], parallel: number): Promise<void> {
+    let next = 0;
+    const worker = async () => {
+      while (next < files.length) {
+        const f = files[next++]!;
+        if (!this.wanted.has(f)) return; // another world was asked for meanwhile
+        await this.decodeLoop(f);
+      }
+    };
+    await Promise.all(Array.from({ length: parallel }, worker));
+  }
+
+  /**
+   * Decodes the stage's loops. By default it resolves when all of them are ready. With `background` it resolves as soon as the world's bed is ready and the singers'
+   * loops keep decoding while the stage already plays: a singer whose loop is not ready yet simply joins at the next bar (see apply()), so opening a world no longer
+   * waits for ~20 decodes.
+   */
+  async loadStage(stage: Stage, opts?: { background?: boolean }): Promise<void> {
     this.fileIndex = new Map(stage.creatures.map((c) => [c.id, c.loopFile]));
     this.ambFile = stage.ambienceFile;
     const files = [...stage.creatures.map((c) => c.loopFile), ...stage.combos.map((c) => c.bonusLoopFile), stage.ambienceFile];
-    await Promise.all(files.filter((f) => !this.buffers.has(f)).map(async (f) => {
-      this.buffers.set(f, await ctx.decodeAudioData(LOOP_ASSETS[f]!));
-    }));
+    this.wanted = new Set(files);
     // Memory cap: keep only this stage's buffers.
-    for (const k of [...this.buffers.keys()]) if (!files.includes(k)) this.buffers.delete(k);
+    for (const k of [...this.buffers.keys()]) if (!this.wanted.has(k)) this.buffers.delete(k);
+    if (opts?.background) {
+      await this.decodeLoop(stage.ambienceFile);
+      // the singers first (in tray order), then the combo bonus loops
+      void this.decodeInOrder(files.filter((f) => f !== stage.ambienceFile), 3).catch(() => undefined);
+      return;
+    }
+    await Promise.all(files.map((f) => this.decodeLoop(f)));
   }
 
   async decodeBank(files: string[], loopSamples: number): Promise<Record<string, Float32Array>> {

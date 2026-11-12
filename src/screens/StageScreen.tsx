@@ -118,7 +118,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
     });
     (async () => {
       await engine.init();
-      await engine.loadStage(stage);
+      await engine.loadStage(stage, { background: true });
       if (!alive) return;
       session.start();
       const before = recallBand(stage.id); // coming back from the guide, songs or settings: the band is still on stage

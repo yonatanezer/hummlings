@@ -21,8 +21,8 @@ export type EngineState = 'idle' | 'running' | 'paused';
  */
 export interface AudioEngine {
   init(): Promise<void>;
-  /** Decode every loop of the stage (and the tick). */
-  loadStage(stage: Stage): Promise<void>;
+  /** Decode every loop of the stage (and the tick). With `background` it may resolve once the world's bed is ready and keep decoding the singers' loops while the stage plays. */
+  loadStage(stage: Stage, opts?: { background?: boolean }): Promise<void>;
   /** Decodes loops to mono Float32 at 48 kHz, each trimmed to exactly `loopSamples` (used by song export). */
   decodeBank(files: string[], loopSamples: number): Promise<Record<string, Float32Array>>;
   /** Starts the clock at bar 0 (first boundary ~100 ms from now) and begins asking `provider` for each bar. */

@@ -115,7 +115,13 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
   useEffect(() => {
     // Decode the sounds now so the first touch answers at once; an idle audio context is suspended again.
     const engine = getEngine();
-    void engine.init().then(() => { engine.setVolume(progress.settings.musicVolume); if (engine.state === 'idle') engine.stop(); }).catch(() => undefined);
+    void engine.init().then(async () => {
+      engine.setVolume(progress.settings.musicVolume);
+      if (engine.state === 'idle') engine.stop();
+      // The free world is where a new player goes first: decode its loops now, while they look at the home screen (resolves once its bed is ready, the rest follows).
+      const first = STAGES.find((st) => FREE_STAGE_IDS.includes(st.id));
+      if (first && engine.state === 'idle') await engine.loadStage(first, { background: true });
+    }).catch(() => undefined);
   }, []);
   const sing = (x: number, y: number) => {
     const i = heroHitTest(geo, x, y);
