@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HERO_COUNT, HERO_NOTES, HERO_PICKS, heroGeometry, heroHitTest } from '../src/ui/draw/hero';
+import { HERO_COUNT, HERO_NOTES, HERO_PICKS, heroGeometry, heroHitTest } from '../src/core/hero';
 import { STAGES } from '../src/content';
 
 describe('home singers', () => {

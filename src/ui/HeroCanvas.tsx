@@ -13,17 +13,21 @@ export function HeroCanvas({ geo, width, hits, introStart, gap = 300, still, clo
   const time = clock ?? own;
   const base = useSharedValue(-1);
   const last = useSharedValue(0);
+  const active = useSharedValue(0); // last time (ms) something happened: the intro ran or a singer was touched
   // One stable callback (an inline one re-registers on every render and restarts the clock). Idle life only needs ~30 fps; a touch or the intro gets full rate.
   const onFrame = useCallback((info: FrameInfo) => {
     'worklet';
     if (base.value < 0) base.value = info.timestamp - time.value;
     const t = info.timestamp - base.value;
     const busy = introStart.value >= 0 || hits.value.length > 0;
-    if (t - last.value < (busy ? 15 : 32)) return;
+    if (busy) active.value = t;
+    // After ~12 s without anything happening the scene rests (a still frame): no more redraws until the next touch, which saves the battery of an idle home screen.
+    if (!busy && t - active.value > 12000) return;
+    if (t - last.value < (busy ? 15 : 40)) return;
     last.value = t;
     time.value = t;
     if (hits.value.length > 0 && hits.value.every((h) => t - h.t > 1100)) hits.value = [];
-  }, [base, time, last, introStart, hits]);
+  }, [base, time, last, active, introStart, hits]);
   useFrameCallback(onFrame);
   const creatures = useMemo(() => HERO_PICKS.map((i) => STAGES[0]!.creatures[i]!), []);
   const picture = useDerivedValue(() => {

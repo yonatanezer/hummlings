@@ -56,6 +56,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
   const [recording, setRecording] = useState(false);
   const [recBars, setRecBars] = useState(0);
   const [book, setBook] = useState(false);
+  useEffect(() => { if (paused) setBook(false); }, [paused]); // the resume button must not sit on top of the combo book
   const [limitMsg, setLimitMsg] = useState(false);
   const [saved, setSaved] = useState<Song | null>(null);
   const [exportMsg, setExportMsg] = useState<ExportResult | null>(null);
@@ -316,7 +317,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
           <IconButton icon="help" label={t('a11y.help')} caption={t('ui.help')} onPress={onHelp} />
         </View>
       </View>
-      <View pointerEvents="box-none" style={[styles.clear, { left: insets.left + 14, top: layout.stageH - 70 }]}>
+      <View pointerEvents="box-none" style={[styles.clear, { left: insets.left + 14, top: layout.stageH - 84 }]}>
         <IconButton icon="dice" label={t('a11y.surprise')} caption={t('ui.surprise')} onPress={() => {
           const l = layoutRef.current;
           rememberForUndo();
@@ -330,7 +331,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
           syncScene();
         }} />
       </View>
-      <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 14, top: layout.stageH - 70 }]}>
+      <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 14, top: layout.stageH - 84 }]}>
         {onStageCount > 0 && <IconButton icon="sweep" label={t('a11y.clear')} caption={t('ui.clear')} onPress={() => {
           const l = layoutRef.current;
           rememberForUndo();
@@ -376,7 +377,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
         </>
       )}
       {undo && (
-        <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 154, top: layout.stageH - 70 }]}>
+        <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 154, top: layout.stageH - 84 }]}>
           <IconButton icon="restore" label={t('a11y.undo')} caption={t('ui.undo')} bg={COLORS.accent} onPress={() => { restoreBand(undo); setUndo(null); }} />
         </View>
       )}

@@ -30,10 +30,10 @@ function WorldCard({ stage, index, cardW, cardH, locked, found, hint, still, onP
   useEffect(() => {
     if (still) { enter.value = 1; return; }
     enter.value = withDelay(120 + index * 90, withTiming(1, { duration: 420, easing: Easing.out(Easing.back(1.4)) }));
-    bob.value = withDelay(700 + index * 230, withRepeat(withSequence(withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.sin) }), withTiming(0, { duration: 1800, easing: Easing.inOut(Easing.sin) })), -1));
+    bob.value = withDelay(700 + index * 230, withRepeat(withSequence(withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.sin) }), withTiming(0, { duration: 1800, easing: Easing.inOut(Easing.sin) })), 2)); // a few floats, then rest: an endless loop kept the UI and render threads busy (about one core) on an idle home screen
   }, [still]);
   useEffect(() => {
-    if (hint && !still) pulse.value = withRepeat(withSequence(withTiming(1, { duration: 700 }), withTiming(0, { duration: 700 })), -1);
+    if (hint && !still) pulse.value = withRepeat(withSequence(withTiming(1, { duration: 700 }), withTiming(0, { duration: 700 })), 8); // the first-visit hint pulses for about 11 s, then stays lit
     else pulse.value = 0;
   }, [hint, still]);
   const lift = useAnimatedStyle(() => ({ opacity: enter.value, transform: [{ translateY: (1 - enter.value) * 26 - bob.value * 5 }, { scale: 0.92 + enter.value * 0.08 }] }));

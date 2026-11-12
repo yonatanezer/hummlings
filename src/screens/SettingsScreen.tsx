@@ -52,7 +52,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {langs.map((l) => (
               <Pressable key={l} accessibilityRole="button" accessibilityState={{ selected: s.language === l }} onPress={() => setSetting('language', l)} style={[styles.seg, s.language === l && styles.segOn]}>
-                <Text style={styles.segText}>{t(`settings.language.${l}` as 'settings.language.en')}</Text>
+                <Text style={[styles.segText, s.language === l && styles.segTextOn]}>{t(`settings.language.${l}` as 'settings.language.en')}</Text>
               </Pressable>
             ))}
           </View>
@@ -79,9 +79,10 @@ const styles = StyleSheet.create({
   body: { alignSelf: 'center', width: '100%', maxWidth: 620, padding: 16, gap: 10 },
   row: { minHeight: 64, alignItems: 'center', justifyContent: 'space-between', gap: 16, backgroundColor: COLORS.panel, borderRadius: 18, paddingHorizontal: 18 },
   label: { color: '#fff', fontSize: 18, fontWeight: '600' },
-  seg: { paddingHorizontal: 14, minHeight: 44, borderRadius: 14, backgroundColor: COLORS.floor, justifyContent: 'center' },
+  seg: { paddingHorizontal: 14, minHeight: 48, borderRadius: 14, backgroundColor: COLORS.floor, justifyContent: 'center' },
   segOn: { backgroundColor: COLORS.accent },
   segText: { color: '#fff', fontSize: 16 },
+  segTextOn: { color: COLORS.sky, fontWeight: '700' }, // white on the blue chip was 2.99:1
   note: { color: COLORS.ok, fontSize: 16, textAlign: 'center' },
   about: { padding: 12, gap: 4 },
   dim: { color: COLORS.textDim, fontSize: 16 },

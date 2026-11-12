@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState, type ReactElement } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, cancelAnimation, runOnJS } from 'react-native-reanimated';
 import { makeGate } from '../core/gate';
 import { TUNING } from '../core/tuning';
@@ -10,6 +10,9 @@ import { COLORS } from './theme';
 /** Parental gate: solve a one-digit addition (digits only), then hold the ring for 2 seconds. */
 export function ParentalGate({ onPass, onCancel }: { onPass: () => void; onCancel: () => void }) {
   const gate = useMemo(() => makeGate(), []);
+  // A phone held sideways is only about 360-390 dp tall: the card (about 390 dp as one column) would be cut at the top and bottom, hiding the hold button. Short screens get two columns.
+  const { width, height } = useWindowDimensions();
+  const compact = height < 460;
   const [answer, setAnswer] = useState<number | null>(null);
   const [wrong, setWrong] = useState(false);
   const progress = useSharedValue(0);
@@ -24,25 +27,42 @@ export function ParentalGate({ onPass, onCancel }: { onPass: () => void; onCance
   };
   const release = () => { holding.current = false; cancelAnimation(progress); progress.value = withTiming(0, { duration: 200 }); };
 
+  const question = (
+    <>
+      <Text style={styles.title} accessibilityRole="header">{t('gate.title')}</Text>
+      <Text style={[styles.sum, compact && { fontSize: 36 }]}>{gate.a} + {gate.b}</Text>
+      <View style={{ flexDirection: 'row', gap: 16 }}>
+        {gate.options.map((o) => (
+          <Pressable key={o} accessibilityRole="button" accessibilityLabel={`${o}`} onPress={() => { setAnswer(o); setWrong(o !== gate.correct); }}
+            style={[styles.opt, compact && { height: 60 }, answer === o && { borderColor: COLORS.glow, backgroundColor: COLORS.panelLight }]}>
+            <Text style={styles.optText}>{o}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </>
+  );
+  const hint = <Text style={[styles.hint, wrong && { color: COLORS.danger }]}>{wrong ? t('gate.wrong') : t('gate.hold')}</Text>;
+  const hold = (
+    <Pressable accessibilityRole="button" accessibilityLabel={t('gate.hold')} onPressIn={press} onPressOut={release} style={styles.holdWrap}>
+      <Animated.View style={[styles.ring, ringStyle]} />
+    </Pressable>
+  );
   return (
     <View style={styles.overlay} accessibilityViewIsModal>
-      <View style={styles.card}>
-        <Text style={styles.title} accessibilityRole="header">{t('gate.title')}</Text>
-        <Text style={styles.sum}>{gate.a} + {gate.b}</Text>
-        <View style={{ flexDirection: 'row', gap: 16 }}>
-          {gate.options.map((o) => (
-            <Pressable key={o} accessibilityRole="button" accessibilityLabel={`${o}`} onPress={() => { setAnswer(o); setWrong(o !== gate.correct); }}
-              style={[styles.opt, answer === o && { borderColor: COLORS.glow, backgroundColor: COLORS.panelLight }]}>
-              <Text style={styles.optText}>{o}</Text>
-            </Pressable>
-          ))}
+      {compact ? (
+        <View style={[styles.card, { width: Math.min(width - 32, 640), flexDirection: 'row', gap: 28, paddingVertical: 16, alignItems: 'center' }]}>
+          <View style={{ flex: 1, alignItems: 'center', gap: 10 }}>{question}</View>
+          <View style={{ alignItems: 'center', gap: 8 }}>{hold}{hint}</View>
+          <View style={styles.cancel}><IconButton icon="close" label={t('common.cancel')} onPress={onCancel} /></View>
         </View>
-        <Text style={[styles.hint, wrong && { color: COLORS.danger }]}>{wrong ? t('gate.wrong') : t('gate.hold')}</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel={t('gate.hold')} onPressIn={press} onPressOut={release} style={styles.holdWrap}>
-          <Animated.View style={[styles.ring, ringStyle]} />
-        </Pressable>
-        <View style={styles.cancel}><IconButton icon="close" label={t('common.cancel')} onPress={onCancel} /></View>
-      </View>
+      ) : (
+        <View style={styles.card}>
+          {question}
+          {hint}
+          {hold}
+          <View style={styles.cancel}><IconButton icon="close" label={t('common.cancel')} onPress={onCancel} /></View>
+        </View>
+      )}
     </View>
   );
 }

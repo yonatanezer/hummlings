@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   title: { color: '#fff', fontSize: 26, fontWeight: '800' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   card: { borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,232,163,0.4)' },
-  caption: { color: '#fff', fontSize: 18, textAlign: 'center', lineHeight: 26, minHeight: 56 },
+  caption: { color: '#fff', fontSize: 18, textAlign: 'center', lineHeight: 26, minHeight: 104 },
   dot: { width: 12, height: 12, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.22)' },
   dotOn: { backgroundColor: COLORS.glow, width: 28 },
 });

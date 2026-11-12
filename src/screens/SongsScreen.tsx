@@ -71,9 +71,9 @@ export function SongsScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (s
       </View>
       {msg === 'saved' && <View style={[styles.banner, { flexDirection: row, backgroundColor: COLORS.ok }]}><Icon name="check" color="#10282A" size={28} /><Text style={[styles.bannerText, { color: '#10282A' }]}>{t('rec.savedDevice')}</Text></View>}
       {msg && msg !== 'shared' && msg !== 'saved' && (
-        <View style={[styles.banner, { flexDirection: row }]}><Icon name="full" color="#fff" size={28} /><Text style={styles.bannerText}>{t('songs.storageFull')}</Text></View>
+        <View style={[styles.banner, { flexDirection: row }]}><Icon name="full" color={COLORS.sky} size={28} /><Text style={styles.bannerText}>{t('songs.storageFull')}</Text></View>
       )}
-      {progress.songs.length >= 50 && <View style={[styles.banner, { flexDirection: row }]}><Icon name="full" color="#fff" size={28} /><Text style={styles.bannerText}>{t('songs.limit')}</Text></View>}
+      {progress.songs.length >= 50 && <View style={[styles.banner, { flexDirection: row }]}><Icon name="full" color={COLORS.sky} size={28} /><Text style={styles.bannerText}>{t('songs.limit')}</Text></View>}
       {progress.songs.length === 0 ? (
         <View style={styles.empty}><Icon name="note" size={72} color={COLORS.textDim} /><Text style={styles.dim}>{t('songs.empty')}</Text><Text style={[styles.dim, { fontSize: 15, maxWidth: 360, textAlign: 'center', opacity: 0.8 }]}>{t('songs.emptyHint')}</Text></View>
       ) : (
@@ -95,7 +95,7 @@ export function SongsScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (s
                 <IconButton icon="pencil" label={t('songs.rename')} onPress={() => { setRenaming(item.id); setDraft(item.name); }} />
                 <IconButton icon="share" label={t('songs.share')} onPress={() => ask(() => void share(item))} bg={busy === item.id ? COLORS.accent : undefined} />
                 <IconButton icon="download" label={t('rec.saveDevice')} onPress={() => ask(() => void saveDev(item))} bg={busy === item.id ? COLORS.accent : undefined} />
-                <IconButton icon="trash" label={t('songs.delete')} color={COLORS.danger} onPress={() => del(item)} />
+                <View style={{ marginStart: 14 }}><IconButton icon="trash" label={t('songs.delete')} color={COLORS.danger} onPress={() => del(item)} /></View>
               </View>
             );
           }}
@@ -116,5 +116,5 @@ const styles = StyleSheet.create({
   dim: { color: COLORS.textDim, fontSize: 14 },
   input: { color: '#fff', fontSize: 20, borderBottomWidth: 2, borderColor: COLORS.glow, padding: 4 },
   banner: { alignItems: 'center', gap: 10, marginHorizontal: 16, padding: 12, borderRadius: 14, backgroundColor: COLORS.danger },
-  bannerText: { color: '#fff', fontSize: 16, flex: 1 },
+  bannerText: { color: COLORS.sky, fontSize: 16, fontWeight: '600', flex: 1 }, // dark text on the pink banner (white was 2.65:1)
 });
