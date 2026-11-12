@@ -8,6 +8,7 @@ import { computeLayout } from '../core/layout';
 import { Session } from '../core/session';
 import { popRate } from '../core/sfx';
 import { randomBand } from '../core/surprise';
+import { AccentContext } from '../ui/IconButton';
 import { coachKind, pickSlot, pickSpot, pickTapSpot, type CoachCue } from '../core/coach';
 import { audibleIds, nextFreeSpot, type StageState } from '../core/stageState';
 import { autoName, warnBars, type Song } from '../core/timeline';
@@ -334,6 +335,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
   const row = rtl ? 'row-reverse' : 'row';
 
   return (
+    <AccentContext.Provider value={stage.palette.glow}>
     <View style={styles.root}>
       <SceneCanvas sv={sv} width={width} height={height} />
       <View style={StyleSheet.absoluteFill} onTouchStart={touchFn('start')} onTouchMove={touchFn('move')} onTouchEnd={touchFn('end')} onTouchCancel={touchFn('cancel')} />
@@ -348,7 +350,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
             const warn = recBars >= warnBars(stage.bpm);
             return <Text style={[styles.rec, warn && styles.recWarn]} accessibilityLabel={`${t('rec.recording')} ${secs}`}>{`${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`}</Text>;
           })()}
-          <View><RecordPulse on={recordCue && !recording} /><IconButton icon={recording ? 'stop' : 'record'} label={recording ? t('a11y.stopRecord') : t('a11y.record')} caption={recording ? t('ui.stop') : t('ui.record')} color={recording ? '#FFFFFF' : COLORS.rec} bg={recording ? COLORS.rec : undefined} onPress={onRecord} /></View>
+          <View><RecordPulse on={recordCue && !recording} /><IconButton primary icon={recording ? 'stop' : 'record'} label={recording ? t('a11y.stopRecord') : t('a11y.record')} caption={recording ? t('ui.stop') : t('ui.record')} color={recording ? '#FFFFFF' : COLORS.rec} bg={recording ? COLORS.rec : undefined} onPress={onRecord} /></View>
           <IconButton icon="combos" label={t('a11y.comboBook')} caption={t('ui.combos')} onPress={() => setBook(true)} />
           <IconButton icon="note" label={t('a11y.songs')} caption={t('ui.songs')} onPress={onSongs} />
           <IconButton icon="help" label={t('a11y.help')} caption={t('ui.help')} onPress={onHelp} />
@@ -458,6 +460,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
         </View>
       )}
     </View>
+    </AccentContext.Provider>
   );
 
   function rememberForUndo() {

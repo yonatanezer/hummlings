@@ -10,6 +10,7 @@ export const en = {
   'stage.frost': 'Frosty Peaks',
 
   'goals.title': 'Stickers',
+  'settings.introSound': 'Sound at start',
   'select.locked': 'Locked',
   'select.title': 'Pick a world',
   'select.tapToPlay': 'Tap to play',

@@ -58,6 +58,7 @@ function WorldCard({ stage, index, cardW, cardH, locked, found, hint, still, onP
           <StageCardArt stage={stage} locked={locked} width={cardW} height={cardH} />
           <View style={[styles.emblem, { width: em, height: em, borderRadius: em / 2 }]}><WorldIcon stageId={stage.id} size={em * 0.7} /></View>
           {locked && <View style={[styles.lock, { width: lk, height: lk, borderRadius: lk / 2 }]}><Icon name="lock" size={lk * 0.58} color="#FFE8A3" /></View>}
+          {locked && <View style={[styles.listen, { width: lk * 0.85, height: lk * 0.85, borderRadius: lk * 0.43 }]}><Icon name="note" size={lk * 0.5} color="#10282A" /></View>}
           {hint && <Animated.View pointerEvents="none" style={[styles.finger, { top: cardH * 0.42 }, fingerStyle]} />}
         </View>
         <Text numberOfLines={2} style={[styles.name, { fontSize: fs, maxWidth: cardW, minHeight: fs * 2.6, textAlign: 'center' }]}>{name}</Text>
@@ -89,7 +90,7 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
   const fitW = (availW - GAP * (STAGES.length - 1)) / STAGES.length;
   const cardW = Math.min(Math.max(fitW, 110), 220);
   const nameBlock = Math.min(18, cardW * 0.12) * 2.8 + 12 + 24; // two-line name, dots, gaps and the float of the card
-  const cardH = Math.max(52, Math.min(height - cardsTop - 8 - nameBlock, cardW * 0.78));
+  const cardH = Math.max(52, Math.min(height - cardsTop - 8 - nameBlock, cardW * 0.92));
   const row = rtl ? 'row-reverse' : 'row';
   const fits = STAGES.length * cardW + (STAGES.length - 1) * GAP <= availW;
   const Wrap = (fits ? View : ScrollView) as ElementType;
@@ -186,6 +187,7 @@ const styles = StyleSheet.create({
   emblem: { position: 'absolute', top: 10, left: 10, width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(27,19,64,0.92)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)', alignItems: 'center', justifyContent: 'center' },
   lock: { position: 'absolute', top: 10, right: 10, width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(27,19,64,0.8)', alignItems: 'center', justifyContent: 'center' },
   ring: { position: 'absolute', top: -6, left: -6, borderWidth: 3, borderColor: COLORS.glow },
+  listen: { position: 'absolute', right: 10, bottom: 10, backgroundColor: COLORS.ok, alignItems: 'center', justifyContent: 'center' }, // a locked world can be listened to first
   finger: { position: 'absolute', alignSelf: 'center', width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255,255,255,0.94)', borderWidth: 4, borderColor: '#FFC857' },
   dot: { width: 14, height: 14, borderRadius: 7 },
   dotOn: { backgroundColor: COLORS.glow },

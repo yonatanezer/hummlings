@@ -54,7 +54,8 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       engine.init().then(() => { engine.setVolume(progress.settings.musicVolume); engine.stop(); return true; }).catch(() => false),
       new Promise<boolean>((r) => setTimeout(() => r(false), INIT_WAIT_MS)),
     ]);
-    void ready.then((hasSound) => {
+    void ready.then((initOk) => {
+      const hasSound = initOk && progress.settings.introSound;
       if (!alive) return;
       introStart.value = clock.value + 60;
       const letters = Array.from(t('app.name')).length;

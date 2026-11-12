@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { APP_VERSION, PRIVACY_URL } from '../app/config';
 import { getPurchases } from '../app/purchases';
@@ -10,6 +10,7 @@ import { Icon, type IconName } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
 import { ParentalGate } from '../ui/ParentalGate';
 import { Slider } from '../ui/Slider';
+import { Toggle } from '../ui/Toggle';
 import { COLORS } from '../ui/theme';
 import type { Settings } from '../core/progress';
 
@@ -46,8 +47,9 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
       </View>
       <ScrollView contentContainerStyle={styles.body}>
         <Row label={t('settings.volume')} icon="volume"><View style={{ flex: 1, maxWidth: 320 }}><Slider label={t('settings.volume')} value={s.musicVolume} onChange={(v) => setSetting('musicVolume', v)} /></View></Row>
-        <Row label={t('settings.haptics')} icon="vibrate"><Switch accessibilityLabel={t('settings.haptics')} value={s.haptics} onValueChange={(v) => setSetting('haptics', v)} /></Row>
-        <Row label={t('settings.reduceMotion')} icon="motion"><Switch accessibilityLabel={t('settings.reduceMotion')} value={s.reduceMotion} onValueChange={(v) => setSetting('reduceMotion', v)} /></Row>
+        <Row label={t('settings.introSound')} icon="note"><Toggle label={t('settings.introSound')} value={s.introSound} onChange={(v) => setSetting('introSound', v)} /></Row>
+        <Row label={t('settings.haptics')} icon="vibrate"><Toggle label={t('settings.haptics')} value={s.haptics} onChange={(v) => setSetting('haptics', v)} /></Row>
+        <Row label={t('settings.reduceMotion')} icon="motion"><Toggle label={t('settings.reduceMotion')} value={s.reduceMotion} onChange={(v) => setSetting('reduceMotion', v)} /></Row>
         <Row label={t('settings.language')} icon="globe">
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {langs.map((l) => (

@@ -12,6 +12,7 @@ import { t, type StringKey } from '../i18n';
 import { useLang } from '../i18n/useLang';
 import { Icon } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
+import { WorldIcon } from '../ui/WorldIcon';
 import { useParentalGate } from '../ui/ParentalGate';
 import { COLORS } from '../ui/theme';
 
@@ -85,17 +86,18 @@ export function SongsScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (s
             const stage = getStage(item.stageId);
             return (
               <View style={[styles.item, { flexDirection: row }]}>
+                <WorldIcon stageId={item.stageId} size={44} />
                 <View style={{ flex: 1 }}>
                   {renaming === item.id ? (
                     <TextInput autoFocus value={draft} maxLength={24} onChangeText={setDraft} onSubmitEditing={() => commit(item)} onBlur={() => commit(item)} style={styles.input} accessibilityLabel={t('songs.rename')} />
                   ) : <Text style={styles.name}>{shownName(item.name)}</Text>}
                   <Text style={styles.dim}>{t(stage.nameKey as StringKey)} · {fmtLen(item, stage.bpm)} · {t('songs.bars', { n: item.bars })} · {new Date(item.createdAt).toLocaleDateString()}</Text>
                 </View>
-                <IconButton icon="play" label={t('a11y.play')} onPress={() => onPlay(item.id)} />
-                <IconButton icon="pencil" label={t('songs.rename')} onPress={() => { setRenaming(item.id); setDraft(item.name); }} />
-                <IconButton icon="share" label={t('songs.share')} onPress={() => ask(() => void share(item))} bg={busy === item.id ? COLORS.accent : undefined} />
-                <IconButton icon="download" label={t('rec.saveDevice')} onPress={() => ask(() => void saveDev(item))} bg={busy === item.id ? COLORS.accent : undefined} />
-                <View style={{ marginStart: 14 }}><IconButton icon="trash" label={t('songs.delete')} color={COLORS.danger} onPress={() => del(item)} /></View>
+                <IconButton icon="play" size={68} bg={COLORS.ok} color="#10282A" label={t('a11y.play')} onPress={() => onPlay(item.id)} />
+                <IconButton icon="pencil" size={46} label={t('songs.rename')} onPress={() => { setRenaming(item.id); setDraft(item.name); }} />
+                <IconButton icon="share" size={46} label={t('songs.share')} onPress={() => ask(() => void share(item))} bg={busy === item.id ? COLORS.accent : undefined} />
+                <IconButton icon="download" size={46} label={t('rec.saveDevice')} onPress={() => ask(() => void saveDev(item))} bg={busy === item.id ? COLORS.accent : undefined} />
+                <View style={{ marginStart: 14 }}><IconButton icon="trash" size={46} label={t('songs.delete')} color={COLORS.danger} onPress={() => del(item)} /></View>
               </View>
             );
           }}

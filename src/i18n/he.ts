@@ -12,6 +12,7 @@ export const he: Record<StringKey, string> = {
   'stage.frost': 'פסגות הכפור',
 
   'goals.title': 'מדבקות',
+  'settings.introSound': 'צליל בפתיחה',
   'select.locked': 'נעול',
   'select.title': 'בחרו עולם',
   'select.tapToPlay': 'לחצו כדי לשחק',

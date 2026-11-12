@@ -125,14 +125,22 @@ export function creatureFeet(s: SceneInput, id: string): { x: number; y: number 
   return p ? s.layout.spots[p.spot]! : null;
 }
 
-/** Small icon marking each colour group in the tray: drum, bass wave, note, mouth. Readable without text. */
+/** A round badge marking each colour group in the tray (drum, bass wave, note, microphone): bigger than the old line glyph and drawn from the same shapes as the interface icons. */
 function layerGlyph(sk: SkiaApi, c: Canvas, layer: string, x: number, y: number, color: string) {
   'worklet';
-  const p = paint(sk, color, 1, STROKE, 2.4);
-  if (layer === 'drums') { c.drawOval(rect(x - 9, y - 3, 18, 9), p); c.drawLine(x - 7, y - 10, x - 1, y - 2, p); c.drawLine(x + 7, y - 10, x + 1, y - 2, p); }
-  else if (layer === 'bass') { const q = sk.PathBuilder.Make(); q.moveTo(x - 10, y); q.cubicTo(x - 6, y - 10, x - 2, y + 8, x + 1, y); q.cubicTo(x + 4, y - 8, x + 8, y + 8, x + 11, y); c.drawPath(q.build(), p); }
-  else if (layer === 'melody') { c.drawCircle(x - 4, y + 5, 4, paint(sk, color)); c.drawLine(x, y + 5, x, y - 9, p); c.drawLine(x, y - 9, x + 8, y - 6, p); }
-  else { c.drawOval(rect(x - 10, y - 6, 20, 14), p); c.drawOval(rect(x - 4, y, 8, 5), paint(sk, color)); }
+  c.drawCircle(x, y, 18, paint(sk, color, 0.95));
+  c.drawCircle(x, y, 18, paint(sk, '#FFFFFF', 0.55, STROKE, 1.5));
+  const ink = '#1B1340';
+  const k = 0.95; // 24-unit grid -> about 23 px
+  c.save();
+  c.translate(x - 12 * k, y - 12 * k);
+  c.scale(k, k);
+  const line = (d: string, w = 2.4) => c.drawPath(sk.Path.MakeFromSVGString(d)!, paint(sk, ink, 1, STROKE, w));
+  if (layer === 'drums') line('M4 11a8 3 0 1 0 16 0a8 3 0 1 0-16 0 M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6 M7 3l4 5 M17 3l-4 5');
+  else if (layer === 'bass') line('M3 12c3-6 6 6 9 0s6 6 9 0', 3);
+  else if (layer === 'melody') { c.drawCircle(7, 17, 3, paint(sk, ink)); c.drawCircle(17, 15, 3, paint(sk, ink)); line('M9.5 17V6l10-2v11'); }
+  else line('M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z M6 11a6 6 0 0 0 12 0 M12 17v4');
+  c.restore();
 }
 
 /** The singer menu as one self-contained drawing (panel, group captions, singers). Static between touches, so the app records it once as a Picture. */
@@ -149,7 +157,7 @@ export function drawTray(sk: SkiaApi, c: Canvas, s: SceneInput) {
     const a = l.slotPos[g * per]!, b = l.slotPos[g * per + per - 1]!;
     const layer = stage.creatures[g * per]!.layer;
     c.drawRRect(sk.RRectXY(rect(a.x - l.slot * 0.55 - s.scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84), 14, 14), paint(sk, LAYER_COLORS[layer], 0.16));
-    layerGlyph(sk, c, layer, Math.max(a.x - l.slot * 0.55 - s.scrollX, 0) + 16, l.tray.y + l.tray.h * 0.08 + 14, LAYER_COLORS[layer]);
+    layerGlyph(sk, c, layer, Math.max(a.x - l.slot * 0.55 - s.scrollX, 0) + 26, l.tray.y + l.tray.h * 0.08 + 22, LAYER_COLORS[layer]);
   });
   const trayS = Math.min(l.slot * 0.72, (l.tray.h - 36) / 1.4); // leaves a caption row above the tallest singer
   stage.creatures.forEach((cr, i) => {

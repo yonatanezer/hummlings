@@ -20,6 +20,7 @@ export interface Settings {
   musicVolume: number; // 0..1
   haptics: boolean;
   reduceMotion: boolean; // forced on; otherwise follows system
+  introSound: boolean; // the notes of the opening (off: it opens silently)
   language: 'system' | 'en' | 'he';
 }
 
@@ -28,7 +29,7 @@ export const defaultProgress = (): Progress => ({
   discoveredCombos: [],
   songs: [],
   unlocked: false,
-  settings: { musicVolume: 0.8, haptics: true, reduceMotion: false, language: 'system' },
+  settings: { musicVolume: 0.8, haptics: true, reduceMotion: false, introSound: true, language: 'system' },
   firstDropDone: false,
   goals: [],
   helpSeen: false,
@@ -53,6 +54,7 @@ export function parseProgress(raw: unknown): Progress {
       musicVolume: typeof s.musicVolume === 'number' ? Math.min(1, Math.max(0, s.musicVolume)) : d.settings.musicVolume,
       haptics: s.haptics !== false,
       reduceMotion: s.reduceMotion === true,
+      introSound: s.introSound !== false,
       language: s.language === 'en' || s.language === 'he' ? s.language : 'system',
     },
     firstDropDone: r.firstDropDone === true,

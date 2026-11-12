@@ -72,8 +72,8 @@ export function ComboBook({ stage, session, discovered, onClose, onReplay }: Pro
 
 const styles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(10,6,32,0.72)', alignItems: 'center', justifyContent: 'center' },
-  sheet: { backgroundColor: COLORS.panel, borderRadius: 28, paddingHorizontal: 24, paddingVertical: 28, justifyContent: 'center' },
-  close: { position: 'absolute', top: -20, right: -20, zIndex: 3 },
+  sheet: { backgroundColor: COLORS.panel, borderRadius: 28, paddingHorizontal: 24, paddingTop: 64, paddingBottom: 24, justifyContent: 'center' },
+  close: { position: 'absolute', top: 6, right: 6, zIndex: 3 }, // inside the corner, above the first row of cards
   row: { flexDirection: 'row', justifyContent: 'center', gap: 24, alignItems: 'flex-start' },
   dot: {},
   shelf: { flexDirection: 'row', justifyContent: 'center', gap: 14, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },

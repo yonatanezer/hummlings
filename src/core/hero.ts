@@ -16,7 +16,7 @@ export interface HeroGeo {
 /** Where the singers stand. Shared by the intro and the home screen so the creatures that land in the intro are exactly the ones on the home screen. */
 export function heroGeometry(width: number, height: number, topBarH: number, insetL: number, insetR: number): HeroGeo {
   const avail = Math.max(120, height - topBarH);
-  const zoneH = Math.min(260, Math.max(96, avail * 0.46));
+  const zoneH = Math.min(240, Math.max(92, avail * 0.4));
   const usable = Math.max(240, width - insetL - insetR - 24);
   const S = Math.min(zoneH * 0.6, usable / 6.4);
   const xs: number[] = [];

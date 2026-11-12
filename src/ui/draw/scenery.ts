@@ -32,7 +32,7 @@ export function drawScenery(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: 
   const fy = l.stageH * 0.93 + H * 0.055;
   c.save();
   if (id === 'pond') {
-    const mx = W * 0.82, my = H * 0.2, mr = H * 0.085;
+    const mx = W * 0.7, my = H * 0.27, mr = H * 0.085; // clear of the world emblem in the top corner
     if (S) {
       c.drawCircle(mx, my, mr * 3, paint(sk, '#FFF6C8', 0.12));
       c.drawCircle(mx, my, mr, paint(sk, '#FFF6D0'));
