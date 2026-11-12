@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useState, type ElementType } from 'react';
+import { useEffect, useMemo, useRef, useState, type ElementType } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Canvas, Picture, Skia } from '@shopify/react-native-skia';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getEngine } from '../audio';
 import { STAGES, FREE_STAGE_IDS } from '../content';
 import type { Stage } from '../core/types';
 import { t, type StringKey } from '../i18n';
 import { useLang } from '../i18n/useLang';
 import { useProgress } from '../app/progress';
 import { drawHomeBackdrop } from '../ui/draw/home';
+import { HERO_NOTES, heroGeometry, heroHitTest, paddedGeo, type HeroHit } from '../ui/draw/hero';
+import { HeroCanvas } from '../ui/HeroCanvas';
+import { HomeTitle, TITLE_SIDE } from '../ui/HomeTitle';
 import { Icon } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
 import { StageCardArt } from '../ui/StageCardArt';
@@ -35,6 +39,9 @@ function WorldCard({ stage, index, cardW, cardH, locked, found, hint, still, onP
   const lift = useAnimatedStyle(() => ({ opacity: enter.value, transform: [{ translateY: (1 - enter.value) * 26 - bob.value * 5 }, { scale: 0.92 + enter.value * 0.08 }] }));
   const ring = useAnimatedStyle(() => ({ opacity: hint ? 0.45 + pulse.value * 0.55 : 0, transform: [{ scale: 1 + pulse.value * 0.025 }] }));
   const total = stage.combos.length;
+  const em = Math.min(56, cardH * 0.52);
+  const lk = Math.min(48, cardH * 0.46);
+  const fs = Math.min(18, cardW * 0.12);
   const name = t(stage.nameKey as StringKey);
   return (
     <Pressable
@@ -43,17 +50,17 @@ function WorldCard({ stage, index, cardW, cardH, locked, found, hint, still, onP
       accessibilityHint={locked ? undefined : t('select.found', { n: found, m: total })}
       onPress={onPress}
       style={({ pressed }) => [{ width: cardW, transform: [{ scale: pressed ? 0.96 : 1 }] }]}>
-      <Animated.View style={[{ alignItems: 'center', gap: 10 }, lift]}>
+      <Animated.View style={[{ alignItems: 'center', gap: 6 }, lift]}>
         <View>
-          <Animated.View pointerEvents="none" style={[styles.ring, { width: cardW + 12, height: cardH + 12, borderRadius: 30 }, ring]} />
+          <Animated.View pointerEvents="none" style={[styles.ring, { width: cardW + 12, height: cardH + 12, borderRadius: 26 }, ring]} />
           <StageCardArt stage={stage} locked={locked} width={cardW} height={cardH} />
-          <View style={styles.emblem}><WorldIcon stageId={stage.id} size={40} /></View>
-          {locked && <View style={styles.lock}><Icon name="lock" size={28} color="#FFE8A3" /></View>}
+          <View style={[styles.emblem, { width: em, height: em, borderRadius: em / 2 }]}><WorldIcon stageId={stage.id} size={em * 0.7} /></View>
+          {locked && <View style={[styles.lock, { width: lk, height: lk, borderRadius: lk / 2 }]}><Icon name="lock" size={lk * 0.58} color="#FFE8A3" /></View>}
           {hint && (
             <View style={styles.hintPill}><Icon name="play" size={16} color="#10282A" /><Text style={styles.hintText} numberOfLines={1}>{t('select.tapToPlay')}</Text></View>
           )}
         </View>
-        <Text numberOfLines={2} style={[styles.name, { fontSize: Math.min(22, cardW * 0.13), maxWidth: cardW, minHeight: Math.min(22, cardW * 0.13) * 3, textAlign: 'center' }]}>{name}</Text>
+        <Text numberOfLines={2} style={[styles.name, { fontSize: fs, maxWidth: cardW, minHeight: fs * 2.6, textAlign: 'center' }]}>{name}</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {stage.combos.map((c, i) => <View key={c.id} style={[styles.dot, i < found ? styles.dotOn : styles.dotOff]} />)}
         </View>
@@ -68,16 +75,21 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
   const { rtl } = useLang();
   const { progress } = useProgress();
   const still = progress.settings.reduceMotion;
-  // The buttons float above the cards, so the cards are centred in the space below them (not under them), and sized to fit one row when they can.
   const topBarH = insets.top + 6 + 84;
+  const geo = useMemo(() => heroGeometry(width, height, topBarH, insets.left, insets.right), [width, height, topBarH, insets.left, insets.right]);
+  // The hill runs on under the world cards, so there is no seam where the singers' zone ends.
+  const padded = useMemo(() => paddedGeo(geo, height - geo.top), [geo, height]);
+  // The world cards live below the hill of the singers and share what is left of the height.
+  const cardsTop = geo.top + geo.height + 2;
   const GAP = 14;
   // Measured width of the area the cards live in (the window width also counts the system bar, which pushed the row off-centre).
   const [areaW, setAreaW] = useState(0);
   // Centred on what the eye sees: the camera cut-out (left inset) and the navigation bar (right inset) both eat space, so the left inset is mirrored on the right.
   const availW = (areaW || width) - insets.left * 2 - insets.right - 32;
   const fitW = (availW - GAP * (STAGES.length - 1)) / STAGES.length;
-  const cardW = Math.min(Math.max(fitW, 120), 260);
-  const cardH = Math.min((height - topBarH - 90) * 0.9, cardW * 1.1);
+  const cardW = Math.min(Math.max(fitW, 110), 220);
+  const nameBlock = Math.min(18, cardW * 0.12) * 2.8 + 12 + 24; // two-line name, dots, gaps and the float of the card
+  const cardH = Math.max(52, Math.min(height - cardsTop - 8 - nameBlock, cardW * 0.78));
   const row = rtl ? 'row-reverse' : 'row';
   const fits = STAGES.length * cardW + (STAGES.length - 1) * GAP <= availW;
   const Wrap = (fits ? View : ScrollView) as ElementType;
@@ -92,21 +104,58 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
   }, [width, height]);
   // New players are pointed at the free world; once anything was played the hint disappears.
   const firstVisit = !progress.firstDropDone && progress.discoveredCombos.length === 0 && progress.songs.length === 0;
+
+  // The singers: touch one (or slide over several) and it hops and sings its note; the wordmark swells with every note.
+  const clock = useSharedValue(0);
+  const hits = useSharedValue<HeroHit[]>([]);
+  const introStart = useSharedValue(-1);
+  const pulse = useSharedValue(0);
+  const hitsRef = useRef<HeroHit[]>([]);
+  const lastIdx = useRef(-1);
+  useEffect(() => {
+    // Decode the sounds now so the first touch answers at once; an idle audio context is suspended again.
+    const engine = getEngine();
+    void engine.init().then(() => { engine.setVolume(progress.settings.musicVolume); if (engine.state === 'idle') engine.stop(); }).catch(() => undefined);
+  }, []);
+  const sing = (x: number, y: number) => {
+    const i = heroHitTest(geo, x, y);
+    if (i < 0) { lastIdx.current = -1; return; }
+    if (i === lastIdx.current) return;
+    lastIdx.current = i;
+    hapticLight();
+    const now = clock.value;
+    hitsRef.current = [...hitsRef.current.filter((h) => now - h.t < 1100), { i, t: now }];
+    hits.value = hitsRef.current;
+    getEngine().playSfx('pop', HERO_NOTES[i]!);
+    pulse.value = withSequence(withTiming(1, { duration: 80 }), withTiming(0, { duration: 280 }));
+  };
   return (
     <View style={styles.root}>
       <Canvas style={StyleSheet.absoluteFill} pointerEvents="none"><Picture picture={backdrop} /></Canvas>
+      <View
+        style={{ position: 'absolute', top: geo.top, left: 0, width, height: geo.height }}
+        onTouchStart={(e) => sing(e.nativeEvent.locationX, e.nativeEvent.locationY)}
+        onTouchMove={(e) => sing(e.nativeEvent.locationX, e.nativeEvent.locationY)}
+        onTouchEnd={() => { lastIdx.current = -1; }}
+        onTouchCancel={() => { lastIdx.current = -1; }}
+        accessible={false}
+      >
+        <View style={{ position: 'absolute', top: -padded.pad, left: 0 }} pointerEvents="none">
+          <HeroCanvas geo={padded.geo} width={width} hits={hits} introStart={introStart} still={still} clock={clock} />
+        </View>
+      </View>
+      <View style={[styles.titleWrap, { top: insets.top + 6, left: insets.left + TITLE_SIDE, right: insets.right + TITLE_SIDE }]} pointerEvents="none">
+        <HomeTitle title={t('app.name')} subtitle={t('app.subtitle')} pulse={pulse} />
+      </View>
       <View style={[styles.top, { top: insets.top + 6, left: insets.left + 10, right: insets.right + 10, flexDirection: row }]}>
         <IconButton icon="note" label={t('a11y.songs')} caption={t('ui.songs')} onPress={onSongs} />
-        <View style={styles.titleBox} pointerEvents="none">
-          <Text style={styles.title} accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit>{t('app.name')}</Text>
-          <Text style={styles.subtitle} numberOfLines={1} adjustsFontSizeToFit>{t('app.subtitle')}</Text>
-        </View>
+        <View style={{ flex: 1 }} />
         <View style={{ flexDirection: row, gap: 10 }}>
           <IconButton icon="help" label={t('a11y.help')} caption={t('ui.help')} onPress={onHelp} badge={!progress.helpSeen} />
           <IconButton icon="gear" label={t('a11y.settings')} caption={t('ui.settings')} onPress={onSettings} />
         </View>
       </View>
-      <View style={{ alignSelf: 'stretch', marginTop: topBarH, paddingLeft: insets.left + 16, paddingRight: insets.left + insets.right + 16 }} onLayout={(e) => setAreaW(e.nativeEvent.layout.width)}>
+      <View style={{ position: 'absolute', top: cardsTop, left: 0, right: 0, paddingLeft: insets.left + 16, paddingRight: insets.left + insets.right + 16 }} onLayout={(e) => setAreaW(e.nativeEvent.layout.width)}>
         <Wrap {...wrapProps}>
           {STAGES.map((st, i) => {
             const locked = !FREE_STAGE_IDS.includes(st.id) && !progress.unlocked;
@@ -125,9 +174,7 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.sky, justifyContent: 'center' },
   top: { position: 'absolute', alignItems: 'flex-start', zIndex: 2 },
-  titleBox: { flex: 1, alignItems: 'center', paddingTop: 2, paddingHorizontal: 8 },
-  title: { color: '#FFFFFF', fontSize: 38, fontWeight: '900', letterSpacing: 1, textShadowColor: '#FF7AA8', textShadowRadius: 14, maxWidth: '100%' },
-  subtitle: { color: COLORS.textDim, fontSize: 14, fontWeight: '600', maxWidth: '100%' },
+  titleWrap: { position: 'absolute', alignItems: 'center' },
   cards: { justifyContent: 'center', alignItems: 'flex-start' },
   name: { color: '#fff', fontSize: 22, fontWeight: '700' },
   emblem: { position: 'absolute', top: 10, left: 10, width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(27,19,64,0.92)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)', alignItems: 'center', justifyContent: 'center' },

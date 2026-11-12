@@ -24,6 +24,4 @@ export function drawHomeBackdrop(sk: SkiaApi, c: Canvas, w: number, h: number) {
     star.setAlphaf(0.25 + ((i * 13) % 7) * 0.08);
     c.drawCircle(x, y, s, star);
   }
-  // hill
-  c.drawOval(rect(-w * 0.2, h * 0.87, w * 1.4, h * 0.6), gradientPaint(sk, 0, h * 0.87, 0, h, ['#2A1F5C', '#0D0824']));
 }

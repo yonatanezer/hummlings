@@ -12,6 +12,7 @@ import clouds from '../content/stages/3-clouds.json';
 import neon from '../content/stages/4-neon.json';
 import frost from '../content/stages/5-frost.json';
 import { WebEngine } from './engine';
+import { initHome } from './home';
 import { en } from '../src/i18n/en';
 import { popRate } from '../src/core/sfx';
 import { randomBand } from '../src/core/surprise';
@@ -626,6 +627,7 @@ $('dice').addEventListener('click', () => {
   hint = false; engine.playSfx('goal');
 });
 $('clear').addEventListener('click', () => { if (!session) return; rememberForUndo(); session.state.spots.forEach((id, s) => { if (id) returning.push({ id, since: performance.now(), from: layout.spots[s]! }); }); session.dispatch({ kind: 'clear' }); });
+initHome({ splash: $('splash'), canvas: $<HTMLCanvasElement>('homeCv'), title: $('homeTitle'), engine, creatures: STAGES[0]!.creatures, atlasUrl: 'sprites/pond.png' });
 $('start').addEventListener('click', () => { $('splash').classList.add('hide'); void openStage(0); });
 $('mute').addEventListener('click', () => { const on = engine.state === 'running'; if (on) engine.pause(); else engine.resume(); $('mute').setAttribute('aria-pressed', String(on)); $('mute').classList.toggle('off', on); });
 resize();

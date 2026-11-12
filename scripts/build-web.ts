@@ -12,36 +12,41 @@ const OUT = 'scripts/out/webdemo';
 const CELL_W = 220, CELL_H = 240, FEET_X = 110, FEET_Y = 222, S = 120;
 
 async function main() {
-  mkdirSync(`${OUT}/sprites`, { recursive: true });
-  mkdirSync(`${OUT}/audio`, { recursive: true });
-  for (const st of loadStages()) {
-    const png = await renderPng(CELL_W * 10, CELL_H * st.creatures.length, (sk, c) => {
-      st.creatures.forEach((cr, i) => {
-        // 9 poses = {rest, singing, blink} x ear/tail sway {-1, 0, +1}; the 10th is the muted pose
-        const sway = [267, 0.001, -267]; // pose.time values for sin(time / 170) = +1, 0, -1
-        const poses = [0, 1, 2].flatMap((state) => sway.map((time) => ({ ...IDLE_POSE, time, mouth: state === 1 ? 0.85 : 0, eyes: state === 2 ? 0 : 1 })));
-        poses.push({ ...IDLE_POSE, muted: true, alpha: 2.5, time: 0.001 });
-        poses.forEach((p, k) => drawCreature(sk, c, cr, k * CELL_W + FEET_X, i * CELL_H + FEET_Y, S, p));
-      });
-    }, 1);
-    writeFileSync(`${OUT}/sprites/${st.id}.png`, png);
-    for (const f of [...st.creatures.map((c) => c.loopFile), ...st.combos.map((c) => c.bonusLoopFile), st.ambienceFile]) {
-      execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', `assets/loops/${f}`, '-b:a', '96k', `${OUT}/audio/${f.replace('.m4a', '.mp3')}`]);
+  // --lite: only the script and the page (sprites, audio and help videos are already published; needs no ffmpeg)
+  const lite = process.argv.includes('--lite');
+  mkdirSync(OUT, { recursive: true });
+  if (!lite) {
+    mkdirSync(`${OUT}/sprites`, { recursive: true });
+    mkdirSync(`${OUT}/audio`, { recursive: true });
+    for (const st of loadStages()) {
+      const png = await renderPng(CELL_W * 10, CELL_H * st.creatures.length, (sk, c) => {
+        st.creatures.forEach((cr, i) => {
+          // 9 poses = {rest, singing, blink} x ear/tail sway {-1, 0, +1}; the 10th is the muted pose
+          const sway = [267, 0.001, -267]; // pose.time values for sin(time / 170) = +1, 0, -1
+          const poses = [0, 1, 2].flatMap((state) => sway.map((time) => ({ ...IDLE_POSE, time, mouth: state === 1 ? 0.85 : 0, eyes: state === 2 ? 0 : 1 })));
+          poses.push({ ...IDLE_POSE, muted: true, alpha: 2.5, time: 0.001 });
+          poses.forEach((p, k) => drawCreature(sk, c, cr, k * CELL_W + FEET_X, i * CELL_H + FEET_Y, S, p));
+        });
+      }, 1);
+      writeFileSync(`${OUT}/sprites/${st.id}.png`, png);
+      for (const f of [...st.creatures.map((c) => c.loopFile), ...st.combos.map((c) => c.bonusLoopFile), st.ambienceFile]) {
+        execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', `assets/loops/${f}`, '-b:a', '96k', `${OUT}/audio/${f.replace('.m4a', '.mp3')}`]);
+      }
+      console.log('built', st.id);
     }
-    console.log('built', st.id);
+    mkdirSync(`${OUT}/help`, { recursive: true });
+    const pondStage = loadStages()[0]!;
+    for (let i = 0; i < 7; i++) {
+      const dir = `scripts/out/helpframes_${i}`;
+      mkdirSync(dir, { recursive: true });
+      const frames = 106; // one 4.4 s loop at 24 fps
+      for (let f = 0; f < frames; f++) writeFileSync(`${dir}/f${String(f).padStart(3, '0')}.png`, await renderPng(560, 308, (sk, c) => drawHelpStep(sk, c, pondStage, i, (f / 24) * 1000, 560, 308), 1));
+      execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', '24', '-i', `${dir}/f%03d.png`, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '26', `${OUT}/help/${i + 1}.mp4`]);
+      rmSync(dir, { recursive: true, force: true });
+    }
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', 'assets/sfx/tick.m4a', '-b:a', '96k', `${OUT}/audio/tick.mp3`]);
+    for (const k of ['pop', 'pickup', 'mute', 'unmute', 'remove', 'goal', 'combo', 'snare']) execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', `assets/sfx/${k}.m4a`, '-b:a', '96k', `${OUT}/audio/sfx_${k}.mp3`]);
   }
-  mkdirSync(`${OUT}/help`, { recursive: true });
-  const pondStage = loadStages()[0]!;
-  for (let i = 0; i < 7; i++) {
-    const dir = `scripts/out/helpframes_${i}`;
-    mkdirSync(dir, { recursive: true });
-    const frames = 106; // one 4.4 s loop at 24 fps
-    for (let f = 0; f < frames; f++) writeFileSync(`${dir}/f${String(f).padStart(3, '0')}.png`, await renderPng(560, 308, (sk, c) => drawHelpStep(sk, c, pondStage, i, (f / 24) * 1000, 560, 308), 1));
-    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', '24', '-i', `${dir}/f%03d.png`, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '26', `${OUT}/help/${i + 1}.mp4`]);
-    rmSync(dir, { recursive: true, force: true });
-  }
-  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', 'assets/sfx/tick.m4a', '-b:a', '96k', `${OUT}/audio/tick.mp3`]);
-  for (const k of ['pop', 'pickup', 'mute', 'unmute', 'remove', 'goal', 'combo', 'snare']) execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', `assets/sfx/${k}.m4a`, '-b:a', '96k', `${OUT}/audio/sfx_${k}.mp3`]);
   await build({ entryPoints: ['web/main.ts'], bundle: true, minify: true, format: 'iife', target: 'es2020', outfile: `${OUT}/game.js`, loader: { '.json': 'json' }, logLevel: 'warning' });
   writeFileSync(`${OUT}/index.html`, `<title>Hummlings Playground</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -126,6 +131,15 @@ button.ic svg{width:26px;height:26px;flex:none}button.ic .off{display:none}butto
 #tip{position:fixed;left:50%;bottom:8px;color:#2A1F00;line-height:1.25;white-space:nowrap;transform:translateX(-50%);background:#FFE8A3;color:#2A1F00;padding:9px 18px;border-radius:20px;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.4);transition:opacity .4s;max-width:94vw;overflow:hidden;text-overflow:ellipsis}
 .hide{opacity:0;pointer-events:none;visibility:hidden}
 #splash,#loading{position:fixed;inset:0;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;background:rgba(21,15,51,.94);text-align:center;padding:24px;z-index:5}
+#splash{padding:0;background:#1B1340;justify-content:flex-start;gap:0;touch-action:none}#splash #homeCv{position:absolute;inset:0;z-index:0}
+#splash h1{position:relative;z-index:1;margin:max(10px,env(safe-area-inset-top,0px)) 0 0;font-size:clamp(34px,9vh,54px);font-weight:900;letter-spacing:1px;text-shadow:0 0 14px #FF7AA8;transition:transform .25s;pointer-events:none}
+#homeTitle span{display:inline-block;opacity:0;animation:lp .42s cubic-bezier(.3,1.6,.5,1) forwards}@keyframes lp{from{opacity:0;transform:translateY(-26px) scale(.5)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#homeTitle span{animation:none;opacity:1}}
+#splash #homeSub{position:relative;z-index:1;pointer-events:none;font-size:clamp(13px,3.2vh,16px)}
+#splash #start{position:absolute;z-index:2;bottom:max(14px,env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:76px;height:76px}
+#splash #start:active{transform:translateX(-50%) scale(.94)}
+#splash #homeHint{position:absolute;z-index:1;pointer-events:none;bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + 26px);left:calc(50% + 58px);right:12px;max-width:none;text-align:left;font-size:14px;opacity:.85}
+#splash #start{border-radius:50%}
 #loading{background:rgba(21,15,51,.7);z-index:4}
 #splash h1{margin:0;font-size:40px}#splash p{max-width:46ch;color:var(--dim);margin:0}
 #start{background:#5FE3C0;color:#10282A;font-size:20px;font-weight:700;min-height:56px;padding:0 32px;border-radius:28px}
@@ -199,7 +213,7 @@ button.ic svg{width:26px;height:26px;flex:none}button.ic .off{display:none}butto
 <div id="help" class="ov hide" role="dialog" aria-label="How to play"><div class="sheet"><button class="ic x" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2>How to play</h2><video id="helpVid" muted loop playsinline autoplay width="560" height="308"></video><p id="helpTxt"></p><div class="nav"><button id="hPrev" class="ic" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span id="hDots"></span><button id="hNext" class="ic" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></div></div></div>
 <div id="rotate" class="hide"><svg viewBox="0 0 24 24" width="84" height="84"><rect x="8" y="3" width="8" height="14" rx="2"/><path d="M4 14a8 8 0 0 0 5 7M20 10a8 8 0 0 0-5-7M9 21l-3-.5.5-3M15 3l3 .5-.5 3"/></svg></div>
 <div id="loading" class="hide"><p>Loading music…</p></div>
-<div id="splash"><h1>Hummlings</h1><p>Make music with tiny singers</p><button id="start" aria-label="Play"><svg viewBox="0 0 24 24" width="44" height="44"><path d="M7 4.5l13 7.5-13 7.5z" fill="currentColor" stroke="none"/></svg></button><p>Sound starts when you press play</p></div>
+<div id="splash"><canvas id="homeCv" aria-hidden="true"></canvas><h1 id="homeTitle" aria-label="Hummlings">Hummlings</h1><p id="homeSub">Make music with tiny singers</p><p id="homeHint">Touch the singers · press play to start</p><button id="start" aria-label="Play"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M7 4.5l13 7.5-13 7.5z" fill="currentColor" stroke="none"/></svg></button></div>
 <script src="game.js"></script>`);
   console.log('web demo ready');
 }
