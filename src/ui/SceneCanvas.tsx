@@ -2,10 +2,10 @@ import type { CoachCue } from '../core/coach';
 import { useCallback, useEffect, useRef } from 'react';
 import { PixelRatio } from 'react-native';
 import { Canvas, Picture, Skia, type SkPicture } from '@shopify/react-native-skia';
-import { useDerivedValue, useFrameCallback, useSharedValue, type FrameInfo, type SharedValue } from 'react-native-reanimated';
+import { runOnUI, useDerivedValue, useFrameCallback, useSharedValue, type FrameInfo, type SharedValue } from 'react-native-reanimated';
 import type { Layout } from '../core/layout';
 import type { Stage } from '../core/types';
-import { drawBackdrop, drawScene, drawTray, drawTrayStrip, type DragCreature, type PlacedCreature, type ReturningCreature, type SceneInput } from './draw/scene';
+import { drawBackdrop, drawScene, drawTrayStrip, type DragCreature, type PlacedCreature, type ReturningCreature, type SceneInput } from './draw/scene';
 
 /** All inputs of the scene as shared values: updated on events (JS) and read every frame (UI thread). */
 export interface SceneValues {
@@ -63,7 +63,7 @@ export function useSceneValues(stage: Stage, layout: Layout, reduceMotion: boole
 function trayKeyOf(sv: SceneValues): string {
   'worklet';
   const layout = sv.layout.value, placed = sv.placed.value, drags = sv.drags.value;
-  return `${sv.stage.value.id}|${layout.W}|${layout.H}|${layout.tray.y}|${layout.tray.h}|${layout.slot}|${placed.map((q) => q.id).join(',')}|${drags.map((d) => d.id).join(',')}`;
+  return `${sv.stage.value.id}|${layout.W}|${layout.H}|${layout.tray.y}|${layout.tray.h}|${layout.slot}|${layout.u}|${layout.trayContentW}|${layout.slotPos[0]!.x}|${placed.map((q) => q.id).join(',')}|${drags.map((d) => d.id).join(',')}`;
 }
 function backdropKeyOf(sv: SceneValues, bucket: number): string {
   'worklet';
@@ -92,6 +92,18 @@ export function SceneCanvas({ sv, width, height }: { sv: SceneValues; width: num
   // changes on every render, i.e. on every drop), which restarted timeSinceFirstFrame at 0 and left earlier stamps "in the future": creatures froze where they were
   // dropped. So the callback is stable and the clock comes from the frame's absolute timestamp.
   const clockBase = useSharedValue(-1);
+  // Leaving the stage frees its rasters at once (they live in a UI-runtime cache keyed by this mount's id and would otherwise stay until the app dies).
+  useEffect(() => () => {
+    runOnUI(() => {
+      'worklet';
+      const g = globalThis as unknown as { __hummMemo?: Record<string, { value?: { img?: { dispose?: () => void } | null; strip?: { dispose?: () => void } | null } } | undefined> };
+      for (const name of ['tray', 'backdrop']) {
+        const slot = g.__hummMemo?.[uid + name];
+        try { slot?.value?.img?.dispose?.(); slot?.value?.strip?.dispose?.(); } catch { /* already gone */ }
+        if (g.__hummMemo) delete g.__hummMemo[uid + name];
+      }
+    })();
+  }, [uid]);
   const { drags, celebration, popup, taps, returning, placed, coach, reward } = sv;
   const onFrame = useCallback((info: FrameInfo) => {
     'worklet';
@@ -101,13 +113,14 @@ export function SceneCanvas({ sv, width, height }: { sv: SceneValues; width: num
     // finger, and 30 while the band just plays: a resting stage ticks every ~32 ms, anything being dragged, dropped, tapped, celebrated or coached every ~15 ms.
     const busy = drags.value.length > 0 || celebration.value !== null || popup.value !== null || taps.value.length > 0 || returning.value.length > 0 || coach.value !== null || reward.value !== null
       || placed.value.some((p) => t - p.since < 900);
-    if (t - clock.value < (busy ? 15 : 32)) return;
+    if (t - clock.value < (busy ? 15 : 28)) return; // 28, not 32: at 60 Hz a frame can land at 31.5 ms and would otherwise be skipped (30 / 20 fps flicker)
     clock.value = t;
   }, [clock, clockBase, drags, celebration, popup, taps, returning, placed, coach, reward]);
   useFrameCallback(onFrame);
   // The singer menu only changes on touches, so it is recorded once per change instead of every frame.
   // Each static layer is recorded as a Picture AND rasterised once into a device-resolution image, together, only when its key changes: replaying their vector ops every frame used to be a large share of the UI-thread time.
-  const ratio = Math.min(2, PixelRatio.get()); // the static layers are soft gradients and flat scenery: 2 px per unit is plenty and takes half the GPU memory of a 2.8 px phone
+  const deviceRatio = PixelRatio.get(); // read here: PixelRatio does not exist inside a worklet (it crashed the UI runtime)
+  const ratio = Math.min(2, deviceRatio); // the static layers are soft gradients and flat scenery: 2 px per unit is plenty and takes half the GPU memory of a 2.8 px phone
   const rasterise = (pic: SkPicture) => {
     'worklet';
     const surface = Skia.Surface.MakeOffscreen(Math.ceil(width * ratio), Math.ceil(height * ratio));
@@ -119,20 +132,18 @@ export function SceneCanvas({ sv, width, height }: { sv: SceneValues; width: num
     return surface.makeImageSnapshot();
   };
   const trayLayer = useDerivedValue(() => {
-    const layout = sv.layout.value, stage = sv.stage.value, placed = sv.placed.value, drags = sv.drags.value, scrollX = sv.scrollX.value;
+    const layout = sv.layout.value, stage = sv.stage.value, placed = sv.placed.value, drags = sv.drags.value;
     return memoPicture(uid, 'tray', trayKeyOf(sv), () => {
       // Only the singers strip (not the whole screen) is rasterised, once, at scroll 0; the scene slides it by scrollX, so scrolling no longer rebuilds anything.
       // (A full-screen image per scroll tick, ~10 MB each, once blew the app up to >1 GB.)
       const input = { layout, stage, placed, drags, scrollX: 0 } as SceneInput;
       const last = layout.slotPos[layout.slotPos.length - 1]!;
       const stripW = Math.max(layout.W, last.x + layout.slot), stripH = layout.tray.h + 6;
-      const r = Math.min(ratio, 3800 / stripW); // stay under the usual 4096 px texture limit on a long tray
+      const r = Math.min(deviceRatio, 3800 / stripW); // full device sharpness for the singers (line art), only held under the usual 4096 px texture limit on a long tray
       const surface = Skia.Surface.MakeOffscreen(Math.ceil(stripW * r), Math.ceil(stripH * r));
       if (!surface) {
-        const rec = Skia.PictureRecorder();
-        const canvas = rec.beginRecording(Skia.XYWHRect(0, 0, width, height));
-        drawTray(Skia, canvas, { ...input, scrollX } as SceneInput);
-        return { pic: rec.finishRecordingAsPicture(), img: null as ReturnType<typeof rasterise>, strip: null as ReturnType<typeof rasterise>, r };
+        // No raster available: the scene draws the tray live (with the current scroll) instead of a frozen picture.
+        return { pic: null as SkPicture | null, img: null as ReturnType<typeof rasterise>, strip: null as ReturnType<typeof rasterise>, r };
       }
       const canvas = surface.getCanvas();
       canvas.scale(r, r);

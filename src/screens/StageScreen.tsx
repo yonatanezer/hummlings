@@ -152,9 +152,9 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
     let lastBeat = -1;
     const loop = () => {
       // Every write re-runs the scene on the UI thread, so only write when the beat moved enough to be seen (~16 ms of music).
-      // Every beat write re-runs the whole scene on the UI thread, so a resting stage writes it about 30 times a second (0.055 beat at 100 bpm) and anything moving about 80.
-      const moving = sv.drags.value.length > 0 || sv.celebration.value !== null || sv.popup.value !== null || sv.coach.value !== null;
-      if (engine.state === 'running') { const b = engine.positionBeats(); if (Math.abs(b - lastBeat) >= (moving ? 0.02 : 0.055)) { lastBeat = b; sv.beat.value = b; } }
+      // Every beat write re-runs the whole scene on the UI thread: throttled by time (not by beats, so slow songs stay smooth): ~33 ms resting, ~12 ms while anything moves.
+      const moving = sv.drags.value.length > 0 || sv.celebration.value !== null || sv.popup.value !== null || sv.coach.value !== null || sv.taps.value.length > 0 || sv.returning.value.length > 0 || sv.reward.value !== null;
+      if (engine.state === 'running') { const b = engine.positionBeats(); if (Math.abs(b - lastBeat) >= (stage.bpm / 60) * (moving ? 0.012 : 0.033)) { lastBeat = b; sv.beat.value = b; } }
       const rw = session.reward;
       if (rw && !session.celebrating) {
         const total = Math.max(1, rw.startBeat - rw.fromBeat);

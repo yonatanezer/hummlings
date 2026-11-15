@@ -63,7 +63,7 @@ export function PlayerScreen({ song, onBack }: { song: Song; onBack: () => void 
     let raf = 0;
     let lastBeat = -1;
     // about 30 writes a second: each one re-runs the scene on the UI thread
-    const loop = () => { if (engine.state === 'running') { const b = engine.positionBeats(); if (Math.abs(b - lastBeat) >= 0.055) { lastBeat = b; sv.beat.value = b; } } raf = requestAnimationFrame(loop); };
+    const loop = () => { if (engine.state === 'running') { const b = engine.positionBeats(); if (Math.abs(b - lastBeat) >= (stage.bpm / 60) * 0.033) { lastBeat = b; sv.beat.value = b; } } raf = requestAnimationFrame(loop); };
     raf = requestAnimationFrame(loop);
     return () => { alive = false; cancelAnimationFrame(raf); engine.stop(); };
   }, []);
