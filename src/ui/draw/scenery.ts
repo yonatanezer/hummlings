@@ -81,17 +81,18 @@ export function drawScenery(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: 
       c.drawCircle(mx, my, mr, paint(sk, '#FFF4D2'));
       c.drawCircle(mx + mr * 0.45, my - mr * 0.15, mr * 0.9, paint(sk, pal.sky));
     }
-    for (let i = 0; i < 6; i++) {
-      const hx = W * (0.08 + i * 0.16) + (i % 2) * 14, hy = l.stageH * 0.62, hw = 34 + (i % 3) * 8, hh = 26 + (i % 2) * 12;
+    // Cloud houses float in the sky at different heights (they used to stand in an even row at the singers' height, like six more places to stand).
+    for (let i = 0; i < 5; i++) {
+      const hx = W * ([0.07, 0.26, 0.45, 0.62, 0.94] as const)[i]!, hy = l.stageH * ([0.36, 0.27, 0.4, 0.25, 0.42] as const)[i]!, hw = 28 + (i % 3) * 6, hh = 22 + (i % 2) * 10;
       if (S) {
-        for (const [dx, dy, r] of [[0, 8, 30], [26, 12, 24], [-24, 12, 22]] as const) c.drawCircle(hx + dx, hy + dy, r, paint(sk, '#E8F6FF', 0.8));
+        for (const [dx, dy, r] of [[0, 8, 26], [22, 12, 20], [-20, 12, 18]] as const) c.drawCircle(hx + dx, hy + dy, r, paint(sk, '#E8F6FF', 0.8));
         c.drawRect(rect(hx - hw / 2, hy - hh, hw, hh), paint(sk, '#FFE8A3'));
         poly(sk, c, [hx - hw / 2 - 4, hy - hh, hx, hy - hh - 18, hx + hw / 2 + 4, hy - hh], paint(sk, '#7A8CFF'));
       }
       if (L) c.drawRect(rect(hx - 4, hy - hh * 0.65, 8, 9), paint(sk, '#FFAA3C', 0.6 + 0.3 * Math.sin(t / 700 + i)));
     }
     c.save(); floorClip(sk, c, l);
-    if (S) for (let i = 0; i < 18; i++) c.drawCircle(W * (i / 17), fy - H * 0.17 + (i % 3) * 10, 26, paint(sk, '#FFFFFF', 0.11));
+    if (S) for (let i = 0; i < 18; i++) c.drawCircle(W * (i / 17), fy - H * 0.17 + (i % 3) * 10, 26, paint(sk, '#FFFFFF', 0.07));
     c.restore();
   } else if (id === 'neon') {
     const hor = l.stageH * 0.6;
