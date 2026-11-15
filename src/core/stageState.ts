@@ -102,3 +102,15 @@ export function audibleIds(s: StageState): string[] {
 /** Order in which a tapped singer takes a spot: the middle of the stage first, then outward. */
 const SPOT_ORDER = [2, 3, 1, 4, 0, 5];
 export const nextFreeSpot = (s: StageState): number => SPOT_ORDER.find((i) => i < s.spots.length && !s.spots[i]) ?? -1;
+
+/**
+ * Which spot a new singer should take when every spot is taken: the stage singer of the same kind (a drummer replaces a drummer),
+ * otherwise a muted one, otherwise the first spot. The replaced singer hops back to the menu, so one tap swaps singers.
+ */
+export function swapSpot(s: StageState, layerOf: (id: string) => string | undefined, id: string): number {
+  const layer = layerOf(id);
+  const same = s.spots.findIndex((x) => x !== null && x !== id && layerOf(x) === layer);
+  if (same >= 0) return same;
+  const muted = s.spots.findIndex((x) => x !== null && s.muted[x]);
+  return muted >= 0 ? muted : 0;
+}

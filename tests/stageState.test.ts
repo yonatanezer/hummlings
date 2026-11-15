@@ -63,3 +63,19 @@ describe('silent level', () => {
     expect(audibleIds(s)).toEqual(['a', 'b']);
   });
 });
+
+import { swapSpot } from '../src/core/stageState';
+describe('swapSpot (tap a menu singer while the stage is full)', () => {
+  const layers: Record<string, string> = { d1: 'drums', d2: 'drums', b1: 'bass', m1: 'melody', v1: 'voice', v2: 'voice', x: 'bass' };
+  const full = { spots: ['d1', 'b1', 'm1', 'v1', 'x', 'd2'] as (string | null)[], muted: {}, solo: null, volume: {} };
+  const layerOf = (id: string) => layers[id];
+  it('replaces a singer of the same kind', () => {
+    expect(swapSpot(full, layerOf, 'v2')).toBe(3);
+    expect(swapSpot(full, layerOf, 'd2')).toBe(0);
+  });
+  it('without a same-kind singer: a muted one, else the first spot', () => {
+    const noVoice = { ...full, spots: ['d1', 'b1', 'm1', 'x', 'd2', 'b1'] as (string | null)[] };
+    expect(swapSpot({ ...noVoice, muted: { m1: true } }, layerOf, 'v2')).toBe(2);
+    expect(swapSpot(noVoice, layerOf, 'v2')).toBe(0);
+  });
+});

@@ -103,6 +103,8 @@ export const en = {
   'ui.settings': 'Settings',
   'ui.clear': 'Clear',
   'ui.undo': 'Undo',
+  'a11y.trayLeft': 'Scroll the singers left',
+  'a11y.trayRight': 'Scroll the singers right',
   'a11y.undo': 'Undo: bring the band back',
   'ui.surprise': 'Surprise',
   'a11y.surprise': 'Surprise me: a random band',

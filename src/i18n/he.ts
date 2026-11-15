@@ -105,6 +105,8 @@ export const he: Record<StringKey, string> = {
   'ui.settings': 'הגדרות',
   'ui.clear': 'ניקוי',
   'ui.undo': 'ביטול',
+  'a11y.trayLeft': 'לגלול את הזמרים שמאלה',
+  'a11y.trayRight': 'לגלול את הזמרים ימינה',
   'a11y.undo': 'ביטול: להחזיר את הלהקה',
   'ui.surprise': 'הפתעה',
   'a11y.surprise': 'הפתעה: להקה אקראית',

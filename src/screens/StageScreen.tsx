@@ -10,7 +10,7 @@ import { popRate } from '../core/sfx';
 import { randomBand } from '../core/surprise';
 import { AccentContext } from '../ui/IconButton';
 import { coachKind, pickSlot, pickSpot, pickTapSpot, type CoachCue } from '../core/coach';
-import { audibleIds, nextFreeSpot } from '../core/stageState';
+import { audibleIds, nextFreeSpot, swapSpot } from '../core/stageState';
 import { autoName, warnBars, type Song } from '../core/timeline';
 import { TUNING, barSec } from '../core/tuning';
 import { exportSong, saveSongToDevice, type ExportResult } from '../app/exportSong';
@@ -41,6 +41,24 @@ interface Props {
   onHelp: () => void;
   onPlay: (songId: string) => void;
   onDebug?: (s: string) => void;
+}
+
+/** A round arrow at the edge of the singer menu where more singers are hidden: it pulses, and a tap slides the menu. */
+function TrayArrow({ side, y, offset, label, onPress }: { side: 'left' | 'right'; y: number; offset: number; label: string; onPress: () => void }) {
+  const k = useSharedValue(0);
+  useEffect(() => {
+    k.value = withRepeat(withSequence(withTiming(1, { duration: 700 }), withTiming(0, { duration: 700 })), -1);
+    return () => cancelAnimation(k);
+  }, [k]);
+  const st = useAnimatedStyle(() => ({ transform: [{ translateX: (side === 'right' ? 1 : -1) * k.value * 6 }], opacity: 0.8 + k.value * 0.2 }));
+  return (
+    <Animated.View style={[{ position: 'absolute', top: y - 26, [side]: offset }, st]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={label} hitSlop={6} onPress={onPress}
+        style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(27,19,64,0.92)', borderWidth: 3, borderColor: '#FFE066', alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name={side === 'right' ? 'next' : 'back'} size={30} color="#FFE066" />
+      </Pressable>
+    </Animated.View>
+  );
 }
 
 /** The coach's last step: a ring that pulses around the record button (for someone who cannot read the label). */
@@ -86,6 +104,10 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
   const [toast, setToast] = useState<{ icons: IconName[]; text?: string } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [worlds, setWorlds] = useState(false);
+  const [edges, setEdges] = useState({ left: false, right: false }); // the singer menu has more singers hidden on this side
+  const scrollAnim = useRef(0);
+  const peeked = useRef(false);
+  const autoDemo = useRef(false);
   const showToast = (v: { icons: IconName[]; text?: string }) => { setToast(v); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(null), 2600); };
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
@@ -271,9 +293,10 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
         syncScene();
         break;
       case 'trayTap': {
-        const spot = nextFreeSpot(session.state);
         const i = stage.creatures.findIndex((c) => c.id === ev.creatureId);
-        if (spot < 0 || i < 0) { engine.playSfx('mute'); break; } // stage is full
+        // a full stage: the new singer takes the place of one of the same kind (else a muted one, else the first), which hops back to the menu
+        const spot = nextFreeSpot(session.state) >= 0 ? nextFreeSpot(session.state) : swapSpot(session.state, (id) => stage.creatures.find((c) => c.id === id)?.layer, ev.creatureId);
+        if (i < 0) break;
         apply({ type: 'drop', touch: -1, creatureId: ev.creatureId, spot, p: { x: l.slotPos[i]!.x - sv.scrollX.value, y: l.slotPos[i]!.y - l.size * 0.6 } });
         break;
       }
@@ -299,10 +322,30 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
       }
       case 'scroll':
         sv.scrollX.value = ev.scrollX;
+        syncEdges();
         break;
     }
   };
 
+  const applyRef = useRef(apply);
+  applyRef.current = apply;
+  const syncEdges = () => {
+    const l = layoutRef.current, x = sv.scrollX.value;
+    const left = x > 8, right = x < l.scrollMax - 8;
+    setEdges((e) => (e.left === left && e.right === right ? e : { left, right }));
+  };
+  const scrollTrayTo = (target: number, ms = 380) => {
+    cancelAnimationFrame(scrollAnim.current);
+    const from = sv.scrollX.value, t0 = Date.now();
+    const to = Math.max(0, Math.min(layoutRef.current.scrollMax, target));
+    const step = () => {
+      const k = Math.min(1, (Date.now() - t0) / ms);
+      sv.scrollX.value = from + (to - from) * (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
+      syncEdges();
+      if (k < 1) scrollAnim.current = requestAnimationFrame(step);
+    };
+    step();
+  };
   const touchFn = (kind: 'start' | 'move' | 'end' | 'cancel') => (e: GestureResponderEvent) => {
     // Lift/cancel events must always be handled: dropping them while paused left a creature stuck in the "dragged" list, drawn big and forever.
     if ((!ready || paused) && kind !== 'end' && kind !== 'cancel') return;
@@ -329,6 +372,12 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
       const pr = progressRef.current;
       const st = session.state;
       const onStage = st.spots.filter(Boolean).length;
+      // A new player who has not touched anything for a while: one singer hops onto the stage by itself, so the music starts and the idea is clear without words.
+      if (ready && !paused && !book && !recording && !gate && !autoDemo.current && !pr.firstDropDone && onStage === 0 && Date.now() - lastTouch.current > 9000) {
+        autoDemo.current = true;
+        const first = stage.creatures[0];
+        if (first) applyRef.current({ type: 'trayTap', creatureId: first.id });
+      }
       if (onStage >= 3 && !pr.coachMoreDone) update((p) => (p.coachMoreDone ? p : { ...p, coachMoreDone: true }));
       let cue: CoachCue | null = null;
       if (ready && !paused && !book && !recording && !gate && !sv.popup.value) {
@@ -343,6 +392,17 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     }, 500);
     return () => clearInterval(id);
   }, [ready, paused, book, recording, gate, session, sv, stage, update]);
+
+  // The menu holds more singers than fit: show it once by itself (a small slide and back), and keep arrows at the edges where more singers are hidden.
+  useEffect(() => {
+    syncEdges();
+    if (!ready || peeked.current || layout.scrollMax <= 0) return;
+    peeked.current = true;
+    const a = setTimeout(() => scrollTrayTo(Math.min(layout.scrollMax, layout.W * 0.32), 700), 1400);
+    const b = setTimeout(() => { if (Date.now() - lastTouch.current > 1500) scrollTrayTo(0, 700); }, 3000);
+    return () => { clearTimeout(a); clearTimeout(b); };
+  }, [ready, layout.scrollMax]);
+  useEffect(() => () => cancelAnimationFrame(scrollAnim.current), []);
 
   const onStageCount = session.state.spots.filter(Boolean).length;
   const row = rtl ? 'row-reverse' : 'row';
@@ -440,6 +500,12 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
             );
           })}
         </View>
+      )}
+      {(edges.left || edges.right) && (
+        <>
+          {edges.left && <TrayArrow side="left" y={layout.tray.y + layout.tray.h / 2} offset={insets.left + 6} label={t('a11y.trayLeft')} onPress={() => scrollTrayTo(sv.scrollX.value - layout.W * 0.7)} />}
+          {edges.right && <TrayArrow side="right" y={layout.tray.y + layout.tray.h / 2} offset={insets.right + 6} label={t('a11y.trayRight')} onPress={() => scrollTrayTo(sv.scrollX.value + layout.W * 0.7)} />}
+        </>
       )}
       {toast && (
         <View pointerEvents="none" accessibilityLiveRegion="polite" accessibilityLabel={toast.text} style={[styles.toast, { top: insets.top + 6 + 80 }]}>
