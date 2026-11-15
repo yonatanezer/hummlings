@@ -252,7 +252,7 @@ function drawBodyStatic(sk: SkiaApi, c: Canvas, cr: Creature, S: number, w: numb
   }
   drawBody(gradientPaint(sk, 0, -h * S, 0, 0,
     look === 'cloud' ? [mix(color, '#FFFFFF', 0.55), mix(color, '#FFFFFF', 0.28), mix(color, '#FFFFFF', 0.08)]
-    : look === 'neon' ? [mix(color, '#0B1020', 0.5), mix(color, '#0B1020', 0.68), mix(color, '#0B1020', 0.8)]
+    : look === 'neon' ? [mix(color, '#0B1020', 0.36), mix(color, '#0B1020', 0.52), mix(color, '#0B1020', 0.66)]
     : look === 'frost' ? [mix(color, '#FFFFFF', 0.78), mix(color, '#D6F0FF', 0.45), mix(color, '#8CC4F0', 0.2)]
     : [mix(color, '#FFFFFF', 0.3), color, deep]));
   if (look === 'neon' || look === 'frost') { // surface detail clipped to the body: scanlines + circuit (neon) or ice facets + sparkles (frost)

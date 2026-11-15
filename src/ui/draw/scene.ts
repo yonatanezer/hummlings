@@ -90,10 +90,20 @@ export function drawBackdrop(sk: SkiaApi, c: Canvas, st: Stage, l: Layout, bucke
   drawScenery(sk, c, st.id, l, pal, bucket * 1800, 'static');
 }
 
-function spotRing(sk: SkiaApi, c: Canvas, x: number, y: number, S: number, glow: string, hot: boolean) {
+/** A spot that is taken: just a ring, which pulses with the beat. */
+function spotRing(sk: SkiaApi, c: Canvas, x: number, y: number, S: number, col: string, alpha: number) {
   'worklet';
-  const r = rect(x - S * 0.42, y - S * 0.06, S * 0.84, S * 0.14);
-  c.drawOval(r, paint(sk, glow, hot ? 0.5 : 0.22, STROKE, 2));
+  c.drawOval(rect(x - S * 0.46, y - S * 0.08, S * 0.92, S * 0.18), paint(sk, col, alpha, STROKE, 2.5));
+}
+
+/** An empty spot is a landing pad: a soft glowing disc, a clear ring and a flat plus. While the stage is young it breathes, so it reads as "put a singer here". */
+function landingPad(sk: SkiaApi, c: Canvas, x: number, y: number, S: number, col: string, ringCol: string, pulse: number, young: boolean) {
+  'worklet';
+  c.drawOval(rect(x - S * 0.58, y - S * 0.15, S * 1.16, S * 0.34), radialPaint(sk, x, y + S * 0.01, S * 0.58, [mix(col, '#FFFFFF', 0.5), '#00000000'], 0.26 + 0.24 * pulse));
+  c.drawOval(rect(x - S * 0.5, y - S * 0.1, S, S * 0.2), paint(sk, ringCol, 0.55 + 0.3 * pulse, STROKE, 3));
+  const r = S * 0.07, a = (young ? 0.45 : 0.25) + 0.4 * pulse * (young ? 1 : 0);
+  c.drawLine(x - r, y, x + r, y, paint(sk, ringCol, a, STROKE, 3));
+  c.drawLine(x, y - r * 0.45, x, y + r * 0.45, paint(sk, ringCol, a, STROKE, 3));
 }
 
 function poseFor(cr: Creature, s: SceneInput, base: Partial<Pose>, bounce: boolean): Pose {
@@ -139,8 +149,8 @@ export function drawTrayPanel(sk: SkiaApi, c: Canvas, s: SceneInput) {
 /** Small pictogram of a singer kind: drum, wave, note, mouth. */
 function drawLayerGlyph(sk: SkiaApi, c: Canvas, layer: string, x: number, y: number, col: string) {
   'worklet';
-  const a = 0.9, u = 9;
-  const P = () => paint(sk, col, a, STROKE, 2.4);
+  const a = 0.95, u = 12;
+  const P = () => paint(sk, col, a, STROKE, 3);
   if (layer === 'drums') {
     c.drawOval(rect(x - u, y - u * 0.2, u * 2, u * 0.9), P());
     c.drawLine(x - u * 0.5, y - u * 0.9, x, y - u * 0.1, P()); c.drawLine(x + u * 0.5, y - u * 0.9, x, y - u * 0.1, P());
@@ -167,10 +177,11 @@ export function drawTrayStrip(sk: SkiaApi, c: Canvas, s: SceneInput) {
   [0, 1, 2, 3].forEach((g) => {
     const a = l.slotPos[g * per]!, b = l.slotPos[g * per + per - 1]!;
     const layer = stage.creatures[g * per]!.layer;
-    c.drawRRect(sk.RRectXY(rect(a.x - l.slot * 0.55 - s.scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84), 14, 14), paint(sk, LAYER_COLORS[layer], 0.16));
-    drawLayerGlyph(sk, c, layer, a.x - l.slot * 0.55 - s.scrollX + 15, l.tray.y + l.tray.h * 0.08 + 15, LAYER_COLORS[layer]); // a picture says which kind of singer this group is
+    c.drawRRect(sk.RRectXY(rect(a.x - l.slot * 0.55 - s.scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84), 22, 22), paint(sk, LAYER_COLORS[layer], 0.2));
+    c.drawRRect(sk.RRectXY(rect(a.x - l.slot * 0.55 - s.scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84), 22, 22), paint(sk, LAYER_COLORS[layer], 0.5, STROKE, 2));
+    drawLayerGlyph(sk, c, layer, a.x - l.slot * 0.55 - s.scrollX + 16, l.tray.y + l.tray.h * 0.08 + 17, LAYER_COLORS[layer]); // a picture says which kind of singer this group is
   });
-  const trayS = Math.min(l.slot * 0.74, (l.tray.h - 12) / 1.4); // leaves a little air above the tallest singer
+  const trayS = Math.min(l.slot * 0.92, (l.tray.h - 12) / 1.4); // leaves a little air above the tallest singer
   stage.creatures.forEach((cr, i) => {
     const p = l.slotPos[i]!;
     const standing = s.placed.some((q) => q.id === cr.id);
@@ -178,6 +189,12 @@ export function drawTrayStrip(sk: SkiaApi, c: Canvas, s: SceneInput) {
     const base: Partial<Pose> = standing || carried ? { sat: 0, alpha: 0.22, mouth: 0, eyes: 1 } : { mouth: 0 };
     const pose = { ...IDLE_POSE, ...base, sx: 1, sy: 1 };
     drawCreature(sk, c, cr, p.x - s.scrollX, l.tray.y + l.tray.h - 10, trayS, pose);
+    if (standing && !carried) { // already on the stage: a small green tick, so "gone" is clear
+      const bx = p.x - s.scrollX + l.slot * 0.28, by = l.tray.y + l.tray.h * 0.3;
+      c.drawCircle(bx, by, 10, paint(sk, '#5FE3C0'));
+      c.drawLine(bx - 4.5, by + 0.5, bx - 1, by + 4, paint(sk, '#10282A', 1, STROKE, 2.6));
+      c.drawLine(bx - 1, by + 4, bx + 5, by - 3.5, paint(sk, '#10282A', 1, STROKE, 2.6));
+    }
   });
   c.restore();
 }
@@ -327,7 +344,7 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   'worklet';
   const { layout: l, stage } = s;
   if (s.backdropImage) drawRaster(c, s.backdropImage, s.pixelRatio ?? 1); else if (s.backdrop) c.drawPicture(s.backdrop); else drawBackdrop(sk, c, stage, l, Math.floor(s.timeMs / 1800));
-  drawStars(sk, c, l, s.timeMs);
+  if (stage.id === 'pond' || stage.id === 'neon' || stage.id === 'clouds') drawStars(sk, c, l, s.timeMs); // night worlds only: stars in the fair or the snow looked like noise
   drawScenery(sk, c, stage.id, l, stage.palette, s.timeMs, 'live');
   drawDecor(sk, c, stage.id, l, stage.palette, s.timeMs, s.reduceMotion ? 0 : s.beat);
   const byId: Record<string, Creature> = {};
@@ -341,17 +358,18 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
     let best = Infinity;
     l.spots.forEach((p, i) => { const dist = Math.hypot(d.x - p.x, d.y - (p.y - l.size * 0.5)); if (dist < l.size * 0.62 && dist < best) { best = dist; target = i; } });
   }
+  const ringCol = stage.id === 'frost' ? '#4F78B0' : stage.id === 'clouds' ? '#7A90C8' : stage.palette.glow; // dark enough to show on the pale floors
+  const beatK = s.reduceMotion ? 0 : Math.max(0, 1 - (s.beat % 1) * 3);
   l.spots.forEach((p, i) => {
     const occupied = s.placed.some((q) => q.spot === i);
     if (i === target) {
       c.drawOval(rect(p.x - l.size * 0.55, p.y - l.size * 0.12, l.size * 1.1, l.size * 0.28), radialPaint(sk, p.x, p.y, l.size * 0.55, ['#FFFFFF', stage.palette.glow, '#00000000'], 0.6));
       c.drawOval(rect(p.x - l.size * 0.5, p.y - l.size * 0.09, l.size, l.size * 0.22), paint(sk, '#FFFFFF', 0.95, STROKE, 3));
-    } else spotRing(sk, c, p.x, p.y, l.size, stage.palette.glow, occupied);
-    if (!occupied && s.placed.length < 3 && !s.drags.length && !s.reduceMotion) {
-      const a = 0.3 + 0.2 * Math.sin(s.timeMs / 500 + i);
-      const cx = p.x, cy = p.y - l.size * 0.32, r = l.size * 0.09;
-      c.drawLine(cx - r, cy, cx + r, cy, paint(sk, stage.palette.glow, a, STROKE, 3));
-      c.drawLine(cx, cy - r, cx, cy + r, paint(sk, stage.palette.glow, a, STROKE, 3));
+    } else if (occupied) spotRing(sk, c, p.x, p.y, l.size, ringCol, 0.22 + 0.3 * beatK);
+    else {
+      const young = s.placed.length < 3 && !s.drags.length;
+      const pulse = young && !s.reduceMotion ? 0.5 + 0.5 * Math.sin(s.timeMs / 450 + i * 0.9) : 0;
+      landingPad(sk, c, p.x, p.y, l.size, stage.palette.glow, ringCol, pulse, young);
     }
   });
 

@@ -32,9 +32,9 @@ export function drawScenery(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: 
   const fy = l.stageH * 0.93 + H * 0.055;
   c.save();
   if (id === 'pond') {
-    const mx = W * 0.7, my = H * 0.27, mr = H * 0.085; // clear of the world emblem in the top corner
+    const mx = W * 0.7, my = H * 0.22, mr = H * 0.085; // clear of the world emblem in the top corner
     if (S) {
-      c.drawCircle(mx, my, mr * 3, paint(sk, '#FFF6C8', 0.12));
+      c.drawCircle(mx, my, mr * 2, paint(sk, '#FFF6C8', 0.07));
       c.drawCircle(mx, my, mr, paint(sk, '#FFF6D0'));
       for (const [dx, dy, r] of [[-0.3, -0.2, 0.18], [0.25, 0.1, 0.13], [-0.1, 0.35, 0.1]] as const) c.drawCircle(mx + dx * mr, my + dy * mr, r * mr, paint(sk, '#E8DFA8'));
     }
@@ -51,10 +51,11 @@ export function drawScenery(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: 
       for (let x = 14; x <= W; x += 14) b.lineTo(x, y + Math.sin(x / 40 + t / 700 + i) * 2.2);
       c.drawPath(b.build(), paint(sk, '#9FE8FF', 0.18, STROKE, 1.5));
     }
-    if (S) c.drawRect(rect(mx - mr * 0.5, fy - H * 0.2, mr, H * 0.3), gradientPaint(sk, 0, fy - H * 0.2, 0, fy + H * 0.05, ['#FFF6C8', '#00000000'], 0.22));
+    if (S) c.drawRect(rect(0, fy - H * 0.2, W, H * 0.5), gradientPaint(sk, 0, fy - H * 0.2, 0, fy + H * 0.3, ['#2FA7B8', '#0B6F86'], 0.3)); // water, not a purple stage
+    if (S) for (let k = 0; k < 4; k++) c.drawRRect(sk.RRectXY(rect(mx - mr * (1.6 - k * 0.3) / 2, fy - H * 0.07 + k * H * 0.045, mr * (1.6 - k * 0.3), 5), 2.5, 2.5), paint(sk, '#FFF6C8', 0.25)); // the moon's reflection
     c.restore();
   } else if (id === 'fair') {
-    const cx = W * 0.17, cy = l.stageH * 0.46, R = H * 0.19, a0 = t / 9000;
+    const cx = W * 0.06, cy = l.stageH * 0.42, R = H * 0.14, a0 = t / 9000;
     if (S) {
       c.drawCircle(cx, cy, R, paint(sk, '#FFD6E8', 0.55, STROKE, 2.5));
       c.drawCircle(cx, cy, R * 0.12, paint(sk, '#FFD6E8', 0.55, STROKE, 2.5));
@@ -68,8 +69,8 @@ export function drawScenery(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: 
       c.drawRRect(sk.RRectXY(rect(x - 8, y, 16, 13), 4, 4), paint(sk, cols[i % 4]!, 0.85));
     }
     if (S) for (let i = 0; i < 2; i++) {
-      const x = W * 0.83 + i * 70, base = l.stageH * 0.55;
-      poly(sk, c, [x - 35, base, x, base - 52, x + 35, base], paint(sk, i ? '#FFC857' : '#FF7AA8', 0.66));
+      const x = W * 0.84 + i * 62, base = l.stageH * 0.4;
+      poly(sk, c, [x - 35, base, x, base - 52, x + 35, base], paint(sk, i ? '#FFC857' : '#FF7AA8', 0.45));
       c.drawRect(rect(x - 35, base, 70, 26), paint(sk, '#FFFFFF', 0.13));
     }
     c.save(); floorClip(sk, c, l);
@@ -78,8 +79,10 @@ export function drawScenery(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: 
   } else if (id === 'clouds') {
     const mx = W * 0.8, my = H * 0.22, mr = H * 0.08;
     if (S) {
+      c.save(); // a crescent: the moon disc with a second disc cut out of it
+      c.clipRRect(sk.RRectXY(rect(mx + mr * 0.45 - mr * 0.9, my - mr * 0.15 - mr * 0.9, mr * 1.8, mr * 1.8), mr * 0.9, mr * 0.9), 0, true);
       c.drawCircle(mx, my, mr, paint(sk, '#FFF4D2'));
-      c.drawCircle(mx + mr * 0.45, my - mr * 0.15, mr * 0.9, paint(sk, pal.sky));
+      c.restore();
     }
     // Cloud houses float in the sky at different heights (they used to stand in an even row at the singers' height, like six more places to stand).
     for (let i = 0; i < 5; i++) {
@@ -92,31 +95,37 @@ export function drawScenery(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: 
       if (L) c.drawRect(rect(hx - 4, hy - hh * 0.65, 8, 9), paint(sk, '#FFAA3C', 0.6 + 0.3 * Math.sin(t / 700 + i)));
     }
     c.save(); floorClip(sk, c, l);
-    if (S) for (let i = 0; i < 18; i++) c.drawCircle(W * (i / 17), fy - H * 0.17 + (i % 3) * 10, 26, paint(sk, '#FFFFFF', 0.07));
+    if (S) c.drawRect(rect(0, fy - H * 0.2, W, H * 0.5), gradientPaint(sk, 0, fy - H * 0.2, 0, fy + H * 0.3, ['#F4F9FF', '#C9D8F5'], 0.55)); // a bright cloud bank
     c.restore();
+    if (S) for (let k = 0; k < 30; k++) { // scalloped cloud rim along the top of the floor
+      const a = Math.PI + (k / 29) * Math.PI;
+      c.drawCircle(W / 2 + W * 0.55 * Math.cos(a), l.stageH * 0.93 + H * 0.05 + H * 0.25 * Math.sin(a), H * 0.032, paint(sk, '#FFFFFF', 0.75));
+    }
   } else if (id === 'neon') {
     const hor = l.stageH * 0.6;
     const cols = ['#FF4DD2', '#7DF9FF', '#FFE066', '#C8B6FF'];
-    if (S) {
-      c.drawCircle(W * 0.82, H * 0.2, H * 0.075 + 5, paint(sk, '#FF4DD2', 0.2, STROKE, 8));
-      c.drawCircle(W * 0.82, H * 0.2, H * 0.075, paint(sk, '#FF4DD2', 1, STROKE, 3));
-    }
     if (S) for (let i = 0; i < 13; i++) {
       const bw = W * (0.045 + ((i * 37) % 5) * 0.008), bx = W * (i / 13) + 4, bh = l.stageH * (0.22 + ((i * 53) % 7) * 0.05);
       c.drawRect(rect(bx, hor - bh, bw, bh), paint(sk, '#0D1530'));
       c.drawRect(rect(bx, hor - bh, bw, bh), paint(sk, cols[i % 4]!, 0.4, STROKE, 1.5));
       for (let wy = 0; wy < bh - 10; wy += 14) for (let wx = 5; wx < bw - 8; wx += 11) {
-        const on = Math.sin(i * 7.3 + wy * 0.9 + wx * 1.7 + Math.floor(t / 1800)) > 0.2;
-        c.drawRect(rect(bx + wx, hor - bh + wy + 6, 5, 6), paint(sk, on ? cols[(i + wy) % 4]! : '#FFFFFF', on ? 0.8 : 0.06));
+        const on = Math.sin(i * 7.3 + wy * 0.9 + wx * 1.7 + Math.floor(t / 1800)) > 0.55;
+        c.drawRect(rect(bx + wx, hor - bh + wy + 6, 5, 6), paint(sk, on ? cols[(i + wy) % 4]! : '#FFFFFF', on ? 0.55 : 0.04));
       }
     }
-    // a neon sign made of bars (no text needed)
+    if (S) { // the skyline darkens behind the singers; a neon moon ring rides above it (not hidden behind a tower)
+      c.drawRect(rect(0, hor - l.stageH * 0.36, W, l.stageH * 0.36), gradientPaint(sk, 0, hor - l.stageH * 0.36, 0, hor, ['#00000000', '#070B1E'], 0.55));
+      c.drawCircle(W * 0.9, H * 0.13, H * 0.055 + 4, paint(sk, '#FF4DD2', 0.2, STROKE, 7));
+      c.drawCircle(W * 0.9, H * 0.13, H * 0.055, paint(sk, '#FF4DD2', 1, STROKE, 3));
+    }
+    // a neon music note as the sign (a picture, no text)
     if (L) {
-      const sx = W * 0.07, sy = l.stageH * 0.26, flick = 0.7 + 0.3 * Math.sin(t / 220);
-      c.drawRRect(sk.RRectXY(rect(sx, sy, 70, 30), 8, 8), paint(sk, '#7DF9FF', 0.3 * flick, STROKE, 8));
-      c.drawRRect(sk.RRectXY(rect(sx, sy, 70, 30), 8, 8), paint(sk, '#7DF9FF', flick, STROKE, 3));
-      c.drawLine(sx + 14, sy + 10, sx + 56, sy + 10, paint(sk, '#FF4DD2', flick, STROKE, 3));
-      c.drawLine(sx + 14, sy + 20, sx + 40, sy + 20, paint(sk, '#FFE066', flick, STROKE, 3));
+      const sx = W * 0.07, sy = l.stageH * 0.22, flick = 0.7 + 0.3 * Math.sin(t / 220), n = H * 0.05;
+      const q = sk.PathBuilder.Make(); q.moveTo(sx + n * 0.9, sy + n * 2); q.lineTo(sx + n * 0.9, sy - n * 0.6); q.lineTo(sx + n * 2.1, sy - n * 0.2);
+      for (const w2 of [[8, 0.3], [3, 1]] as const) {
+        c.drawPath(q.build(), paint(sk, '#7DF9FF', w2[1] * flick, STROKE, w2[0]));
+        c.drawCircle(sx + n * 0.1, sy + n * 2, n * 0.8, paint(sk, '#7DF9FF', w2[1] * flick, STROKE, w2[0]));
+      }
     }
     c.save(); floorClip(sk, c, l);
     if (S) for (let i = -14; i <= 14; i++) c.drawLine(W / 2 + i * 14, fy - H * 0.2, W / 2 + i * 120, fy + H * 0.3, paint(sk, '#7DF9FF', 0.25, STROKE, 1.5));
@@ -128,9 +137,9 @@ export function drawScenery(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: 
       for (let x = 24; x <= W; x += 24) b.lineTo(x, l.stageH * (0.16 + k * 0.07) + Math.sin(x / 130 + t / 1600 + k * 2) * 18);
       for (let x = W; x >= 0; x -= 24) b.lineTo(x, l.stageH * (0.3 + k * 0.07) + Math.sin(x / 110 + t / 1400 + k) * 22);
       b.close();
-      c.drawPath(b.build(), gradientPaint(sk, 0, 0, 0, l.stageH * 0.55, [['#5FE3C0', '#9AD7FF', '#C8B6FF'][k]!, '#00000000'], 0.3));
+      c.drawPath(b.build(), gradientPaint(sk, 0, 0, 0, l.stageH * 0.55, [['#5FE3C0', '#9AD7FF', '#C8B6FF'][k]!, '#00000000'], 0.42));
     }
-    if (S) for (const [x0, w2, hh, col] of [[-0.05, 0.4, 0.34, '#2C5A86'], [0.25, 0.5, 0.42, '#3A6C9C'], [0.62, 0.45, 0.3, '#2C5A86'], [0.8, 0.4, 0.38, '#3A6C9C']] as const) {
+    if (S) for (const [x0, w2, hh, col] of [[-0.05, 0.4, 0.34, '#1F4470'], [0.25, 0.5, 0.42, '#294F7E'], [0.62, 0.45, 0.3, '#1F4470'], [0.8, 0.4, 0.38, '#294F7E']] as const) {
       const bx = W * x0, bw = W * w2, base = l.stageH * 0.64, top = base - l.stageH * hh;
       poly(sk, c, [bx, base, bx + bw / 2, top, bx + bw, base], paint(sk, col));
       poly(sk, c, [bx + bw / 2, top, bx + bw * 0.4, top + (base - top) * 0.28, bx + bw * 0.5, top + (base - top) * 0.22, bx + bw * 0.6, top + (base - top) * 0.3], paint(sk, '#EAF6FF'));
@@ -171,14 +180,14 @@ export function drawDecor(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: St
       poly(sk, c, [x - 9, y, x + 9, y, x, y + 20 + 2 * Math.sin(t / 300 + i)], paint(sk, cols[i % 4]!, 0.8));
     }
     for (let i = 0; i < 5; i++) {
-      const x = W * (0.08 + i * 0.21) + Math.sin(t / 1500 + i) * 10, y = l.stageH * (0.3 + 0.08 * Math.sin(t / 1100 + i * 2));
-      c.drawLine(x, y + 18, x, y + 70, paint(sk, '#FFFFFF', 0.27, STROKE, 1.5));
-      c.drawOval(rect(x - 13, y - 17, 26, 34), paint(sk, cols[(i + 1) % 4]!, 0.66));
+      const x = W * (0.2 + i * 0.16) + Math.sin(t / 1500 + i) * 10, y = l.stageH * (0.16 + 0.05 * Math.sin(t / 1100 + i * 2));
+      c.drawLine(x, y + 18, x, y + 46, paint(sk, '#FFFFFF', 0.22, STROKE, 1.5));
+      c.drawOval(rect(x - 12, y - 16, 24, 32), paint(sk, cols[(i + 1) % 4]!, 0.42));
     }
   } else if (id === 'clouds') {
     for (let i = 0; i < 5; i++) {
       const x = ((t / 40 + i * W * 0.25) % (W * 1.3)) - W * 0.15, y = l.stageH * (0.12 + ((0.12 * i) % 0.5));
-      for (const [dx, dy, r] of [[0, 0, 22], [24, -8, 28], [52, 0, 22], [26, 8, 24]] as const) c.drawCircle(x + dx, y + dy, r, paint(sk, '#D6F0FF', 0.13));
+      for (const [dx, dy, r] of [[0, 0, 22], [24, -8, 28], [52, 0, 22], [26, 8, 24]] as const) c.drawCircle(x + dx, y + dy, r, paint(sk, '#FFFFFF', 0.12));
     }
   } else if (id === 'neon') {
     const rain = paint(sk, '#7DF9FF', 0.33, STROKE, 1.5);
@@ -257,10 +266,10 @@ export function drawFloatingNotes(sk: SkiaApi, c: Canvas, l: Layout, creatures: 
         if (ageB < 0 || ageB > lifeBeats || rnd(Math.floor(occ * 4) + hid) >= 0.6) continue;
         const k = ageB / lifeBeats, age = k * 1.5;
         const x = sp.x + (rnd(occ + 1) - 0.5) * l.size * 0.5 + (rnd(occ + 3) - 0.5) * 30 * age, y = sp.y - l.size * 1.0 - 55 * age;
-        const r = 4 + l.size * 0.03, a = 1 - k;
+        const r = 6 + l.size * 0.045, a = 1 - k;
         c.drawCircle(x, y, r, paint(sk, col, a));
-        c.drawLine(x + r * 0.8, y, x + r * 0.8, y - r * 3.2, paint(sk, col, a, STROKE, 2));
-        c.drawLine(x + r * 0.8, y - r * 3.2, x + r * 2.2, y - r * 2.4, paint(sk, col, a, STROKE, 2));
+        c.drawLine(x + r * 0.8, y, x + r * 0.8, y - r * 3.2, paint(sk, col, a, STROKE, 3));
+        c.drawLine(x + r * 0.8, y - r * 3.2, x + r * 2.2, y - r * 2.4, paint(sk, col, a, STROKE, 3));
       }
     }
   }

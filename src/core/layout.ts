@@ -30,7 +30,7 @@ export function computeLayout(W: number, H: number, creatureCountArg?: number, p
   const creatureCount = creatureCountArg ?? TUNING.creaturesPerStage;
   const u = clamp(Math.min(W / 844, H / 390), 0.8, 2.2);
   // The singer menu is as low as it can be: a touch-sized slot plus a little air above the singers (it used to be 35 % of the height, far too much of a phone held sideways).
-  const trayH = clamp(0.2 * H, TUNING.minTouchPt + 20, 130);
+  const trayH = clamp(0.24 * H, TUNING.minTouchPt + 20, 150);
   const stageH = H - trayH;
   // The tallest singer (tall body + ears, about 1.5 x size) must fit between the top overlay and the back row of spots.
   const sizeByTop = (0.48 * H - topInset) / 1.5;
@@ -44,7 +44,7 @@ export function computeLayout(W: number, H: number, creatureCountArg?: number, p
   const per = Math.max(1, Math.round(creatureCount / 4)); // one colour-coded group per layer
   const groups = Math.ceil(creatureCount / per);
   const pad = Math.max(12 * u, padX);
-  const ideal = clamp(0.56 * tray.h, TUNING.minTouchPt, 84);
+  const ideal = clamp(0.62 * tray.h, TUNING.minTouchPt, 92);
   const fit = (W - pad * 2 - (groups - 1) * groupGap) / creatureCount; // slot size at which all creatures fit without scrolling
   const slot = fit >= TUNING.minTouchPt ? Math.min(ideal, fit) : ideal; // phones: keep it big and scroll
   const trayContentW = pad * 2 + creatureCount * slot + (groups - 1) * groupGap;
