@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   side: { alignItems: 'center', gap: 20 },
   playWrap: { width: 132, height: 132, alignItems: 'center', justifyContent: 'center' },
   ring: { position: 'absolute', width: 132, height: 132, borderRadius: 66, backgroundColor: COLORS.ok },
-  play: { width: 108, height: 108, borderRadius: 54, backgroundColor: COLORS.ok, alignItems: 'center', justifyContent: 'center' },
+  play: { width: 108, height: 108, borderRadius: 54, backgroundColor: COLORS.ok, borderWidth: 5, borderColor: 'rgba(255,255,255,0.38)', elevation: 8, alignItems: 'center', justifyContent: 'center' },
   dots: { flexDirection: 'row', gap: 10 },
   dot: { width: 14, height: 14, borderRadius: 7, backgroundColor: 'rgba(255,255,255,0.2)' },
   dotOn: { backgroundColor: COLORS.glow },

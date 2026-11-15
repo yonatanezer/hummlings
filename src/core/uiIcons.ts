@@ -47,7 +47,7 @@ export const ICON_SHAPES: Record<IconName, IconShape[]> = {
   next: [S('M9 5 L16 12 L9 19')],
   record: [{ kind: 'circle', cx: 12, cy: 12, r: 7, style: 'fill' }],
   stop: [{ kind: 'rrect', x: 6, y: 6, w: 12, h: 12, r: 2.5 }],
-  play: [{ kind: 'fill', d: 'M8 5l11 7-11 7z' }],
+  play: [{ kind: 'fill', d: 'M9.2 4.6l10.4 6.4a1.2 1.2 0 0 1 0 2L9.2 19.4a1.2 1.2 0 0 1-1.8-1V5.6a1.2 1.2 0 0 1 1.8-1z' }],
   pause: [{ kind: 'rrect', x: 6, y: 5, w: 4, h: 14, r: 1.5 }, { kind: 'rrect', x: 14, y: 5, w: 4, h: 14, r: 1.5 }],
   // the secret-combos button: a star with two sparkles (the old open book read as a notebook)
   combos: [S(starPath(8.2, 3.6)), S('M20 3v4 M18 5h4', 1.8), S('M3.5 17v3.5 M1.75 18.75h3.5', 1.6)],
