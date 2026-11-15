@@ -10,7 +10,7 @@ import { popRate } from '../core/sfx';
 import { randomBand } from '../core/surprise';
 import { AccentContext } from '../ui/IconButton';
 import { coachKind, pickSlot, pickSpot, pickTapSpot, type CoachCue } from '../core/coach';
-import { audibleIds, nextFreeSpot, type StageState } from '../core/stageState';
+import { audibleIds, nextFreeSpot } from '../core/stageState';
 import { autoName, warnBars, type Song } from '../core/timeline';
 import { TUNING, barSec } from '../core/tuning';
 import { exportSong, saveSongToDevice, type ExportResult } from '../app/exportSong';
@@ -75,8 +75,6 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
   const [exportMsg, setExportMsg] = useState<ExportResult | null>(null);
   const [exporting, setExporting] = useState(false);
   const [rewardDots, setRewardDots] = useState<{ done: number; total: number } | null>(null);
-  const [undo, setUndo] = useState<StageState | null>(null);
-  const undoTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [screenReader, setScreenReader] = useState(false);
   const [, force] = useState(0);
   const layoutRef = useRef(layout);
@@ -361,7 +359,6 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
       <View pointerEvents="box-none" style={[styles.clear, { left: insets.left + 14, top: layout.stageH - 84 }]}>
         <IconButton icon="dice" label={t('a11y.surprise')} caption={t('ui.surprise')} onPress={() => {
           const l = layoutRef.current;
-          rememberForUndo();
           for (const id of session.state.spots) if (id) goBackAll(id, l.spots[session.state.spots.indexOf(id)]!);
           session.dispatch({ kind: 'clear' });
           randomBand(stage).forEach((id, spot) => {
@@ -375,7 +372,6 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
       <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 14, top: layout.stageH - 84 }]}>
         {onStageCount > 0 && <IconButton icon="sweep" label={t('a11y.clear')} caption={t('ui.clear')} onPress={() => {
           const l = layoutRef.current;
-          rememberForUndo();
           for (const id of session.state.spots) if (id) { const s = session.state.spots.indexOf(id); goBackAll(id, l.spots[s]!); }
           session.dispatch({ kind: 'clear' });
           syncScene();
@@ -416,11 +412,6 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
             );
           })}
         </>
-      )}
-      {undo && (
-        <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 154, top: layout.stageH - 84 }]}>
-          <IconButton icon="restore" label={t('a11y.undo')} caption={t('ui.undo')} bg={COLORS.accent} onPress={() => { restoreBand(undo); setUndo(null); }} />
-        </View>
       )}
       {rewardDots !== null && !book && (
         <View pointerEvents="none" style={[styles.rewardSecs, { top: Math.max(layout.H * 0.2, 96) + Math.max(30, layout.size * 0.26) + 10 }]}>
@@ -465,23 +456,6 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
     </AccentContext.Provider>
   );
 
-  function rememberForUndo() {
-    if (!session.state.spots.some(Boolean)) return;
-    setUndo(session.state);
-    clearTimeout(undoTimer.current);
-    undoTimer.current = setTimeout(() => setUndo(null), 7000);
-  }
-  function restoreBand(before: StageState) {
-    for (const id of session.state.spots) if (id) session.dispatch({ kind: 'remove', creatureId: id });
-    before.spots.forEach((id, spot) => {
-      if (!id) return;
-      session.dispatch({ kind: 'drop', creatureId: id, spot });
-      const v = before.volume[id];
-      if (v !== undefined) session.dispatch({ kind: 'volume', creatureId: id, value: v });
-      if (before.muted[id]) session.dispatch({ kind: 'mute', creatureId: id });
-    });
-    syncScene();
-  }
   function goBackAll(id: string, from: { x: number; y: number }) {
     sv.returning.value = [...sv.returning.value, { id, since: now(), from }];
   }
