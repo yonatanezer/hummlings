@@ -4,7 +4,7 @@ import { COLORS } from './theme';
 /** An on/off switch in the app's own look: a roomy pill (64 x 40) whose knob and colour both change, so it reads without text. */
 export function Toggle({ value, onChange, label }: { value: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <Pressable accessibilityRole="switch" accessibilityLabel={label} accessibilityState={{ checked: value }} onPress={() => onChange(!value)} hitSlop={6}
+    <Pressable accessibilityRole="switch" accessibilityLabel={label} accessibilityState={{ checked: value }} onPress={() => onChange(!value)} hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
       style={[styles.track, value ? styles.on : styles.off]}>
       <View style={[styles.knob, value ? { alignSelf: 'flex-end' } : { alignSelf: 'flex-start' }]} />
     </Pressable>

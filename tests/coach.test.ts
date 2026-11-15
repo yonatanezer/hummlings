@@ -21,7 +21,8 @@ describe('coach: what the hand shows', () => {
     expect(coachKind(three)).toBeNull();
     expect(coachKind({ ...three, idleMs: COACH_IDLE_MS.tap })).toBe('tap');
     expect(coachKind({ ...three, tapDone: true, idleMs: 99999 })).not.toBe('tap'); // the next lesson (hold) takes over
-    expect(coachKind({ ...three, onStage: 1, idleMs: 99999 })).toBeNull();
+    expect(coachKind({ ...three, onStage: 1, idleMs: 99999 })).toBe('drag'); // back to one singer: asked to add another, never a dead end
+    expect(coachKind({ ...three, onStage: 1, idleMs: 100 })).toBeNull();
   });
 });
 

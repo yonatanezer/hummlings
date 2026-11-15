@@ -94,10 +94,10 @@ export function SongsScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (s
                   <Text style={styles.dim}>{t(stage.nameKey as StringKey)} · {fmtLen(item, stage.bpm)} · {t('songs.bars', { n: item.bars })} · {new Date(item.createdAt).toLocaleDateString()}</Text>
                 </View>
                 <IconButton icon="play" size={68} bg={COLORS.ok} color="#10282A" label={t('a11y.play')} onPress={() => onPlay(item.id)} />
-                <IconButton icon="pencil" size={46} label={t('songs.rename')} onPress={() => { setRenaming(item.id); setDraft(item.name); }} />
-                <IconButton icon="share" size={46} label={t('songs.share')} onPress={() => ask(() => void share(item))} bg={busy === item.id ? COLORS.accent : undefined} />
-                <IconButton icon="download" size={46} label={t('rec.saveDevice')} onPress={() => ask(() => void saveDev(item))} bg={busy === item.id ? COLORS.accent : undefined} />
-                <View style={{ marginStart: 14 }}><IconButton icon="trash" size={46} label={t('songs.delete')} color={COLORS.danger} onPress={() => del(item)} /></View>
+                <IconButton icon="pencil" size={56} label={t('songs.rename')} onPress={() => { setRenaming(item.id); setDraft(item.name); }} />
+                <IconButton icon="share" size={56} label={t('songs.share')} onPress={() => ask(() => void share(item))} bg={busy === item.id ? COLORS.accent : undefined} />
+                <IconButton icon="download" size={56} label={t('rec.saveDevice')} onPress={() => ask(() => void saveDev(item))} bg={busy === item.id ? COLORS.accent : undefined} />
+                <View style={{ marginStart: 28 }}><IconButton icon="trash" size={56} label={t('songs.delete')} color={COLORS.danger} onPress={() => del(item)} /></View>
               </View>
             );
           }}
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', gap: 16, paddingBottom: 8 },
   title: { color: '#fff', fontSize: 28, fontWeight: '800' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  item: { alignItems: 'center', gap: 10, backgroundColor: COLORS.panel, borderRadius: 18, padding: 10, minHeight: 72 },
+  item: { alignItems: 'center', gap: 12, backgroundColor: COLORS.panel, borderRadius: 18, padding: 10, minHeight: 76 },
   name: { color: '#fff', fontSize: 20, fontWeight: '700' },
   dim: { color: COLORS.textDim, fontSize: 14 },
   input: { color: '#fff', fontSize: 20, borderBottomWidth: 2, borderColor: COLORS.glow, padding: 4 },

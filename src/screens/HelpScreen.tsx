@@ -10,6 +10,7 @@ import { useLang } from '../i18n/useLang';
 import { HELP_STEPS, drawHelpStep } from '../ui/draw/help';
 import { IconButton } from '../ui/IconButton';
 import { COLORS } from '../ui/theme';
+import { useReduceMotion } from '../ui/useReduceMotion';
 
 /** Beginner's guide: 7 short animated lessons with one sentence each. Opened from the help button. */
 export function HelpScreen({ onBack }: { onBack: () => void }) {
@@ -18,16 +19,17 @@ export function HelpScreen({ onBack }: { onBack: () => void }) {
   const { rtl } = useLang();
   const { update } = useProgress();
   const [step, setStep] = useState(0);
+  const reduce = useReduceMotion();
   const [auto, setAuto] = useState(true); // plays through by itself (for someone who cannot read) until the arrows are used
   const time = useSharedValue(0);
   const stepSV = useSharedValue(0);
   useFrameCallback((i) => { time.value = i.timeSinceFirstFrame; });
   useEffect(() => { stepSV.value = step; }, [step, stepSV]);
   useEffect(() => {
-    if (!auto || step >= HELP_STEPS - 1) return;
+    if (!auto || reduce || step >= HELP_STEPS - 1) return; // with reduce-motion the lessons wait for the arrows
     const id = setTimeout(() => setStep((n) => Math.min(HELP_STEPS - 1, n + 1)), 5200);
     return () => clearTimeout(id);
-  }, [auto, step]);
+  }, [auto, reduce, step]);
   useEffect(() => { update((p) => (p.helpSeen ? p : { ...p, helpSeen: true })); }, [update]);
 
   const stage = STAGES[0]!;

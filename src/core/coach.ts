@@ -28,6 +28,7 @@ export const COACH_IDLE_MS = { more: 4000, tap: 5000, hold: 6000, record: 7000, 
  */
 export function coachKind(i: CoachInput): CoachKind | null {
   if (i.onStage === 0) return !i.firstDropDone || i.idleMs >= COACH_IDLE_MS.again ? 'drag' : null;
+  if (i.onStage < 2 && i.moreDone) return i.idleMs >= COACH_IDLE_MS.more ? 'drag' : null; // the child took singers away again: show how to bring one back
   if (!i.moreDone && i.onStage < 3) return i.idleMs >= COACH_IDLE_MS.more ? 'drag' : null;
   if (i.moreDone && !i.tapDone && i.onStage >= 2) return i.idleMs >= COACH_IDLE_MS.tap ? 'tap' : null;
   if (i.tapDone && !i.holdDone && i.onStage >= 2) return i.idleMs >= COACH_IDLE_MS.hold ? 'hold' : null;

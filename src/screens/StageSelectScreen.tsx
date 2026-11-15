@@ -18,6 +18,7 @@ import { IconButton } from '../ui/IconButton';
 import { StageCardArt } from '../ui/StageCardArt';
 import { WorldIcon } from '../ui/WorldIcon';
 import { COLORS } from '../ui/theme';
+import { useReduceMotion } from '../ui/useReduceMotion';
 import { hapticLight } from '../ui/haptics';
 
 /** One world card: staggered entrance, a slow idle float, a press squash and (for the very first visit) a pulsing "start here" ring. */
@@ -75,7 +76,7 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
   const insets = useSafeAreaInsets();
   const { rtl } = useLang();
   const { progress } = useProgress();
-  const still = progress.settings.reduceMotion;
+  const still = useReduceMotion();
   const topBarH = insets.top + 6 + 84;
   const geo = useMemo(() => heroGeometry(width, height, topBarH, insets.left, insets.right), [width, height, topBarH, insets.left, insets.right]);
   // The hill runs on under the world cards, so there is no seam where the singers' zone ends.

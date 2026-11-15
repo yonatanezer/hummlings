@@ -19,7 +19,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
   const { rtl } = useLang();
   const { progress, setSetting, reset, update } = useProgress();
   const s = progress.settings;
-  const [gate, setGate] = useState<null | 'restore' | 'privacy'>(null);
+  const [gate, setGate] = useState<null | 'restore' | 'privacy' | 'reset'>(null);
   const [note, setNote] = useState('');
   const align = rtl ? 'row-reverse' : 'row';
 
@@ -39,6 +39,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
     const g = gate;
     setGate(null);
     if (g === 'privacy') void Linking.openURL(PRIVACY_URL);
+    if (g === 'reset') Alert.alert(t('settings.reset'), t('settings.resetConfirm'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.confirm'), style: 'destructive', onPress: reset }]); // a grown-up first, then a last confirmation
     if (g === 'restore') {
       const ok = await getPurchases().restore();
       if (ok) update((p) => ({ ...p, unlocked: true }));
@@ -68,7 +69,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
         </Row>
         <Row label={t('settings.restore')}><IconButton icon="restore" label={t('settings.restore')} onPress={() => setGate('restore')} /></Row>
         <Row label={t('settings.privacy')}><IconButton icon="info" label={t('settings.privacy')} onPress={() => setGate('privacy')} /></Row>
-        <Row label={t('settings.reset')} danger><IconButton icon="trash" label={t('settings.reset')} color={COLORS.danger} onPress={() => Alert.alert(t('settings.reset'), t('settings.resetConfirm'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.confirm'), style: 'destructive', onPress: reset }])} /></Row>
+        <Row label={t('settings.reset')} danger><IconButton icon="trash" label={t('settings.reset')} color={COLORS.danger} onPress={() => setGate('reset')} /></Row>
         {note ? <Text style={styles.note}>{note}</Text> : null}
         <View style={styles.about}>
           <Text style={styles.label}>{t('settings.about')}</Text>
@@ -89,7 +90,7 @@ const styles = StyleSheet.create({
   rowDanger: { marginTop: 22, borderWidth: 2, borderColor: 'rgba(255,111,145,0.55)', backgroundColor: 'rgba(255,111,145,0.08)' },
   row: { minHeight: 64, alignItems: 'center', justifyContent: 'space-between', gap: 16, backgroundColor: COLORS.panel, borderRadius: 18, paddingHorizontal: 18 },
   label: { color: '#fff', fontSize: 18, fontWeight: '600' },
-  seg: { paddingHorizontal: 14, minHeight: 48, borderRadius: 14, backgroundColor: COLORS.floor, justifyContent: 'center' },
+  seg: { paddingHorizontal: 14, minHeight: 56, borderRadius: 14, backgroundColor: COLORS.floor, justifyContent: 'center' },
   segOn: { backgroundColor: COLORS.accent },
   segText: { color: '#fff', fontSize: 16 },
   segTextOn: { color: COLORS.sky, fontWeight: '700' }, // white on the blue chip was 2.99:1
