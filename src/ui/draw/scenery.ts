@@ -147,11 +147,13 @@ export function drawDecor(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: St
   'worklet';
   const { W, H } = l;
   if (id === 'pond') {
-    for (let i = 0; i < 4; i++) {
-      const x = W * (0.12 + i * 0.26), y = l.stageH * (0.88 + 0.03 * (i % 2));
-      c.drawOval(rect(x - 30, y - 8, 60, 16), paint(sk, '#2C6F6A', 0.6));
-      const k = (t / 40 + i * 20) % 30;
-      c.drawOval(rect(x - 30 - k, y - 8 - k * 0.27, 60 + 2 * k, 16 + 0.54 * k), paint(sk, '#7FE3C4', 0.3, STROKE, 1.5));
+    // Lily pads: round leaves with a flower, at the water's edge by the reeds. (They used to be flat green ovals with growing rings on the floor, which looked like more places to put singers.)
+    for (const [fx, fyy, r] of [[0.115, 0.9, 15], [0.885, 0.9, 15], [0.19, 0.95, 10], [0.81, 0.95, 10]] as const) {
+      const x = W * fx, y = l.stageH * fyy + Math.sin(t / 1100 + fx * 9) * 1.5;
+      c.drawCircle(x, y, r, paint(sk, '#2F8A68', 0.9));
+      c.drawLine(x, y, x + r * 0.95, y - r * 0.35, paint(sk, '#1B5E4B', 0.9, STROKE, 2));
+      c.drawCircle(x - r * 0.15, y - r * 0.1, r * 0.34, paint(sk, '#FF9EC4'));
+      c.drawCircle(x - r * 0.15, y - r * 0.1, r * 0.14, paint(sk, '#FFE066'));
     }
     const fly = freshPaint(sk, '#FFF8AA', 1);
     for (let i = 0; i < 14; i++) {
