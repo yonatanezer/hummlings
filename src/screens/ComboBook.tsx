@@ -20,7 +20,7 @@ interface Props {
 }
 
 /** One picture per goal sticker (the stickers are earned by playing; no words, so a child can read them). */
-const GOAL_ICON: Record<GoalId, IconName> = { fullBand: 'goalBand', drumCircle: 'goalDrums', choir: 'goalChoir', fullStage: 'goalStage', soloist: 'goalSolo', mixMaster: 'goalMix', swapper: 'goalSwap', twoCombos: 'goalCombos' };
+export const GOAL_ICON: Record<GoalId, IconName> = { fullBand: 'goalBand', drumCircle: 'goalDrums', choir: 'goalChoir', fullStage: 'goalStage', soloist: 'goalSolo', mixMaster: 'goalMix', swapper: 'goalSwap', twoCombos: 'goalCombos' };
 
 /** Combo book: 3 cards. Undiscovered = silhouette + 4 dots lighting up for creatures currently on stage (honest hint). */
 export function ComboBook({ stage, session, discovered, onClose, onReplay }: Props) {

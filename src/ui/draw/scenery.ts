@@ -1,6 +1,6 @@
 import type { Layout } from '../../core/layout';
 import type { StagePalette } from '../../core/types';
-import { gradientPaint, mix, freshPaint, paint, STROKE, type Canvas, type SkiaApi, rect } from './common';
+import { gradientPaint, mix, freshPaint, paint, radialPaint, STROKE, type Canvas, type SkiaApi, rect } from './common';
 
 const rnd = (i: number): number => {
   'worklet';
@@ -197,7 +197,7 @@ export function drawDecor(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: St
   void mix;
 }
 
-export interface TapEffect { x: number; y: number; t0: number; kind: 'ripple' | 'spark' | 'star' }
+export interface TapEffect { x: number; y: number; t0: number; kind: 'ripple' | 'spark' | 'star' | 'press' | 'drop'; color?: string }
 
 /** Tap-the-scenery toy: ripples (pond, neon), confetti sparks (fair), sparkling stars (clouds, frost). */
 export function drawTaps(sk: SkiaApi, c: Canvas, taps: TapEffect[], t: number) {
@@ -206,7 +206,17 @@ export function drawTaps(sk: SkiaApi, c: Canvas, taps: TapEffect[], t: number) {
     const age = (t - e.t0) / 1000;
     if (age < 0 || age > 1.3) continue;
     const fade = 1 - age / 1.3;
-    if (e.kind === 'ripple') {
+    if (e.kind === 'press') { // a finger touched the stage: one white ring that grows and fades (0.42 s)
+      const k = age / 0.42;
+      if (k < 1) c.drawCircle(e.x, e.y, 14 + 34 * k, paint(sk, '#FFFFFF', 0.7 * (1 - k), STROKE, 3));
+    } else if (e.kind === 'drop') { // a singer landed on its spot: ten small stars fly out
+      const k = age / 0.8;
+      if (k < 1) for (let i = 0; i < 10; i++) {
+        const ang = (i / 10) * Math.PI * 2 + rnd(i) * 0.5, sp = 120 * (0.5 + rnd(i + 9));
+        const cols = [e.color ?? '#FFE8A3', '#FFFFFF', '#FF7AA8'];
+        c.drawCircle(e.x + Math.cos(ang) * sp * age, e.y + Math.sin(ang) * sp * age + 90 * age * age, 4.5 * (1 - k) + 1, paint(sk, cols[i % 3]!, 1 - k));
+      }
+    } else if (e.kind === 'ripple') {
       for (let k = 0; k < 3; k++) { const a = age - k * 0.16; if (a < 0) continue; const r = 10 + 90 * a; c.drawOval(rect(e.x - r, e.y - r * 0.35, r * 2, r * 0.7), paint(sk, '#B4F0FF', 0.7 * (1 - a / 1.1 > 0 ? 1 - a / 1.1 : 0), STROKE, 2.5)); }
     } else {
       const n = e.kind === 'spark' ? 14 : 9;
@@ -218,4 +228,53 @@ export function drawTaps(sk: SkiaApi, c: Canvas, taps: TapEffect[], t: number) {
       }
     }
   }
+}
+
+const idHash = (id: string): number => {
+  'worklet';
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 9973;
+  return h;
+};
+
+/** Notes in the singer's layer colour drift up from every audible singer that is not a drummer, one per onset of its loop (60 % of them), as in the web demo. */
+export function drawFloatingNotes(sk: SkiaApi, c: Canvas, l: Layout, creatures: { id: string; layer: string; onsets: number[] }[], placed: { id: string; spot: number }[], muted: Record<string, true>, solo: string | null, colors: Record<string, string>, beat: number, bpm: number) {
+  'worklet';
+  if (beat < 0) return;
+  const lifeBeats = 1.5 * (bpm / 60);
+  for (const pl of placed) {
+    if (muted[pl.id] || (solo && solo !== pl.id)) continue;
+    const cr = creatures.find((q) => q.id === pl.id);
+    if (!cr || cr.layer === 'drums') continue;
+    const sp = l.spots[pl.spot]!, col = colors[cr.layer] ?? '#FFFFFF', hid = idHash(pl.id);
+    const base = Math.floor(beat / 16) * 16;
+    for (const loop of [base, base - 16]) {
+      for (const o of cr.onsets) {
+        const occ = loop + o, ageB = beat - occ;
+        if (ageB < 0 || ageB > lifeBeats || rnd(Math.floor(occ * 4) + hid) >= 0.6) continue;
+        const k = ageB / lifeBeats, age = k * 1.5;
+        const x = sp.x + (rnd(occ + 1) - 0.5) * l.size * 0.5 + (rnd(occ + 3) - 0.5) * 30 * age, y = sp.y - l.size * 1.0 - 55 * age;
+        const r = 4 + l.size * 0.03, a = 1 - k;
+        c.drawCircle(x, y, r, paint(sk, col, a));
+        c.drawLine(x + r * 0.8, y, x + r * 0.8, y - r * 3.2, paint(sk, col, a, STROKE, 2));
+        c.drawLine(x + r * 0.8, y - r * 3.2, x + r * 2.2, y - r * 2.4, paint(sk, col, a, STROKE, 2));
+      }
+    }
+  }
+}
+
+/** A found secret combo: a big gold star pops in above the stage and fades over six beats (pictures only, no words). */
+export function drawComboBanner(sk: SkiaApi, c: Canvas, l: Layout, k: number) {
+  'worklet';
+  if (k < 0 || k >= 6) return;
+  const sc = Math.min(1, k * 2) * (1 + 0.05 * Math.sin(k * 6)), a = Math.min(1, (6 - k) / 1.5);
+  const cx = l.W / 2, cy = l.stageH * 0.3, R = Math.min(l.W, l.H) * 0.13 * sc;
+  c.drawCircle(cx, cy, R * 1.5, radialPaint(sk, cx, cy, R * 1.5, ['#FFE066', '#00000000'], 0.45 * a));
+  const q = sk.PathBuilder.Make();
+  for (let i = 0; i < 10; i++) { const ang = -Math.PI / 2 + (i * Math.PI) / 5, d = i % 2 ? R * 0.45 : R; if (i === 0) q.moveTo(cx + Math.cos(ang) * d, cy + Math.sin(ang) * d); else q.lineTo(cx + Math.cos(ang) * d, cy + Math.sin(ang) * d); }
+  q.close();
+  const path = q.build();
+  c.drawPath(path, paint(sk, '#1B1340', a, STROKE, 9));
+  c.drawPath(path, paint(sk, '#FFE066', a));
+  c.drawPath(path, paint(sk, '#FFFFFF', a * 0.8, STROKE, 2));
 }

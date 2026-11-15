@@ -7,7 +7,7 @@ import type { CoachCue } from '../../core/coach';
 import { IDLE_POSE, bodyDims, drawCreature, type Pose } from './creature';
 import { gradientPaint, mix, freshPaint, paint, radialPaint, STROKE, type Canvas, type SkiaApi, rect } from './common';
 import { drawCelebration, danceOffset } from './celebrations';
-import { drawDecor, drawScenery, drawTaps, type TapEffect } from './scenery';
+import { drawComboBanner, drawDecor, drawFloatingNotes, drawScenery, drawTaps, type TapEffect } from './scenery';
 import { popupRects } from '../../core/layout';
 import type { SkImage, SkPicture } from '@shopify/react-native-skia';
 
@@ -127,13 +127,6 @@ export function creatureFeet(s: SceneInput, id: string): { x: number; y: number 
   return p ? s.layout.spots[p.spot]! : null;
 }
 
-/** The singer menu as one self-contained drawing (panel, group captions, singers). Static between touches, so the app records it once as a Picture. */
-export function drawTray(sk: SkiaApi, c: Canvas, s: SceneInput) {
-  'worklet';
-  drawTrayPanel(sk, c, s);
-  drawTrayStrip(sk, c, s);
-}
-
 /** The fixed part of the singer menu: dark panel, glow line and grab bar. Three cheap shapes, so it is drawn every frame. */
 export function drawTrayPanel(sk: SkiaApi, c: Canvas, s: SceneInput) {
   'worklet';
@@ -141,6 +134,27 @@ export function drawTrayPanel(sk: SkiaApi, c: Canvas, s: SceneInput) {
   c.drawRect(rect(0, l.tray.y, l.W, l.tray.h + 6), paint(sk, mix(stage.palette.sky, '#000000', 0.55), 0.94));
   c.drawRect(rect(0, l.tray.y, l.W, 2), paint(sk, stage.palette.glow, 0.25));
   c.drawRRect(sk.RRectXY(rect(l.W / 2 - 24, l.tray.y + 5, 48, 5), 2.5, 2.5), paint(sk, '#FFFFFF', 0.35)); // grab bar
+}
+
+/** Small pictogram of a singer kind: drum, wave, note, mouth. */
+function drawLayerGlyph(sk: SkiaApi, c: Canvas, layer: string, x: number, y: number, col: string) {
+  'worklet';
+  const a = 0.9, u = 9;
+  const P = () => paint(sk, col, a, STROKE, 2.4);
+  if (layer === 'drums') {
+    c.drawOval(rect(x - u, y - u * 0.2, u * 2, u * 0.9), P());
+    c.drawLine(x - u * 0.5, y - u * 0.9, x, y - u * 0.1, P()); c.drawLine(x + u * 0.5, y - u * 0.9, x, y - u * 0.1, P());
+  } else if (layer === 'bass') {
+    const q = sk.PathBuilder.Make();
+    q.moveTo(x - u, y); q.quadTo(x - u * 0.5, y - u * 1.6, x, y); q.quadTo(x + u * 0.5, y + u * 1.6, x + u, y);
+    c.drawPath(q.build(), P());
+  } else if (layer === 'melody') {
+    c.drawCircle(x - u * 0.4, y + u * 0.6, u * 0.45, paint(sk, col, a));
+    c.drawLine(x + u * 0.05, y + u * 0.6, x + u * 0.05, y - u * 0.9, P()); c.drawLine(x + u * 0.05, y - u * 0.9, x + u * 0.8, y - u * 0.5, P());
+  } else {
+    c.drawOval(rect(x - u * 0.8, y - u * 0.6, u * 1.6, u * 1.2), P());
+    c.drawCircle(x, y + u * 0.15, u * 0.25, paint(sk, col, a));
+  }
 }
 
 /** The scrolling part: group backdrops and singers, shifted by scrollX. With scrollX = 0 this is what the app rasterises once into a strip and slides. */
@@ -154,6 +168,7 @@ export function drawTrayStrip(sk: SkiaApi, c: Canvas, s: SceneInput) {
     const a = l.slotPos[g * per]!, b = l.slotPos[g * per + per - 1]!;
     const layer = stage.creatures[g * per]!.layer;
     c.drawRRect(sk.RRectXY(rect(a.x - l.slot * 0.55 - s.scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84), 14, 14), paint(sk, LAYER_COLORS[layer], 0.16));
+    drawLayerGlyph(sk, c, layer, a.x - l.slot * 0.55 - s.scrollX + 15, l.tray.y + l.tray.h * 0.08 + 15, LAYER_COLORS[layer]); // a picture says which kind of singer this group is
   });
   const trayS = Math.min(l.slot * 0.74, (l.tray.h - 12) / 1.4); // leaves a little air above the tallest singer
   stage.creatures.forEach((cr, i) => {
@@ -165,6 +180,13 @@ export function drawTrayStrip(sk: SkiaApi, c: Canvas, s: SceneInput) {
     drawCreature(sk, c, cr, p.x - s.scrollX, l.tray.y + l.tray.h - 10, trayS, pose);
   });
   c.restore();
+}
+
+/** The singer menu as one self-contained drawing (panel, group captions, singers). Static between touches, so the app records it once as a Picture. */
+export function drawTray(sk: SkiaApi, c: Canvas, s: SceneInput) {
+  'worklet';
+  drawTrayPanel(sk, c, s);
+  drawTrayStrip(sk, c, s);
 }
 
 /** Countdown to a secret combo's celebration: a gold ring that fills, with a star that pulses on the beat. */
@@ -383,7 +405,9 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
     }
   }
 
+  if (!s.reduceMotion) drawFloatingNotes(sk, c, l, stage.creatures, s.placed, s.muted, s.solo, LAYER_COLORS, s.beat, stage.bpm);
   if (s.taps?.length) drawTaps(sk, c, s.taps, s.timeMs);
+  if (s.celebration) drawComboBanner(sk, c, l, s.beat - s.celebration.startBeat);
   if (s.popup) drawVolumePopup(sk, c, s);
   if (s.reward && !s.celebration) drawRewardRing(sk, c, s);
 
@@ -400,6 +424,10 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
     c.scale(1 / (s.trayStripRatio ?? 1), 1 / (s.trayStripRatio ?? 1));
     c.drawImage(s.trayStrip, 0, 0);
     c.restore();
+    // the row can scroll: dark fades at the edges that still hide singers
+    const fadeC = mix(stage.palette.sky, '#000000', 0.55);
+    if (s.scrollX > 4) c.drawRect(rect(0, l.tray.y + 2, 40, l.tray.h), gradientPaint(sk, 0, 0, 40, 0, [fadeC, '#00000000'], 0.95));
+    if (s.scrollX < l.scrollMax - 4) c.drawRect(rect(l.W - 40, l.tray.y + 2, 40, l.tray.h), gradientPaint(sk, l.W - 40, 0, l.W, 0, ['#00000000', fadeC], 0.95));
   } else if (s.trayImage) drawRaster(c, s.trayImage, s.pixelRatio ?? 1); else if (s.trayPicture) c.drawPicture(s.trayPicture); else drawTray(sk, c, s);
   c.restore(); // end of the sliding tray
   if (trayK < 0.98) {

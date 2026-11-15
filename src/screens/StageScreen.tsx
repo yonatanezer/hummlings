@@ -18,8 +18,12 @@ import type { Stage } from '../core/types';
 import { t, type StringKey } from '../i18n';
 import { useLang } from '../i18n/useLang';
 import { useProgress } from '../app/progress';
+import { StageHud } from '../ui/StageHud';
 import { recallBand, rememberBand } from '../app/bandMemory';
-import { ComboBook } from './ComboBook';
+import { ComboBook, GOAL_ICON } from './ComboBook';
+import { STAGES, FREE_STAGE_IDS } from '../content';
+import type { GoalId } from '../core/goals';
+import { Icon, type IconName } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
 import { WorldIcon } from '../ui/WorldIcon';
 import { useParentalGate } from '../ui/ParentalGate';
@@ -31,6 +35,8 @@ import type { ReturningCreature } from '../ui/draw/scene';
 interface Props {
   stage: Stage;
   onBack: () => void;
+  onSwitch: (stageId: string) => void; // jump straight to another unlocked world
+  onLocked: (stageId: string) => void; // a locked world: show its preview
   onSongs: () => void;
   onHelp: () => void;
   onPlay: (songId: string) => void;
@@ -48,7 +54,7 @@ function RecordPulse({ on }: { on: boolean }) {
   return <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: -5, left: -5, width: 66, height: 66, borderRadius: 33, borderWidth: 4, borderColor: COLORS.rec }, st]} />;
 }
 
-export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }: Props) {
+export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp, onPlay, onDebug }: Props) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { rtl } = useLang();
@@ -77,6 +83,10 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
   const [rewardDots, setRewardDots] = useState<{ done: number; total: number } | null>(null);
   const [screenReader, setScreenReader] = useState(false);
   const [, force] = useState(0);
+  const [toast, setToast] = useState<{ icons: IconName[]; text?: string } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [worlds, setWorlds] = useState(false);
+  const showToast = (v: { icons: IconName[]; text?: string }) => { setToast(v); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(null), 2600); };
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
   const progressRef = useRef(progress);
@@ -121,10 +131,11 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
         const combo = stage.combos.find((c) => c.id === id)!;
         sv.celebration.value = { celebrationId: combo.celebrationId, creatureIds: combo.creatureIds as unknown as string[], startBeat: bar * TUNING.beatsPerBar };
         discover(id);
+        showToast({ icons: ['combos'], text: t('combo.found') });
         hapticSuccess();
         engine.playSfx('combo');
       },
-      onGoal: (key) => { engine.playSfx('goal'); update((p) => (p.goals.includes(key) ? p : { ...p, goals: [...p.goals, key] })); },
+      onGoal: (key) => { engine.playSfx('goal'); const gid = key.split(':')[1] as GoalId; showToast({ icons: ['star', GOAL_ICON[gid] ?? 'star'], text: t(`goal.${gid}` as StringKey) }); sv.taps.value = [...sv.taps.value.filter((e) => sv.timeMs.value - e.t0 < 1400), ...[0.25, 0.5, 0.75].map((f) => ({ x: layoutRef.current.W * f, y: layoutRef.current.stageH * 0.3, t0: sv.timeMs.value, kind: 'drop' as const, color: '#FFE066' }))]; update((p) => (p.goals.includes(key) ? p : { ...p, goals: [...p.goals, key] })); },
       onCelebrationEnd: () => { sv.celebration.value = null; },
       onRecordingLimit: () => stopRecording(),
       onBar: (bar) => { if (session.recorder) setRecBars(bar - session.recorder.startBar + 1); },
@@ -214,6 +225,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
         if (old && old !== ev.creatureId) goBack(old, l.spots[ev.spot]!);
         anim.set(ev.creatureId, { since: now(), from: { x: ev.p.x, y: ev.p.y + l.size * 0.6 } });
         hapticMedium();
+        { const t0 = sv.timeMs.value, sp = l.spots[ev.spot]!; sv.taps.value = [...sv.taps.value.filter((e) => t0 - e.t0 < 1400), { x: sp.x, y: sp.y - l.size * 0.3, t0, kind: 'drop', color: stage.palette.glow }]; }
         engine.playSfx('pop', popRate(stage.key, ev.spot));
         session.dispatch({ kind: 'drop', creatureId: ev.creatureId, spot: ev.spot });
         if (!progressRef.current.firstDropDone) {
@@ -296,6 +308,7 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
     if ((!ready || paused) && kind !== 'end' && kind !== 'cancel') return;
     lastTouch.current = Date.now();
     if (kind === 'start' && tracker.activeCount === 0 && sv.drags.value.length) sv.drags.value = [];
+    if (kind === 'start' && !reduceMotion) { const t0 = sv.timeMs.value, q = e.nativeEvent.changedTouches[0]; if (q) sv.taps.value = [...sv.taps.value.filter((x) => t0 - x.t0 < 1400), { x: q.pageX, y: q.pageY, t0, kind: 'press' }]; }
     const ts = Date.now();
     for (const tc of e.nativeEvent.changedTouches) {
       const p = { x: tc.pageX, y: tc.pageY };
@@ -342,8 +355,8 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
 
       <View pointerEvents="box-none" style={[styles.top, { top: insets.top + 6, left: insets.left + 10, right: insets.right + 10, flexDirection: row }]}>
         <IconButton icon="back" label={t('a11y.back')} onPress={onBack} />
-        <View style={styles.world} accessibilityLabel={t(stage.nameKey as StringKey)}><WorldIcon stageId={stage.id} size={34} /></View>
-        <View style={{ flex: 1 }} />
+        <Pressable style={styles.world} accessibilityRole="button" accessibilityLabel={t(stage.nameKey as StringKey)} hitSlop={6} onPress={() => { if (!recording) setWorlds((v) => !v); }}><WorldIcon stageId={stage.id} size={34} /></Pressable>
+        <View style={{ flex: 1, alignItems: 'center' }}><StageHud stage={stage} state={session.state} discovered={progress.discoveredCombos} compact={width < 700} row={row} /></View>
         <View style={{ flexDirection: row, gap: 10, alignItems: 'center' }}>
           {recording && (() => {
             const secs = Math.round(recBars * barSec(stage.bpm));
@@ -413,6 +426,27 @@ export function StageScreen({ stage, onBack, onSongs, onHelp, onPlay, onDebug }:
           })}
         </>
       )}
+      {worlds && !recording && (
+        <View style={[styles.worlds, { top: insets.top + 6 + 64, [rtl ? 'right' : 'left']: (rtl ? insets.right : insets.left) + 10 + 56 + 10 }]}>
+          {STAGES.filter((st) => st.id !== stage.id).map((st) => {
+            const locked = !FREE_STAGE_IDS.includes(st.id) && !progress.unlocked;
+            return (
+              <Pressable key={st.id} accessibilityRole="button" accessibilityLabel={`${t(st.nameKey as StringKey)}${locked ? ', ' + t('select.locked') : ''}`} hitSlop={4}
+                onPress={() => { setWorlds(false); if (st.id === stage.id) return; if (locked) onLocked(st.id); else onSwitch(st.id); }}
+                style={[styles.world, { marginHorizontal: 0, width: 46, height: 46, borderRadius: 23, opacity: locked ? 0.55 : 1 }]}>
+                <WorldIcon stageId={st.id} size={30} />
+                {locked && <View style={styles.wlock}><Icon name="lock" size={14} color="#FFE8A3" /></View>}
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+      {toast && (
+        <View pointerEvents="none" accessibilityLiveRegion="polite" accessibilityLabel={toast.text} style={[styles.toast, { top: insets.top + 6 + 80 }]}>
+          {toast.icons.map((n, i) => <Icon key={i} name={n} size={30} color="#2A1F00" />)}
+          {toast.text ? <Text style={styles.toastText}>{toast.text}</Text> : null}
+        </View>
+      )}
       {rewardDots !== null && !book && (
         <View pointerEvents="none" style={[styles.rewardSecs, { top: Math.max(layout.H * 0.2, 96) + Math.max(30, layout.size * 0.26) + 10 }]}>
           <View style={{ flexDirection: 'row', gap: 6 }}>{Array.from({ length: rewardDots.total }, (_, i) => <View key={i} style={[styles.rdot, i < rewardDots.done && styles.rdotOn]} />)}</View>
@@ -466,6 +500,10 @@ const styles = StyleSheet.create({
   top: { position: 'absolute', alignItems: 'center' },
   world: { marginHorizontal: 10, width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(27,19,64,0.92)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)', alignItems: 'center', justifyContent: 'center' },
   clear: { position: 'absolute' },
+  worlds: { position: 'absolute', gap: 6, zIndex: 5 },
+  wlock: { position: 'absolute', right: -4, bottom: -4, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(27,19,64,0.96)', alignItems: 'center', justifyContent: 'center' },
+  toast: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFE8A3', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 24, elevation: 6 },
+  toastText: { color: '#2A1F00', fontSize: 20, fontWeight: '800' },
   rec: { color: '#fff', fontSize: 18, fontWeight: '700', backgroundColor: COLORS.rec, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' },
   overlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(10,6,32,0.6)', alignItems: 'center', justifyContent: 'center' },
   card: { backgroundColor: COLORS.panel, padding: 24, borderRadius: 24, alignItems: 'center', gap: 16, maxWidth: 420 },
