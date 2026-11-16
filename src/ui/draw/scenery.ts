@@ -86,7 +86,7 @@ export function drawScenery(sk: SkiaApi, c: Canvas, id: string, l: Layout, pal: 
     }
     // Cloud houses float in the sky at different heights (they used to stand in an even row at the singers' height, like six more places to stand).
     for (let i = 0; i < 5; i++) {
-      const hx = W * ([0.07, 0.26, 0.45, 0.62, 0.94] as const)[i]!, hy = l.stageH * ([0.36, 0.27, 0.4, 0.25, 0.42] as const)[i]!, hw = 28 + (i % 3) * 6, hh = 22 + (i % 2) * 10;
+      const hx = W * ([0.045, 0.44, 0.6, 0.72, 0.965] as const)[i]!, hy = l.stageH * ([0.5, 0.36, 0.33, 0.4, 0.5] as const)[i]!, hw = 28 + (i % 3) * 6, hh = 22 + (i % 2) * 10;
       if (S) {
         for (const [dx, dy, r] of [[0, 8, 26], [22, 12, 20], [-20, 12, 18]] as const) c.drawCircle(hx + dx, hy + dy, r, paint(sk, '#E8F6FF', 0.8));
         c.drawRect(rect(hx - hw / 2, hy - hh, hw, hh), paint(sk, '#FFE8A3'));
