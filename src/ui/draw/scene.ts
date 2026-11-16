@@ -181,7 +181,7 @@ export function drawTrayStrip(sk: SkiaApi, c: Canvas, s: SceneInput) {
     c.drawRRect(sk.RRectXY(rect(a.x - l.slot * 0.55 - s.scrollX, l.tray.y + l.tray.h * 0.08, b.x - a.x + l.slot * 1.1, l.tray.h * 0.84), 22, 22), paint(sk, LAYER_COLORS[layer], 0.5, STROKE, 2));
     drawLayerGlyph(sk, c, layer, a.x - l.slot * 0.55 - s.scrollX + 16, l.tray.y + l.tray.h * 0.08 + 17, LAYER_COLORS[layer]); // a picture says which kind of singer this group is
   });
-  const trayS = Math.min(l.slot * 0.92, (l.tray.h - 12) / 1.4); // leaves a little air above the tallest singer
+  const trayS = Math.min(l.slot * 0.95, (l.tray.h - 8) / 1.3); // leaves a little air above the tallest singer
   stage.creatures.forEach((cr, i) => {
     const p = l.slotPos[i]!;
     const standing = s.placed.some((q) => q.id === cr.id);

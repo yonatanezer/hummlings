@@ -219,3 +219,23 @@ describe('dragging a singer from the menu to a far spot', () => {
     expect(g.move(1, { x: slot.x + 30, y: slot.y - 12 }, 10, w2)[0]).toMatchObject({ type: 'pickup' });
   });
 });
+
+describe('a small finger taps a menu singer', () => {
+  it('a wobbly tap (up to 18 px) is still a tap', () => {
+    const g = new GestureTracker();
+    const slot = layout.slotPos[2]!;
+    g.start(1, slot, 0, world());
+    expect(g.move(1, { x: slot.x + 12, y: slot.y - 9 }, 40, world())).toEqual([]);
+    expect(g.end(1, { x: slot.x + 12, y: slot.y - 9 }, 90, world())).toEqual([{ type: 'trayTap', creatureId: 'c2' }]);
+  });
+  it('a tiny drag that ends back in the menu counts as a tap, a real drag does not', () => {
+    const g = new GestureTracker();
+    const slot = layout.slotPos[2]!;
+    g.start(1, slot, 0, world());
+    g.move(1, { x: slot.x, y: slot.y - 24 }, 30, world()); // picked up
+    expect(g.end(1, { x: slot.x + 6, y: slot.y - 10 }, 120, world())).toEqual([{ type: 'trayTap', creatureId: 'c2' }]);
+    g.start(2, slot, 200, world());
+    g.move(2, { x: slot.x, y: slot.y - 24 }, 230, world());
+    expect(g.end(2, { x: 3, y: layout.tray.y - 80 }, 500, world())[0]).toMatchObject({ type: 'returnToTray' }); // far from the tray and from every spot
+  });
+});

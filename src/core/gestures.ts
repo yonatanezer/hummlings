@@ -33,7 +33,7 @@ type Touch =
   | { kind: 'pendingStage'; id: string; start: Pt; startT: number; fired: boolean }
   | { kind: 'pendingTray'; id: string | null; slot: number; start: Pt; startT: number; scrollStart: number }
   | { kind: 'pendingEmpty'; start: Pt }
-  | { kind: 'drag'; id: string; from: 'tray' | 'stage'; last: Pt; lastT: number; vy: number }
+  | { kind: 'drag'; id: string; from: 'tray' | 'stage'; last: Pt; lastT: number; vy: number; origin?: Pt }
   | { kind: 'scroll'; start: Pt; scrollStart: number; id: string | null } // id: the free singer under the first touch, may still be picked up
   | { kind: 'hold'; id: string; startY: number; startVol: number } // long press fired: dragging changes the volume
   | { kind: 'slider'; id: string; start: Pt }
@@ -43,6 +43,8 @@ type Touch =
 
 export const TRAY_HANDLE_H = 40; // touch strip at the bottom edge while the menu is hidden
 const SLOP = 10; // px of movement before a touch stops being a tap
+const TRAY_TAP_SLOP = 18; // a small finger's tap on a menu singer wobbles more than that: up to here it is still a tap (the singer hops onto the stage)
+const TRAY_TAP_BACK = 44; // a tiny drag from the menu that ends back in the menu counts as a tap too
 
 export class GestureTracker {
   private touches = new Map<number, Touch>();
@@ -101,12 +103,12 @@ export class GestureTracker {
         return [];
       }
       case 'pendingTray': {
-        if (dist(s.start) <= SLOP) return [];
+        if (dist(s.start) <= TRAY_TAP_SLOP) return [];
         const dx = p.x - s.start.x, dy = p.y - s.start.y;
         if (dy > 0 && dy > Math.abs(dx) * 1.2) { this.touches.delete(touch); return [{ type: 'trayHide' }]; } // a downward swipe tucks the menu away
         const horizontal = Math.abs(dx) > Math.abs(dy) * 2; // a clearly flat swipe scrolls; anything steeper picks the singer up
         if (s.id && !(horizontal && w.layout.scrollMax > 0 && dy > -SLOP * 0.8)) {
-          this.touches.set(touch, { kind: 'drag', id: s.id, from: 'tray', last: p, lastT: t, vy: 0 });
+          this.touches.set(touch, { kind: 'drag', id: s.id, from: 'tray', last: p, lastT: t, vy: 0, origin: s.start });
           return [{ type: 'pickup', touch, creatureId: s.id, from: 'tray', p }];
         }
         if (w.layout.scrollMax > 0) {
@@ -170,6 +172,7 @@ export class GestureTracker {
           if (flick || spot < 0) return [{ type: 'remove', touch, creatureId: s.id, p }];
           return [{ type: 'drop', touch, creatureId: s.id, spot, p }];
         }
+        if (spot < 0 && s.origin && Math.hypot(p.x - s.origin.x, p.y - s.origin.y) < TRAY_TAP_BACK) return [{ type: 'trayTap', creatureId: s.id }]; // barely moved: it was a tap
         if (spot >= 0) return [{ type: 'drop', touch, creatureId: s.id, spot, p }];
         return [{ type: 'returnToTray', touch, creatureId: s.id, p }];
       }
