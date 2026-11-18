@@ -5,7 +5,7 @@ import { audibleIds } from '../core/stageState';
 import type { IconName } from '../core/uiIcons';
 import type { Session } from '../core/session';
 import type { Stage } from '../core/types';
-import { t } from '../i18n';
+import { t, type StringKey } from '../i18n';
 import { ComboCardArt } from '../ui/ComboCardArt';
 import { Icon } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
@@ -42,7 +42,7 @@ export function ComboBook({ stage, session, discovered, onClose, onReplay }: Pro
             return (
               <View key={combo.id} style={{ width: cardW, alignItems: 'center', gap: 12 }}>
                 <ComboCardArt stage={stage} combo={combo} discovered={found} width={cardW} height={cardH} have={have} />
-                <View style={{ flexDirection: 'row', gap: 8 }} accessibilityLabel={`${n}/4`}>
+                <View style={{ flexDirection: 'row', gap: 8 }} accessibilityLabel={t('a11y.progress', { n, m: 4 })}>
                   {[0, 1, 2, 3].map((i) => (
                     <View key={i} style={[styles.dot, { backgroundColor: found || i < n ? COLORS.glow : 'rgba(255,255,255,0.15)', width: 20, height: 20, borderRadius: 10 }]} />
                   ))}
@@ -54,7 +54,7 @@ export function ComboBook({ stage, session, discovered, onClose, onReplay }: Pro
         </View>
         <View style={styles.shelf} accessibilityLabel={t('goals.title')}>
           {goals.map((g) => (
-            <View key={g.id} style={styles.stickerCol} accessibilityLabel={`${g.n}/${g.total}`}>
+            <View key={g.id} style={styles.stickerCol} accessibilityLabel={`${t(`goal.${g.id}` as StringKey)}, ${t('a11y.progress', { n: g.n, m: g.total })}`}>
               <View style={[styles.sticker, g.done && styles.stickerOn]}>
                 <Icon name={GOAL_ICON[g.id]} size={26} color={g.done ? '#2A1F00' : 'rgba(255,255,255,0.5)'} />
                 {g.done && <View style={styles.tick}><Icon name="check" size={12} color="#10282A" /></View>}

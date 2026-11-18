@@ -14,7 +14,8 @@
       "requireFullScreen": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "UIRequiresFullScreen": true
+        "UIRequiresFullScreen": true,
+        "CFBundleLocalizations": ["en", "he", "es", "fr", "de", "pt", "it", "ru", "ar", "zh-Hans", "ja", "ko"]
       }
     },
     "android": {

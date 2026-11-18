@@ -6,7 +6,7 @@ import { getStage } from '../content';
 import { exportSong, saveSongToDevice, type ExportResult } from '../app/exportSong';
 import { useProgress } from '../app/progress';
 import type { Song } from '../core/timeline';
-import { clampName } from '../core/timeline';
+import { clampName, defaultNameNumber } from '../core/timeline';
 import { barSec } from '../core/tuning';
 import { t, type StringKey } from '../i18n';
 import { useLang } from '../i18n/useLang';
@@ -16,11 +16,12 @@ import { WorldIcon } from '../ui/WorldIcon';
 import { useParentalGate } from '../ui/ParentalGate';
 import { COLORS } from '../ui/theme';
 
-/** Songs saved by an older build under another language keep the "Song N" name; show them in the current language. */
+/** Default names ("Song 3" / "שיר 3") are shown in the current language, whichever language they were recorded in. */
 const shownName = (name: string): string => {
-  const m = /^Song (\d+)$/.exec(name);
-  return m ? t('songs.defaultName', { n: Number(m[1]) }) : name;
+  const n = defaultNameNumber(name);
+  return n === null ? name : t('songs.defaultName', { n });
 };
+const barsText = (n: number): string => (n === 1 ? t('songs.bars.one') : n === 2 ? t('songs.bars.two') : t('songs.bars', { n }));
 
 const fmtLen =(song: Song, bpm: number): string => {
   const s = Math.round(song.bars * barSec(bpm));
@@ -29,7 +30,7 @@ const fmtLen =(song: Song, bpm: number): string => {
 
 export function SongsScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (songId: string) => void }) {
   const insets = useSafeAreaInsets();
-  const { rtl } = useLang();
+  const { rtl, lang } = useLang();
   const { progress, update } = useProgress();
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -54,7 +55,7 @@ export function SongsScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (s
     setBusy(null);
     setMsg(r === 'saved' ? 'saved' : r === 'cancelled' ? null : r);
   };
-  const del = (song: Song) => Alert.alert(song.name, t('songs.deleteConfirm'), [
+  const del = (song: Song) => Alert.alert(shownName(song.name), t('songs.deleteConfirm'), [
     { text: t('common.cancel'), style: 'cancel' },
     { text: t('songs.delete'), style: 'destructive', onPress: () => update((p) => ({ ...p, songs: p.songs.filter((s) => s.id !== song.id) })) },
   ]);
@@ -72,11 +73,11 @@ export function SongsScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (s
       </View>
       {msg === 'saved' && <View style={[styles.banner, { flexDirection: row, backgroundColor: COLORS.ok }]}><Icon name="check" color="#10282A" size={28} /><Text style={[styles.bannerText, { color: '#10282A' }]}>{t('rec.savedDevice')}</Text></View>}
       {msg && msg !== 'shared' && msg !== 'saved' && (
-        <View style={[styles.banner, { flexDirection: row }]}><Icon name="full" color={COLORS.sky} size={28} /><Text style={styles.bannerText}>{t('songs.storageFull')}</Text></View>
+        <View style={[styles.banner, { flexDirection: row }]}><Icon name="full" color={COLORS.sky} size={28} /><Text style={styles.bannerText}>{t(msg === 'storage' ? 'songs.storageFull' : 'songs.exportError')}</Text></View>
       )}
       {progress.songs.length >= 50 && <View style={[styles.banner, { flexDirection: row }]}><Icon name="full" color={COLORS.sky} size={28} /><Text style={styles.bannerText}>{t('songs.limit')}</Text></View>}
       {progress.songs.length === 0 ? (
-        <View style={styles.empty}><Icon name="note" size={72} color={COLORS.textDim} /><Text style={styles.dim}>{t('songs.empty')}</Text><Text style={[styles.dim, { fontSize: 15, maxWidth: 360, textAlign: 'center', opacity: 0.8 }]}>{t('songs.emptyHint')}</Text></View>
+        <View style={styles.empty}><Icon name="note" size={72} color={COLORS.textDim} /><Text style={styles.dim}>{t('songs.empty')}</Text><View style={{ flexDirection: row, alignItems: 'center', gap: 12 }}><Icon name="record" size={44} color={COLORS.rec} /><Text style={[styles.dim, { fontSize: 15, maxWidth: 320, textAlign: 'center', opacity: 0.8 }]}>{t('songs.emptyHint')}</Text></View></View>
       ) : (
         <FlatList
           data={[...progress.songs].reverse()}
@@ -89,9 +90,9 @@ export function SongsScreen({ onBack, onPlay }: { onBack: () => void; onPlay: (s
                 <WorldIcon stageId={item.stageId} size={44} />
                 <View style={{ flex: 1 }}>
                   {renaming === item.id ? (
-                    <TextInput autoFocus value={draft} maxLength={24} onChangeText={setDraft} onSubmitEditing={() => commit(item)} onBlur={() => commit(item)} style={styles.input} accessibilityLabel={t('songs.rename')} />
+                    <TextInput autoFocus value={draft} maxLength={24} onChangeText={setDraft} onSubmitEditing={() => commit(item)} onBlur={() => commit(item)} style={styles.input} accessibilityLabel={t('songs.nameField')} />
                   ) : <Text style={styles.name}>{shownName(item.name)}</Text>}
-                  <Text style={styles.dim}>{t(stage.nameKey as StringKey)} · {fmtLen(item, stage.bpm)} · {t('songs.bars', { n: item.bars })} · {new Date(item.createdAt).toLocaleDateString()}</Text>
+                  <Text style={styles.dim}>{t(stage.nameKey as StringKey)} · {fmtLen(item, stage.bpm)} · {barsText(item.bars)} · {new Date(item.createdAt).toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US')}</Text>
                 </View>
                 <IconButton icon="play" size={68} bg={COLORS.ok} color="#10282A" label={t('a11y.play')} onPress={() => onPlay(item.id)} />
                 <IconButton icon="pencil" size={56} label={t('songs.rename')} onPress={() => { setRenaming(item.id); setDraft(item.name); }} />

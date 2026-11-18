@@ -11,7 +11,7 @@ import { randomBand } from '../core/surprise';
 import { AccentContext } from '../ui/IconButton';
 import { coachKind, pickSlot, pickSpot, pickTapSpot, type CoachCue } from '../core/coach';
 import { audibleIds, nextFreeSpot, swapSpot } from '../core/stageState';
-import { autoName, warnBars, type Song } from '../core/timeline';
+import { autoName, defaultNameNumber, warnBars, type Song } from '../core/timeline';
 import { TUNING, barSec } from '../core/tuning';
 import { exportSong, saveSongToDevice, type ExportResult } from '../app/exportSong';
 import type { Stage } from '../core/types';
@@ -208,7 +208,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
 
   const stopRecording = useCallback(() => {
     if (!session.recorder) return;
-    const names = progressRef.current.songs.map((s) => s.name);
+    const names = progressRef.current.songs.map((s) => { const k = defaultNameNumber(s.name); return k === null ? s.name : t('songs.defaultName', { n: k }); }); // "Song 2" and "שיר 2" are the same name
     const song = session.stopRecording({ id: `song_${Date.now()}`, name: autoName(names, (n) => t('songs.defaultName', { n })), createdAt: Date.now() });
     setRecording(false);
     setRecBars(0);
@@ -421,7 +421,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
           {recording && (() => {
             const secs = Math.round(recBars * barSec(stage.bpm));
             const warn = recBars >= warnBars(stage.bpm);
-            return <Text style={[styles.rec, warn && styles.recWarn]} accessibilityLabel={`${t('rec.recording')} ${secs}`}>{`${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`}</Text>;
+            return <Text style={[styles.rec, warn && styles.recWarn]} accessibilityLabel={t(secs === 1 ? 'a11y.recordingTime.one' : 'a11y.recordingTime', { n: secs })}>{`${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`}</Text>;
           })()}
           <View><RecordPulse on={recordCue && !recording} /><IconButton primary icon={recording ? 'stop' : 'record'} label={recording ? t('a11y.stopRecord') : t('a11y.record')} caption={recording ? t('ui.stop') : t('ui.record')} color={recording ? '#FFFFFF' : COLORS.rec} bg={recording ? COLORS.rec : undefined} onPress={onRecord} /></View>
           <IconButton icon="combos" label={t('a11y.comboBook')} caption={t('ui.combos')} onPress={() => setBook(true)} />
@@ -457,7 +457,8 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
           <ScrollView horizontal style={[styles.srTray, { top: layout.tray.y, height: layout.tray.h }]} contentContainerStyle={{ alignItems: 'center' }}>
             {stage.creatures.map((c, i) => {
               const on = session.state.spots.includes(c.id);
-              const label = `${t(`layer.${c.layer}` as StringKey)} ${(i % TUNING.perLayer) + 1}${on ? `, ${t('a11y.onStage')}` : ''}`;
+              const lay = t(`layer.${c.layer}` as StringKey), num = (i % TUNING.perLayer) + 1;
+              const label = on ? t('a11y.singerOnStage', { layer: lay, n: num }) : t('a11y.creature', { layer: lay, n: num });
               return <Pressable key={c.id} accessibilityRole="button" accessibilityLabel={label} style={styles.srBtn}
                 onPress={() => (on ? (session.dispatch({ kind: 'remove', creatureId: c.id }), syncScene()) : apply({ type: 'trayTap', creatureId: c.id }))} />;
             })}
@@ -466,10 +467,10 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
             if (!id) return null;
             const c = stage.creatures.find((q) => q.id === id)!;
             const sp = layout.spots[spot]!;
-            const label = `${t(`layer.${c.layer}` as StringKey)} ${(stage.creatures.indexOf(c) % TUNING.perLayer) + 1}, ${t('a11y.onStage')}`;
+            const label = t('a11y.singerOnStage', { layer: t(`layer.${c.layer}` as StringKey), n: (stage.creatures.indexOf(c) % TUNING.perLayer) + 1 });
             const level = Math.round((session.state.volume[id] ?? 1) * 100);
             return (
-              <Pressable key={id} accessibilityRole="adjustable" accessibilityLabel={label} accessibilityValue={{ text: `${level}%${session.state.muted[id] ? ', ' + t('a11y.mute') : ''}` }}
+              <Pressable key={id} accessibilityRole="adjustable" accessibilityLabel={label} accessibilityValue={{ text: `${level}%${session.state.muted[id] ? ', ' + t('a11y.muted') : ''}` }}
                 accessibilityActions={[{ name: 'increment', label: t('a11y.louder') }, { name: 'decrement', label: t('a11y.quieter') }, { name: 'activate', label: t('a11y.mute') }, { name: 'longpress', label: t('a11y.solo') }, { name: 'magicTap', label: t('a11y.remove') }]}
                 onAccessibilityAction={(e) => {
                   const n = e.nativeEvent.actionName;
@@ -530,7 +531,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
               <IconButton icon="close" label={t('a11y.close')} caption={t('a11y.close')} onPress={() => setSaved(null)} />
             </View>
             {exportMsg === 'saved' && <Text style={styles.ok}>{t('rec.savedDevice')}</Text>}
-            {(exportMsg === 'storage' || exportMsg === 'error') && <Text style={styles.fail}>{t('songs.storageFull')}</Text>}
+            {(exportMsg === 'storage' || exportMsg === 'error' || exportMsg === 'unavailable') && <Text style={styles.fail}>{t(exportMsg === 'storage' ? 'songs.storageFull' : 'songs.exportError')}</Text>}
           </View>
         </View>
       )}

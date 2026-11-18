@@ -19,6 +19,12 @@ export const warnBars = (bpm: number): number =>
   Math.max(0, maxBars(bpm) - Math.ceil((TUNING.recordingWarnSec * bpm) / 60 / TUNING.beatsPerBar));
 
 export const clampName = (name: string): string => Array.from(name.trim()).slice(0, TUNING.songNameMax).join('');
+/** The number of a default song name ("Song 3" / "שיר 3"), or null for a name the player typed. Names are stored in the language active at record time, so both forms are recognised. */
+export const defaultNameNumber = (name: string): number | null => {
+  const m = /^(?:Song|שיר) (\d+)$/.exec(name.trim());
+  return m ? Number(m[1]) : null;
+};
+
 export const autoName = (existing: readonly string[], nameFor: (n: number) => string = (n) => `Song ${n}`): string => {
   let n = existing.length + 1;
   while (existing.includes(nameFor(n))) n += 1;

@@ -4,7 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { APP_VERSION, PRIVACY_URL } from '../app/config';
 import { getPurchases } from '../app/purchases';
 import { useProgress } from '../app/progress';
-import { t } from '../i18n';
+import { t, type StringKey } from '../i18n';
+import { LANGS } from '../core/langs';
 import { useLang } from '../i18n/useLang';
 import { Icon, type IconName } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
@@ -33,17 +34,17 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
       {children}
     </View>
   );
-  const langs: Settings['language'][] = ['system', 'en', 'he'];
+  const langs: Settings['language'][] = ['system', ...LANGS];
 
   const afterGate = async () => {
     const g = gate;
     setGate(null);
     if (g === 'privacy') void Linking.openURL(PRIVACY_URL);
-    if (g === 'reset') Alert.alert(t('settings.reset'), t('settings.resetConfirm'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.confirm'), style: 'destructive', onPress: reset }]); // a grown-up first, then a last confirmation
+    if (g === 'reset') Alert.alert(t('settings.reset'), t('settings.resetConfirm'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('settings.resetDo'), style: 'destructive', onPress: reset }]); // a grown-up first, then a last confirmation
     if (g === 'restore') {
       const ok = await getPurchases().restore();
       if (ok) update((p) => ({ ...p, unlocked: true }));
-      setNote(ok ? t('unlock.done') : t('unlock.failed'));
+      setNote(ok ? t('restore.done') : t('restore.none'));
     }
   };
 
@@ -59,10 +60,10 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
         <Row label={t('settings.haptics')} icon="vibrate"><Toggle label={t('settings.haptics')} value={s.haptics} onChange={(v) => setSetting('haptics', v)} /></Row>
         <Row label={t('settings.reduceMotion')} icon="motion"><Toggle label={t('settings.reduceMotion')} value={s.reduceMotion} onChange={(v) => setSetting('reduceMotion', v)} /></Row>
         <Row label={t('settings.language')} icon="globe">
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flexDirection: align, flexWrap: 'wrap', gap: 8, flex: 1, justifyContent: 'flex-end' }}>
             {langs.map((l) => (
               <Pressable key={l} accessibilityRole="button" accessibilityState={{ selected: s.language === l }} onPress={() => setSetting('language', l)} style={[styles.seg, s.language === l && styles.segOn]}>
-                <Text style={[styles.segText, s.language === l && styles.segTextOn]}>{t(`settings.language.${l}` as 'settings.language.en')}</Text>
+                <Text style={[styles.segText, s.language === l && styles.segTextOn]}>{t(`settings.language.${l}` as StringKey)}</Text>
               </Pressable>
             ))}
           </View>

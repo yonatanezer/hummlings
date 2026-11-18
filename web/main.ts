@@ -600,7 +600,7 @@ async function openStage(i: number) {
   await engine.init();
   await Promise.all([engine.loadStage(stage), loadAtlas(stage.id)]);
   session = new Session(stage, engine, {
-    onCelebration: (id, bar) => { const c = stage.combos.find((q) => q.id === id)!; celebration = { comboId: id, creatureIds: [...c.creatureIds], startBeat: bar * 4 }; found.add(id); store.set('hum.combos', [...found]); engine.playSfx('combo'); toast(`${P.star(30)}${P.book(30)}<span>Secret combo!</span>`); },
+    onCelebration: (id, bar) => { const c = stage.combos.find((q) => q.id === id)!; celebration = { comboId: id, creatureIds: [...c.creatureIds], startBeat: bar * 4 }; found.add(id); store.set('hum.combos', [...found]); engine.playSfx('combo'); toast(`${P.star(30)}${P.book(30)}<span>${en['combo.found']}</span>`); },
     onCelebrationEnd: () => { celebration = null; },
     onGoal: (key) => { stickers.add(key); store.set('hum.goals', [...stickers]); engine.playSfx('goal'); toast(`${P.sticker(30)}${GOAL_PICTO[key.split(':')[1]!]?.(24) ?? ''}<span>${(en as Record<string, string>)['goal.' + key.split(':')[1]]}</span>`); burst(W / 2, H * 0.3, ['#FFC857', '#FFFFFF', '#5FE3C0'], 16, 'star', performance.now(), 220); },
   }, [...found], [...stickers]);
@@ -658,7 +658,7 @@ function openBook() {
     const dots = document.createElement('div'); dots.className = 'combo' + (f ? ' found' : ''); dots.style.display = 'flex'; dots.style.gap = '6px';
     dots.innerHTML = [0, 1, 2, 3].map((i) => `<i class="${f || i < n ? 'lit' : ''}"></i>`).join('');
     card.append(cv, dots);
-    if (f) { const b = document.createElement('button'); b.textContent = 'Replay show'; b.addEventListener('click', () => { $('book').classList.add('hide'); s.replayCombo(c.id); }); card.append(b); }
+    if (f) { const b = document.createElement('button'); b.textContent = 'Replay the show'; b.addEventListener('click', () => { $('book').classList.add('hide'); s.replayCombo(c.id); }); card.append(b); }
     cardsEl.append(card);
   });
   const gs = document.createElement('div'); gs.className = 'goals';
@@ -703,13 +703,13 @@ function stopRecording() {
   recording = false; setRecUi();
   if (!song) return;
   const all = [...loadSongs(), song]; saveSongs(all);
-  toast(`${P.sticker(30)}<span>Song saved: ${song.name}</span>`);
+  toast(`${P.sticker(30)}<span>${en['rec.saved']}</span>`);
   renderSongs();
 }
 $('recBtn').addEventListener('click', () => {
   if (!session || !ready || playMode) return;
   if (recording) return stopRecording();
-  if (loadSongs().length >= MAX_SONGS) { toast('<span>Song list is full (50). Delete one to record again.</span>'); return; }
+  if (loadSongs().length >= MAX_SONGS) { toast(`<span>${en['songs.limit']}</span>`); return; }
   session.startRecording(); recording = true; setRecUi();
 });
 setInterval(() => {
@@ -733,8 +733,8 @@ function renderSongs() {
     const btn = (label: string, svgHtml: string, fn: () => void, cls = '') => { const b = document.createElement('button'); b.className = `ic ${cls}`; b.setAttribute('aria-label', label); b.title = label; b.innerHTML = svgHtml; b.addEventListener('click', fn); return b; };
     row.append(
       btn('Play', P.play(24), () => { $('songs').classList.add('hide'); void playSong(song); }),
-      btn('Share or save audio', '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 15V4M8 8l4-4 4 4M5 12v8h14v-8"/></svg>', () => void exportWav(song)),
-      btn('Delete (tap twice)', '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/></svg>', () => {}, 'del'),
+      btn('Download song', '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 15V4M8 8l4-4 4 4M5 12v8h14v-8"/></svg>', () => void exportWav(song)),
+      btn('Delete. Tap again to confirm.', '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/></svg>', () => {}, 'del'),
     );
     const del = row.querySelector('.del') as HTMLButtonElement;
     let armed = false;
@@ -784,7 +784,7 @@ $('stopPlay').addEventListener('click', stopPlayback);
 
 async function exportWav(song: Song) {
   const st = stageOf(song);
-  toast('<span>Preparing audio…</span>');
+  toast('<span>Preparing your song…</span>');
   try {
     await engine.init();
     const files = [...st.creatures.map((c) => c.loopFile), ...st.combos.map((c) => c.bonusLoopFile)];
@@ -795,8 +795,8 @@ async function exportWav(song: Song) {
     const nav = navigator as Navigator & { canShare?: (d: object) => boolean; share?: (d: object) => Promise<void> };
     if (nav.canShare?.({ files: [file] })) { await nav.share!({ files: [file], title: song.name }); return; }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.append(a); a.click(); a.remove();
-    toast('<span>Audio file created. If nothing downloaded, your browser blocks it here; the app shares it.</span>');
-  } catch { toast('<span>Could not prepare the audio file.</span>'); }
+    toast('<span>Your audio file is ready. If nothing downloaded, your browser may have blocked it. The app can share songs directly.</span>');
+  } catch { toast('<span>Could not make the audio file. Please try again.</span>'); }
 }
 renderSongs();
 

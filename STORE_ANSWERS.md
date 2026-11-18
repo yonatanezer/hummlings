@@ -1,7 +1,7 @@
 # STORE ANSWERS
 
 ## Ratings
-- Apple age rating 4+: no objectionable content, no web access, no user-generated content shared in-app.
+- Apple age rating 4+: no objectionable content, no web content (the privacy policy link opens the browser behind the grown-up check), no user-generated content shared in-app.
 - PEGI 3. Google Play IARC: Everyone.
 - Not enrolled in Apple Kids category or Google Families programme (kid-safe anyway: no ads, no tracking, no chat).
 
@@ -20,8 +20,8 @@ All art is drawn in code and all sound is synthesised by scripts in this repo (d
 ITSAppUsesNonExemptEncryption = false (no encryption beyond what the operating system provides).
 
 ## In-app purchase
-- Product: non-consumable `hummlings.unlock_all`, price tier equal to USD 3.99. Unlocks worlds 2 and 3.
-- Reviewer note: a grown-up check (a one-digit sum plus a 2-second hold) appears before the purchase screen and before the privacy link. Restore purchases is in Settings and on the unlock screen.
+- Product: non-consumable `hummlings.unlock_all`, price tier equal to USD 3.99. Unlocks worlds 2 to 5 (four worlds, 96 singers, 16 secret combos).
+- Reviewer note: a grown-up check (a sum of a number from 11 to 19 and a number from 3 to 9, then a 2-second hold) appears before the purchase screen and before the privacy link. Restore purchases is in Settings and on the unlock screen.
 
 ## Accounts
 No accounts, so no account deletion flow is needed.

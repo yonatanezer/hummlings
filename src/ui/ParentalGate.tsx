@@ -30,7 +30,7 @@ export function ParentalGate({ onPass, onCancel }: { onPass: () => void; onCance
   const question = (
     <>
       <Text style={styles.title} accessibilityRole="header">{t('gate.title')}</Text>
-      <Text style={[styles.sum, compact && { fontSize: 36 }]}>{gate.a} + {gate.b}</Text>
+      <Text style={[styles.sum, compact && { fontSize: 36 }, { writingDirection: 'ltr' }]}>{gate.a} + {gate.b}</Text>
       <View style={{ flexDirection: 'row', gap: 16 }}>
         {gate.options.map((o) => (
           <Pressable key={o} accessibilityRole="button" accessibilityLabel={`${o}`} onPress={() => { setAnswer(o); setWrong(o !== gate.correct); }}
@@ -43,7 +43,7 @@ export function ParentalGate({ onPass, onCancel }: { onPass: () => void; onCance
   );
   const hint = <Text style={[styles.hint, wrong && { color: COLORS.danger }]}>{wrong ? t('gate.wrong') : t('gate.hold')}</Text>;
   const hold = (
-    <Pressable accessibilityRole="button" accessibilityLabel={t('gate.hold')} onPressIn={press} onPressOut={release} style={styles.holdWrap}>
+    <Pressable accessibilityRole="button" accessibilityLabel={t('a11y.hold')} onPressIn={press} onPressOut={release} style={styles.holdWrap}>
       <Animated.View style={[styles.ring, ringStyle]} />
     </Pressable>
   );

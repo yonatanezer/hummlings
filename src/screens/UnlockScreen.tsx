@@ -16,8 +16,10 @@ export function UnlockScreen({ onBack }: { onBack: () => void }) {
   const insets = useSafeAreaInsets();
   const { update } = useProgress();
   const [price, setPrice] = useState<string | null>(null);
-  const [status, setStatus] = useState<'idle' | 'pending' | 'failed' | 'done'>('idle');
+  const [status, setStatus] = useState<'idle' | 'pending' | 'failed' | 'done' | 'restored' | 'none'>('idle');
   useEffect(() => { void getPurchases().getPrice().then(setPrice); }, []);
+  // the store price is isolated so a currency sign never jumps to the other side in a right-to-left sentence; without a price the label stays complete
+  const buyLabel = price ? t('unlock.buy', { price: `\u2066${price}\u2069` }) : t('unlock.buyNoPrice');
   const cw = Math.min(width * 0.13, 150), ch = Math.min(height * 0.42, cw * 1.1);
   const buy = async () => {
     setStatus('pending');
@@ -27,7 +29,7 @@ export function UnlockScreen({ onBack }: { onBack: () => void }) {
   };
   const restore = async () => {
     const ok = await getPurchases().restore();
-    if (ok) { update((p) => ({ ...p, unlocked: true })); setStatus('done'); } else setStatus('failed');
+    if (ok) { update((p) => ({ ...p, unlocked: true })); setStatus('restored'); } else setStatus('none');
   };
   return (
     <View style={styles.root}>
@@ -39,12 +41,12 @@ export function UnlockScreen({ onBack }: { onBack: () => void }) {
         <View style={{ maxWidth: 360, gap: 14 }}>
           <Text style={styles.title} accessibilityRole="header">{t('unlock.title')}</Text>
           <Text style={styles.body}>{t('unlock.body')}</Text>
-          {status === 'done' ? <Text style={styles.ok}>{t('unlock.done')}</Text> : (
-            <Pressable accessibilityRole="button" accessibilityLabel={t('unlock.buy', { price: price ?? '' })} disabled={status === 'pending'} onPress={() => void buy()} style={[styles.buy, status === 'pending' && { opacity: 0.6 }]}>
-              <Text style={styles.buyText}>{status === 'pending' ? t('unlock.pending') : t('unlock.buy', { price: price ?? '' })}</Text>
+          {status === 'done' || status === 'restored' ? <Text style={styles.ok}>{t(status === 'restored' ? 'restore.done' : 'unlock.done')}</Text> : (
+            <Pressable accessibilityRole="button" accessibilityLabel={buyLabel} disabled={status === 'pending'} onPress={() => void buy()} style={[styles.buy, status === 'pending' && { opacity: 0.6 }]}>
+              <Text style={styles.buyText}>{status === 'pending' ? t('unlock.pending') : buyLabel}</Text>
             </Pressable>
           )}
-          {status === 'failed' && <Text style={styles.fail}>{t('unlock.failed')}</Text>}
+          {(status === 'failed' || status === 'none') && <Text style={styles.fail}>{t(status === 'none' ? 'restore.none' : 'unlock.failed')}</Text>}
           <Pressable accessibilityRole="button" onPress={() => void restore()} style={{ minHeight: 56, justifyContent: 'center' }}>
             <Text style={styles.link}>{t('unlock.restore')}</Text>
           </Pressable>

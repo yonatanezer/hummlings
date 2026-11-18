@@ -1,12 +1,9 @@
-import { TUNING } from './tuning';
-
 export interface Gate { a: number; b: number; options: number[]; correct: number }
 
-/** Parental gate sum: two numbers shown as digits, 3 answer choices. rand() must return [0,1). */
+/** Parental gate sum: a number from 11 to 19 plus one from 3 to 9 (too much for a child who is not yet in school, easy for a grown-up), 3 answer choices. rand() must return [0,1). */
 export function makeGate(rand: () => number = Math.random): Gate {
-  const span = TUNING.gateMaxAddend - 1;
-  const a = 1 + Math.floor(rand() * span) + 1; // 2..9: always a digit, never trivially 1
-  const b = 2 + Math.floor(rand() * span);
+  const a = 11 + Math.floor(rand() * 9);
+  const b = 3 + Math.floor(rand() * 7);
   const correct = a + b;
   const set = new Set<number>([correct]);
   while (set.size < 3) {

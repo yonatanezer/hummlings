@@ -29,3 +29,13 @@ describe('timeline', () => {
     expect(clampName('  ' + 'a'.repeat(40))).toHaveLength(24);
   });
 });
+
+import { defaultNameNumber } from '../src/core/timeline';
+describe('default song names', () => {
+  it('both languages are recognised, typed names are not', () => {
+    expect(defaultNameNumber('Song 3')).toBe(3);
+    expect(defaultNameNumber('שיר 12')).toBe(12);
+    expect(defaultNameNumber('My song 3')).toBeNull();
+    expect(defaultNameNumber('שיר')).toBeNull();
+  });
+});

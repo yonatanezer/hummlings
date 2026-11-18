@@ -11,7 +11,9 @@ describe('parental gate', () => {
       expect(new Set(g.options).size).toBe(3);
       expect(g.options.filter((o) => o === g.correct)).toHaveLength(1);
       expect(g.a + g.b).toBe(g.correct);
-      expect(g.a).toBeGreaterThanOrEqual(2);
+      expect(g.a).toBeGreaterThanOrEqual(11);
+      expect(g.a).toBeLessThanOrEqual(19);
+      expect(g.b).toBeGreaterThanOrEqual(3);
       expect(g.b).toBeLessThanOrEqual(9);
     }
   });

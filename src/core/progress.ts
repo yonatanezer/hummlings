@@ -1,3 +1,4 @@
+import { isLang, type Lang } from './langs';
 import type { Song } from './timeline';
 import { TUNING } from './tuning';
 
@@ -21,7 +22,7 @@ export interface Settings {
   haptics: boolean;
   reduceMotion: boolean; // forced on; otherwise follows system
   introSound: boolean; // the notes of the opening (off: it opens silently)
-  language: 'system' | 'en' | 'he';
+  language: 'system' | Lang;
 }
 
 export const defaultProgress = (): Progress => ({
@@ -55,7 +56,7 @@ export function parseProgress(raw: unknown): Progress {
       haptics: s.haptics !== false,
       reduceMotion: s.reduceMotion === true,
       introSound: s.introSound !== false,
-      language: s.language === 'en' || s.language === 'he' ? s.language : 'system',
+      language: isLang(s.language) ? s.language : 'system',
     },
     firstDropDone: r.firstDropDone === true,
     goals: Array.isArray(r.goals) ? r.goals.filter((x) => typeof x === 'string') : [],
