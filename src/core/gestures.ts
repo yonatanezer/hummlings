@@ -30,6 +30,7 @@ export interface World {
   canPick?: (creatureId: string) => boolean; // the first lesson: only the lit group may be picked up (the rest only scrolls the menu)
   locked?: boolean; // the first lesson: singers on stage cannot be touched and the menu cannot be tucked away
   tapOnly?: boolean; // level 2: a singer on stage can only be tapped (no dragging it off, no long press)
+  holdOnly?: boolean; // level 3: a singer on stage can only be held (the volume slider opens): a tap or a drag does nothing
   noHide?: boolean; // the menu cannot be tucked away
 }
 
@@ -97,7 +98,7 @@ export class GestureTracker {
     switch (s.kind) {
       case 'pendingStage':
         if (dist(s.start) > SLOP) {
-          if (w.tapOnly) return []; // a wobbling finger is still a tap
+          if (w.tapOnly || w.holdOnly) return []; // a wobbling finger is still a tap (or still a hold)
           this.touches.set(touch, { kind: 'drag', id: s.id, from: 'stage', last: p, lastT: t, vy: 0 });
           return [{ type: 'pickup', touch, creatureId: s.id, from: 'stage', p }];
         }
@@ -162,7 +163,7 @@ export class GestureTracker {
     this.touches.delete(touch);
     if (!s) return [];
     switch (s.kind) {
-      case 'pendingStage': return s.fired ? [] : [{ type: 'tap', creatureId: s.id }];
+      case 'pendingStage': return s.fired || w.holdOnly ? [] : [{ type: 'tap', creatureId: s.id }];
       case 'pendingEmpty': return [{ type: 'tapEmpty', p }];
       case 'handle': return s.done ? [] : [{ type: 'trayShow' }];
       case 'pendingTray': return s.id ? [{ type: 'trayTap', creatureId: s.id }] : [];

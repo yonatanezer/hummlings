@@ -5,10 +5,10 @@
 export type CoachKind = 'drag' | 'tap' | 'hold' | 'record';
 /** What the scene draws. 'record' is not drawn there: the record button itself pulses. */
 export interface CoachCue {
-  kind: Exclude<CoachKind, 'record'> | 'swipe'; // 'swipe' belongs to the first lesson (core/lesson.ts): a finger slides the singer menu
+  kind: Exclude<CoachKind, 'record'> | 'swipe' | 'slide' | 'solo'; // the rest belong to the levels (core/lesson.ts): 'swipe' slides the singer menu, 'slide' drags the volume slider that is open, 'solo' taps its star
   slot: number;
   spot: number;
-  dir?: 1 | -1; // swipe: 1 = the menu has to go towards its right end
+  dir?: 1 | -1; // swipe: 1 = the menu has to go towards its right end; slide / hold: 1 = the volume goes down, -1 = it goes up
 }
 
 export interface CoachInput {

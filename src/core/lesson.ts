@@ -14,9 +14,9 @@ import { LAYERS, type Layer, type Stage } from './types';
 export const LESSON_STAGE_IDS: readonly string[] = ['pond'];
 export const hasLesson = (stageId: string): boolean => LESSON_STAGE_IDS.includes(stageId);
 
-/** Level 1: four groups lit one at a time (drag + scroll). Level 2: "my band": silence a singer, wake it, choose one more. */
-export type LessonLevel = 1 | 2;
-export const LESSON_LEVELS: readonly LessonLevel[] = [1, 2];
+/** Level 1: four groups lit one at a time (drag + scroll). Level 2: "my band": silence a singer, wake it, choose one more. Level 3: "volume": lower a singer, raise it, try the star (only this singer). */
+export type LessonLevel = 1 | 2 | 3;
+export const LESSON_LEVELS: readonly LessonLevel[] = [1, 2, 3];
 /** What `progress.lessonsDone` holds for a finished level: the bare world id for level 1 (as it always was), `world:2` for level 2. */
 export const levelKey = (stageId: string, level: LessonLevel): string => (level === 1 ? stageId : `${stageId}:${level}`);
 /** The first level of this world that is not finished yet (null: all done, or the world has no levels). */
@@ -28,9 +28,10 @@ export function nextLevel(stageId: string, done: readonly string[]): LessonLevel
 export const LESSON_LAYERS: readonly Layer[] = LAYERS;
 export const LESSON_STEPS = LESSON_LAYERS.length; // level 1: 4
 export const LEVEL2_STEPS = 3; // level 2: silence, wake, choose
-export const LESSON_COINS = { perStep: 1, finish: { 1: 6, 2: 5 } as Record<LessonLevel, number> } as const;
+export const LEVEL3_STEPS = 3; // level 3: lower, raise, star
+export const LESSON_COINS = { perStep: 1, finish: { 1: 6, 2: 5, 3: 6 } as Record<LessonLevel, number> } as const;
 /** Coin slots in the counter: one per step. */
-export const lessonSteps = (level: LessonLevel): number => (level === 1 ? LESSON_STEPS : LEVEL2_STEPS);
+export const lessonSteps = (level: LessonLevel): number => (level === 1 ? LESSON_STEPS : level === 2 ? LEVEL2_STEPS : LEVEL3_STEPS);
 export const lessonTotalCoins = (level: LessonLevel = 1): number => lessonSteps(level) * LESSON_COINS.perStep + LESSON_COINS.finish[level];
 /** Without a touch for this long the menu slides to the lit group by itself. */
 export const LESSON_SCROLL_WAIT_MS = 3500;
@@ -147,7 +148,45 @@ export function level2Cue(stage: Stage, layout: Layout, scrollX: number, spots: 
   return { kind: 'drag', slot: pool[Math.floor((pool.length - 1) / 2)]!, spot: COACH_SPOT_ORDER.find((i) => !spots[i]) ?? 0 };
 }
 
-/** What may be picked up from the menu: level 1 the lit group only; level 2 nothing until the third step, then anything. */
+/** What may be picked up from the menu: level 1 the lit group only; level 2 nothing until the third step, then anything; level 3 nothing. */
 export function lessonPickable(level: LessonLevel, stage: Stage, step: number, id: string): boolean {
-  return level === 1 ? lessonCanPick(stage, step, id) : step >= 2;
+  return level === 1 ? lessonCanPick(stage, step, id) : level === 2 ? step >= 2 : false;
 }
+
+// ---------------- level 3: volume ----------------
+
+/** The ready-made band of level 3: the first singer of every group, on spots 1 to 4. */
+export const level3Band = (stage: Stage): string[] => LESSON_LAYERS.map((l) => stage.creatures.find((c) => c.layer === l)!.id);
+export const LEVEL3_SPOTS: readonly number[] = [1, 2, 3, 4];
+/** A volume under this counts as "lowered"; every singer has to be back at or above LOUD_FROM for "raised". */
+export const QUIET_BELOW = 0.5;
+export const LOUD_FROM = 0.75;
+
+/** The band and its spots for a level that starts with a ready-made band (null: that level starts from an empty stage). */
+export function levelBand(level: LessonLevel, stage: Stage): { ids: string[]; spots: readonly number[] } | null {
+  if (level === 2) return { ids: level2Band(stage), spots: LEVEL2_SPOTS };
+  if (level === 3) return { ids: level3Band(stage), spots: LEVEL3_SPOTS };
+  return null;
+}
+
+/**
+ * 0: lower a singer's volume (a long press opens the slider), 1: raise it again, 2: try the star ("only this singer"), 3: done (solo is on).
+ * `quiet` is remembered by the screen (a volume went under QUIET_BELOW once): after it is raised nothing shows it any more.
+ */
+export function level3Step(spots: readonly (string | null)[], volume: Readonly<Record<string, number>>, solo: string | null, quiet: boolean): number {
+  if (!quiet) return 0;
+  if (spots.some((id) => !!id && (volume[id] ?? 1) < LOUD_FROM)) return 1;
+  return solo !== null ? 3 : 2;
+}
+
+/** The hand of level 3: holds a singer (the slider opens), slides the slider down and then up, then taps the star. */
+export function level3Cue(stage: Stage, spots: readonly (string | null)[], volume: Readonly<Record<string, number>>, popup: { spot: number } | null, step: number): CoachCue | null {
+  if (step >= 3) return null;
+  const first = Math.max(spots.indexOf(level3Band(stage)[0]!), spots.findIndex(Boolean));
+  if (first < 0) return null;
+  if (step === 2) return popup ? { kind: 'solo', slot: -1, spot: popup.spot } : { kind: 'hold', slot: -1, spot: first };
+  if (step === 0) return popup ? { kind: 'slide', slot: -1, spot: popup.spot, dir: 1 } : { kind: 'hold', slot: -1, spot: first, dir: 1 };
+  const low = spots.findIndex((id) => !!id && (volume[id] ?? 1) < LOUD_FROM);
+  return popup ? { kind: 'slide', slot: -1, spot: popup.spot, dir: -1 } : { kind: 'hold', slot: -1, spot: low < 0 ? first : low, dir: -1 };
+}
+

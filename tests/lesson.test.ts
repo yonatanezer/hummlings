@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { STAGES } from '../src/content';
 import { computeLayout } from '../src/core/layout';
 import { GestureTracker, type World } from '../src/core/gestures';
-import { hasLesson, LEVEL2_SPOTS, level2Band, level2Cue, level2Step, lessonPickable, lessonSteps, levelKey, nextLevel, LESSON_STEPS, lessonCanPick, lessonCue, lessonDirection, lessonLit, lessonScrollTarget, lessonStep, lessonTotalCoins } from '../src/core/lesson';
+import { hasLesson, LEVEL3_SPOTS, level3Band, level3Cue, level3Step, levelBand, LEVEL2_SPOTS, level2Band, level2Cue, level2Step, lessonPickable, lessonSteps, levelKey, nextLevel, LESSON_STEPS, lessonCanPick, lessonCue, lessonDirection, lessonLit, lessonScrollTarget, lessonStep, lessonTotalCoins } from '../src/core/lesson';
 
 const stage = STAGES[0]!;
 const first = (layer: string) => stage.creatures.find((c) => c.layer === layer)!.id;
@@ -153,9 +153,10 @@ describe('level 2: my band', () => {
     expect(levelKey('pond', 2)).toBe('pond:2');
     expect(nextLevel('pond', [])).toBe(1);
     expect(nextLevel('pond', ['pond'])).toBe(2);
-    expect(nextLevel('pond', ['pond', 'pond:2'])).toBeNull();
+    expect(nextLevel('pond', ['pond', 'pond:2'])).toBe(3);
+    expect(nextLevel('pond', ['pond', 'pond:2', 'pond:3'])).toBeNull();
     expect(nextLevel('fair', [])).toBeNull();
-    expect([lessonSteps(1), lessonSteps(2)]).toEqual([4, 3]);
+    expect([lessonSteps(1), lessonSteps(2), lessonSteps(3)]).toEqual([4, 3, 3]);
     expect(lessonTotalCoins(2)).toBe(8);
   });
   it('a singer on stage can only be tapped: no dragging it off, no long press', () => {
@@ -176,5 +177,52 @@ describe('level 2: my band', () => {
     t.start(1, p, 0, w);
     const evs = t.move(1, { x: p.x, y: p.y + 70 }, 50, w);
     expect(evs.some((e) => e.type === 'trayHide' || e.type === 'pickup')).toBe(false);
+  });
+});
+
+describe('level 3: volume', () => {
+  const l = phone();
+  const band = level3Band(stage);
+  const four = (): (string | null)[] => { const a: (string | null)[] = Array(6).fill(null); band.forEach((id, i) => { a[LEVEL3_SPOTS[i]!] = id; }); return a; };
+  it('is one singer of every group, on spots 1 to 4', () => {
+    expect(band.map((id) => stage.creatures.find((c) => c.id === id)!.layer)).toEqual(['drums', 'bass', 'melody', 'voice']);
+    expect(levelBand(3, stage)).toEqual({ ids: band, spots: LEVEL3_SPOTS });
+    expect(levelBand(2, stage)!.ids).toHaveLength(3);
+    expect(levelBand(1, stage)).toBeNull();
+  });
+  it('goes lower, raise, star, done', () => {
+    const spots = four();
+    expect(level3Step(spots, {}, null, false)).toBe(0);
+    expect(level3Step(spots, { [band[0]!]: 0.3 }, null, true)).toBe(1); // lowered, not raised yet
+    expect(level3Step(spots, { [band[0]!]: 0.8 }, null, true)).toBe(2); // raised again
+    expect(level3Step(spots, {}, band[0]!, true)).toBe(3); // the star is on
+    expect(level3Step(spots, { [band[0]!]: 0.3 }, band[0]!, false)).toBe(0); // never quiet enough: no skipping
+  });
+  it('holds first, slides the slider down then up once it is open, then taps the star', () => {
+    const spots = four();
+    expect(level3Cue(stage, spots, {}, null, 0)).toMatchObject({ kind: 'hold', spot: LEVEL3_SPOTS[0], dir: 1 });
+    expect(level3Cue(stage, spots, {}, { spot: 1 }, 0)).toMatchObject({ kind: 'slide', spot: 1, dir: 1 });
+    expect(level3Cue(stage, spots, { [band[2]!]: 0.2 }, null, 1)).toMatchObject({ kind: 'hold', spot: LEVEL3_SPOTS[2], dir: -1 });
+    expect(level3Cue(stage, spots, { [band[2]!]: 0.2 }, { spot: 3 }, 1)).toMatchObject({ kind: 'slide', dir: -1 });
+    expect(level3Cue(stage, spots, {}, { spot: 1 }, 2)).toMatchObject({ kind: 'solo', spot: 1 });
+    expect(level3Cue(stage, spots, {}, null, 3)).toBeNull();
+  });
+  it('pays like the others and nothing can be picked from the menu', () => {
+    expect(lessonSteps(3)).toBe(3);
+    expect(lessonTotalCoins(3)).toBe(9);
+    for (const step of [0, 1, 2]) expect(lessonPickable(3, stage, step, first('voice'))).toBe(false);
+  });
+  it('a singer on stage can only be held: a tap or a drag does nothing, a long press opens the slider', () => {
+    const w: World = { layout: l, scrollX: 0, trayIds: stage.creatures.map((c) => c.id), onStage: four(), canPick: () => false, holdOnly: true, noHide: true };
+    const sp = { x: l.spots[LEVEL3_SPOTS[0]!]!.x, y: l.spots[LEVEL3_SPOTS[0]!]!.y - l.size * 0.4 };
+    const t = new GestureTracker();
+    t.start(1, sp, 0, w);
+    expect(t.end(1, sp, 60, w)).toEqual([]);
+    const t2 = new GestureTracker();
+    t2.start(2, sp, 0, w);
+    expect(t2.move(2, { x: sp.x + 60, y: sp.y + 40 }, 40, w)).toEqual([]);
+    const t3 = new GestureTracker();
+    t3.start(3, sp, 0, w);
+    expect(t3.tick(5000, w)).toEqual([{ type: 'longPress', creatureId: band[0] }]);
   });
 });

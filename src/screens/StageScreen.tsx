@@ -11,7 +11,7 @@ import { randomBand } from '../core/surprise';
 import { AccentContext } from '../ui/IconButton';
 import { coachKind, pickSlot, pickSpot, pickTapSpot, type CoachCue } from '../core/coach';
 import { audibleIds, emptyStage, nextFreeSpot, swapSpot } from '../core/stageState';
-import { LESSON_FINISH_MS, LESSON_LAYERS, LESSON_LEVELS, LESSON_SCROLL_WAIT_MS, LEVEL2_SPOTS, level2Band, level2Cue, level2Step, lessonCue, lessonLit, lessonPickable, lessonScrollTarget, lessonStep, lessonSteps, lessonTotalCoins, levelKey, nextLevel, type LessonFx, type LessonLevel } from '../core/lesson';
+import { LESSON_FINISH_MS, LESSON_LAYERS, LESSON_LEVELS, LESSON_SCROLL_WAIT_MS, QUIET_BELOW, level2Cue, level2Step, level3Cue, level3Step, levelBand, lessonCue, lessonLit, lessonPickable, lessonScrollTarget, lessonStep, lessonSteps, lessonTotalCoins, levelKey, nextLevel, type LessonFx, type LessonLevel } from '../core/lesson';
 import { autoName, defaultNameNumber, warnBars, type Song } from '../core/timeline';
 import { TUNING, barSec } from '../core/tuning';
 import { exportSong, saveSongToDevice, type ExportResult } from '../app/exportSong';
@@ -125,6 +125,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
   const levelRef = useRef(level);
   levelRef.current = level;
   const silencedRef = useRef(false); // level 2: a singer was silenced at least once
+  const quietRef = useRef(false); // level 3: a singer's volume went under the quiet line at least once
   const lessonMeta = useRef({ step: -1, prev: null as Layer | null, since: 0, sinceMs: Date.now(), fx: [] as LessonFx[] }).current;
   const [lessonDir, setLessonDir] = useState<-1 | 0 | 1>(0); // the lit group is out of sight on this side (an arrow points there)
   const finishTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -142,7 +143,10 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
   const now = () => sv.timeMs.value;
   /** Hands the lesson's state (lit group, coins, flying coins) to the scene. */
   /** Where the running level stands: level 1 counts the groups that have a singer on stage, level 2 follows silence, wake, choose. */
-  const lessonStepNow = useCallback((): number => (levelRef.current === 1 ? lessonStep(stage, session.state.spots) : level2Step(session.state.spots, session.state.muted, silencedRef.current)), [stage, session]);
+  const lessonStepNow = useCallback((): number => {
+    const lvl = levelRef.current, st = session.state;
+    return lvl === 1 ? lessonStep(stage, st.spots) : lvl === 2 ? level2Step(st.spots, st.muted, silencedRef.current) : level3Step(st.spots, st.volume, st.solo, quietRef.current);
+  }, [stage, session]);
   const publishLesson = useCallback(() => {
     if (lessonRef.current !== 'play') { if (sv.lesson.value) sv.lesson.value = null; return; }
     const m = lessonMeta, t0 = sv.timeMs.value, lvl = levelRef.current;
@@ -151,7 +155,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     m.fx = m.fx.filter((f) => t0 - f.t0 < 1300);
     sv.lesson.value = lvl === 1
       ? { slots: LESSON_LAYERS.map((l) => LAYER_COLORS[l]), dim: false, lit: lessonLit(step), prev: m.prev, since: m.since, done: step, topY: insets.top + 38, fx: m.fx }
-      : { slots: ['#FFE066', '#FFE066', '#FFE066'], dim: step < 2, lit: null, prev: null, since: m.since, done: step, topY: insets.top + 38, fx: m.fx };
+      : { slots: ['#FFE066', '#FFE066', '#FFE066'], dim: lvl === 3 || step < 2, lit: null, prev: null, since: m.since, done: step, topY: insets.top + 38, fx: m.fx };
   }, [sv, lessonMeta, insets.top, lessonStepNow]);
   const syncScene = useCallback(() => {
     const st = session.state;
@@ -202,7 +206,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
         syncScene();
         if (before.spots.some(Boolean)) session.countIn = false;
       }
-      if (lessonRef.current === 'play' && levelRef.current === 2) placeBand();
+      if (lessonRef.current === 'play' && levelRef.current >= 2) placeBand();
       setReady(true);
     })();
     const unsub = engine.onInterrupted(() => setPaused(true));
@@ -255,7 +259,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
 
   const world = (): World => {
     const on = lessonRef.current === 'play', lvl = levelRef.current, step = on ? lessonStepNow() : 99;
-    return { layout: layoutRef.current, scrollX: sv.scrollX.value, trayIds: stage.creatures.map((c) => c.id), onStage: session.state.spots, popup: sv.popup.value ? { spot: sv.popup.value.spot, creatureId: sv.popup.value.creatureId } : null, volumeOf: (id) => session.state.volume[id] ?? 1, trayHidden: !trayOpen.current, canPick: on ? (id) => lessonPickable(lvl, stage, step, id) : undefined, locked: on && lvl === 1, tapOnly: on && lvl === 2, noHide: on };
+    return { layout: layoutRef.current, scrollX: sv.scrollX.value, trayIds: stage.creatures.map((c) => c.id), onStage: session.state.spots, popup: sv.popup.value ? { spot: sv.popup.value.spot, creatureId: sv.popup.value.creatureId } : null, volumeOf: (id) => session.state.volume[id] ?? 1, trayHidden: !trayOpen.current, canPick: on ? (id) => lessonPickable(lvl, stage, step, id) : undefined, locked: on && lvl === 1, tapOnly: on && lvl === 2, holdOnly: on && lvl === 3, noHide: on };
   };
 
   /** A singer of the lit group landed: a coin flies to the counter, stars burst, and when the fourth is in the whole song plays and the success card follows. */
@@ -264,7 +268,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     const step = lessonStepNow(), lvl = levelRef.current;
     if (step <= stepBefore) return;
     const t0 = sv.timeMs.value;
-    lessonMeta.fx = [...lessonMeta.fx, { x: sp.x, y: sp.y - l.size * 0.6, t0, slot: stepBefore }];
+    lessonMeta.fx = [...lessonMeta.fx, ...Array.from({ length: step - stepBefore }, (_, k) => ({ x: sp.x, y: sp.y - l.size * 0.6, t0: t0 + k * 200, slot: stepBefore + k }))];
     if (!reduceMotion) sv.taps.value = [...sv.taps.value.filter((e) => t0 - e.t0 < 1400), { x: sp.x, y: sp.y - l.size * 0.5, t0, kind: 'star' }];
     if (step >= lessonSteps(lvl)) {
       hapticSuccess();
@@ -272,7 +276,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
       sv.taps.value = [...sv.taps.value.filter((e) => t0 - e.t0 < 1400), ...[0.18, 0.38, 0.62, 0.82].map((f, i) => ({ x: l.W * f, y: l.stageH * (0.28 + 0.1 * (i % 2)), t0, kind: 'spark' as const }))];
       const coins = lessonTotalCoins(lvl), key = levelKey(stage.id, lvl);
       update((p) => (p.lessonsDone.includes(key) ? p : { ...p, lessonsDone: [...p.lessonsDone, key], coins: p.coins + coins, firstDropDone: true }));
-      finishTimer.current = setTimeout(() => { engine.playSfx('goal'); setLesson('done'); }, LESSON_FINISH_MS);
+      finishTimer.current = setTimeout(() => { engine.playSfx('goal'); session.dispatch({ kind: 'endSolo' }); sv.popup.value = null; syncScene(); setLesson('done'); }, LESSON_FINISH_MS);
     }
     publishLesson();
   };
@@ -281,27 +285,29 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     update((p) => ({ ...p, lessonsDone: [...p.lessonsDone, ...LESSON_LEVELS.map((l) => levelKey(stage.id, l)).filter((k) => !p.lessonsDone.includes(k))] }));
     setLesson(null);
   };
-  /** Level 2: the stage is cleared and the ready-made band (drums, bass, melody) hops on, already playing. */
+  /** Levels 2 and 3 start with a ready-made band that hops on, already playing. */
   function placeBand() {
-    const l = layoutRef.current;
-    level2Band(stage).forEach((id, k) => {
+    const l = layoutRef.current, band = levelBand(levelRef.current, stage);
+    if (!band) return;
+    band.ids.forEach((id, k) => {
       const i = stage.creatures.findIndex((c) => c.id === id);
       anim.set(id, { since: now() + k * 140, from: { x: l.slotPos[i]!.x - sv.scrollX.value, y: l.slotPos[i]!.y } });
-      session.dispatch({ kind: 'drop', creatureId: id, spot: LEVEL2_SPOTS[k]! });
+      session.dispatch({ kind: 'drop', creatureId: id, spot: band.spots[k]! });
     });
     session.countIn = false;
     silencedRef.current = false;
+    quietRef.current = false;
     syncScene();
   }
-  const startLevel2 = () => {
+  const startLevel = (next: LessonLevel) => {
     const l = layoutRef.current;
     session.state.spots.forEach((id, spot) => { if (id) goBackAll(id, l.spots[spot]!); });
     session.dispatch({ kind: 'clear' });
-    sv.coach.value = null;
+    sv.coach.value = null; sv.popup.value = null;
     sv.taps.value = [];
     lessonMeta.step = -1; lessonMeta.fx = [];
-    levelRef.current = 2; lessonRef.current = 'play';
-    setLevel(2); setLesson('play');
+    levelRef.current = next; lessonRef.current = 'play';
+    setLevel(next); setLesson('play');
     scrollTrayTo(0, 300);
     placeBand();
   };
@@ -379,15 +385,22 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
         if (spot >= 0) sv.popup.value = { spot, creatureId: ev.creatureId, volume: session.state.volume[ev.creatureId] ?? 1, solo: session.state.solo === ev.creatureId };
         break;
       }
-      case 'volumeSet':
+      case 'volumeSet': {
+        const stepBefore = lessonOn ? lessonStepNow() : 0;
         session.dispatch({ kind: 'volume', creatureId: ev.creatureId, value: ev.value });
+        if (lessonOn && ev.value < QUIET_BELOW) quietRef.current = true;
         syncScene();
+        if (lessonOn) lessonLanded(stepBefore, session.state.spots.indexOf(ev.creatureId));
         break;
-      case 'popupSolo':
+      }
+      case 'popupSolo': {
         hapticMedium();
+        const stepBefore = lessonOn ? lessonStepNow() : 0;
         session.dispatch({ kind: 'solo', creatureId: ev.creatureId });
         syncScene();
+        if (lessonOn) lessonLanded(stepBefore, session.state.spots.indexOf(ev.creatureId));
         break;
+      }
       case 'trayTap': {
         const i = stage.creatures.findIndex((c) => c.id === ev.creatureId);
         // a full stage: the new singer takes the place of one of the same kind (else a muted one, else the first), which hops back to the menu
@@ -473,7 +486,8 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
         setRecordCue(false);
         if (!ready || paused) return;
         const l = layoutRef.current, lvl = levelRef.current, step = lessonStepNow();
-        const cue = lvl === 1 ? lessonCue(stage, l, sv.scrollX.value, st.spots, step) : level2Cue(stage, l, sv.scrollX.value, st.spots, st.muted, step);
+        const pop = sv.popup.value;
+        const cue = lvl === 1 ? lessonCue(stage, l, sv.scrollX.value, st.spots, step) : lvl === 2 ? level2Cue(stage, l, sv.scrollX.value, st.spots, st.muted, step) : level3Cue(stage, st.spots, st.volume, pop ? { spot: pop.spot } : null, step);
         const cur = sv.coach.value;
         if ((cue?.kind ?? null) !== (cur?.kind ?? null) || (cue?.spot ?? -1) !== (cur?.spot ?? -1) || (cue?.slot ?? -1) !== (cur?.slot ?? -1) || (cue?.dir ?? 0) !== (cur?.dir ?? 0)) sv.coach.value = cue;
         const dir = cue?.kind === 'swipe' ? (cue.dir ?? 1) : 0;
@@ -668,7 +682,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
           </View>
         </View>
       )}
-      {lesson === 'done' && <LessonDone level={level} onNext={() => { if (levelRef.current === 1 && nextLevel(stage.id, progressRef.current.lessonsDone) === 2) startLevel2(); else setLesson(null); }} />}
+      {lesson === 'done' && <LessonDone level={level} onNext={() => { const nx = nextLevel(stage.id, progressRef.current.lessonsDone); if (nx !== null && nx > levelRef.current) startLevel(nx); else setLesson(null); }} />}
       {gate}
       {paused && (
         <View style={styles.overlay}>

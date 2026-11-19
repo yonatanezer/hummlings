@@ -278,6 +278,38 @@ function drawHintHand(sk: SkiaApi, c: Canvas, s: SceneInput, byId: Record<string
 function drawCoachHand(sk: SkiaApi, c: Canvas, s: SceneInput, cue: CoachCue, byId: Record<string, Creature>) {
   'worklet';
   const l = s.layout;
+  if (cue.kind === 'slide') {
+    // the volume slider is open: a finger drags its knob down (the singer gets quieter) or up
+    const r = popupRects(l, cue.spot);
+    const t = (s.timeMs % 2600) / 2600;
+    const dir = cue.dir ?? 1;
+    const move = Math.min(1, Math.max(0, (t - 0.2) / 0.55));
+    const e = move * move * (3 - 2 * move);
+    const x = r.slider.x + r.slider.w / 2;
+    const y0 = r.slider.y + r.slider.h * (dir > 0 ? 0.1 : 0.9), y1 = r.slider.y + r.slider.h * (dir > 0 ? 0.9 : 0.1);
+    const y = y0 + (y1 - y0) * e;
+    const fade = t < 0.08 ? t / 0.08 : t > 0.9 ? (1 - t) / 0.1 : 1;
+    c.drawLine(x, y0, x, y, paint(sk, '#FFE8A3', 0.6 * fade, STROKE, 7));
+    c.drawCircle(x + 3, y + 8, 26, paint(sk, '#000000', 0.25 * fade));
+    c.drawCircle(x, y, 22, paint(sk, '#FFFFFF', 0.92 * fade));
+    c.drawCircle(x, y, 22, paint(sk, '#FFC857', 0.85 * fade, STROKE, 3));
+    return;
+  }
+  if (cue.kind === 'solo') {
+    // the star of the open volume panel: a finger taps it
+    const r = popupRects(l, cue.spot);
+    const t = (s.timeMs % 2200) / 2200;
+    const k = (t * 2) % 1;
+    const press = k > 0.25 && k < 0.6 ? Math.sin(((k - 0.25) / 0.35) * Math.PI) : 0;
+    const x = r.solo.x + r.solo.w / 2 + 6, y = r.solo.y + r.solo.h / 2 + 8 + (1 - press) * l.size * 0.2;
+    const fade = t > 0.9 ? (1 - t) / 0.1 : 1;
+    const glow = 0.5 + 0.5 * Math.sin(s.timeMs / 200);
+    c.drawCircle(r.solo.x + r.solo.w / 2, r.solo.y + r.solo.h / 2, r.solo.w * (0.55 + 0.08 * glow), paint(sk, '#FFE8A3', 0.8 * fade, STROKE, 4));
+    c.drawCircle(x + 3, y + 8, 26, paint(sk, '#000000', 0.25 * fade));
+    c.drawCircle(x, y, 22 - press * 3, paint(sk, '#FFFFFF', 0.92 * fade));
+    c.drawCircle(x, y, 22 - press * 3, paint(sk, '#FFC857', 0.85 * fade, STROKE, 3));
+    return;
+  }
   if (cue.kind === 'hold') {
     // press and hold: the finger stays down while a ring fills, then the volume slider opens beside the singer
     const t = (s.timeMs % 3600) / 3600;
@@ -293,7 +325,8 @@ function drawCoachHand(sk: SkiaApi, c: Canvas, s: SceneInput, cue: CoachCue, byI
       const open = Math.min(1, (t - 0.55) / 0.12);
       const tx = p.x + l.size * 0.62, top = y - l.size * 0.45, hh = l.size * 0.9;
       c.drawRRect(sk.RRectXY(rect(tx - 5, top, 10, hh), 5, 5), paint(sk, '#FFFFFF', 0.35 * open * fade));
-      const knob = top + hh * (0.15 + 0.7 * Math.min(1, Math.max(0, (t - 0.68) / 0.22)));
+      const kk = Math.min(1, Math.max(0, (t - 0.68) / 0.22));
+      const knob = top + hh * (0.15 + 0.7 * (cue.dir === -1 ? 1 - kk : kk));
       c.drawCircle(tx, knob, 13, paint(sk, '#FFE8A3', open * fade));
     }
     return;
@@ -454,6 +487,21 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
     }
   });
 
+  // a spotlight on every singer that is playing (a muted one stands in the dark); while one singer is solo it has its own, stronger cone below
+  if (!s.solo) {
+    for (const pl of s.placed) {
+      const cr = byId[pl.id];
+      if (!cr || s.muted[pl.id] === true || s.drags.some((d) => d.id === pl.id)) continue;
+      const k = Math.min(1, Math.max(0, (s.timeMs - pl.since - TUNING.hopMs) / 400)); // it switches on once the singer has landed
+      if (k <= 0) continue;
+      const f = l.spots[pl.spot]!, col = mix(LAYER_COLORS[cr.layer], '#FFFFFF', 0.55);
+      const cone = sk.PathBuilder.Make();
+      cone.moveTo(f.x - 7, 0); cone.lineTo(f.x + 7, 0); cone.lineTo(f.x + l.size * 0.5, f.y - 2); cone.lineTo(f.x - l.size * 0.5, f.y - 2); cone.close();
+      c.drawPath(cone.build(), gradientPaint(sk, 0, 0, 0, f.y, ['#00000000', col], 0.24 * k));
+      c.drawOval(rect(f.x - l.size * 0.74, f.y - l.size * 0.12, l.size * 1.48, l.size * 0.32), radialPaint(sk, f.x, f.y + l.size * 0.02, l.size * 0.74, [col, '#00000000'], (0.4 + 0.18 * beatK) * k));
+    }
+  }
+
   // solo spotlight cone
   if (s.solo) {
     const f = creatureFeet(s, s.solo);
@@ -559,5 +607,5 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
 
   if (s.lesson) drawLessonCounter(sk, c, s);
   if (s.hint && s.drags.length === 0) drawHintHand(sk, c, s, byId);
-  if (s.coach && s.drags.length === 0 && !s.popup) drawCoachHand(sk, c, s, s.coach, byId);
+  if (s.coach && s.drags.length === 0 && (!s.popup || s.coach.kind === 'slide' || s.coach.kind === 'solo')) drawCoachHand(sk, c, s, s.coach, byId);
 }
