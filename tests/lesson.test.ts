@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { STAGES } from '../src/content';
 import { computeLayout } from '../src/core/layout';
 import { GestureTracker, type World } from '../src/core/gestures';
-import { levelMapStates, worldStart, hasLesson, LEVEL3_SPOTS, level3Band, level3Cue, level3Step, levelBand, LEVEL2_SPOTS, level2Band, level2Cue, level2Step, lessonPickable, lessonSteps, levelKey, nextLevel, LESSON_STEPS, lessonCanPick, lessonCue, lessonDirection, lessonLit, lessonScrollTarget, lessonStep, lessonTotalCoins } from '../src/core/lesson';
+import { level4Band, level4Cue, level4Step, LEVEL4_SPOTS, levelMapStates, worldStart, hasLesson, LEVEL3_SPOTS, level3Band, level3Cue, level3Step, levelBand, LEVEL2_SPOTS, level2Band, level2Cue, level2Step, lessonPickable, lessonSteps, levelKey, nextLevel, LESSON_STEPS, lessonCanPick, lessonCue, lessonDirection, lessonLit, lessonScrollTarget, lessonStep, lessonTotalCoins } from '../src/core/lesson';
 
 const stage = STAGES[0]!;
 const first = (layer: string) => stage.creatures.find((c) => c.layer === layer)!.id;
@@ -154,9 +154,10 @@ describe('level 2: my band', () => {
     expect(nextLevel('pond', [])).toBe(1);
     expect(nextLevel('pond', ['pond'])).toBe(2);
     expect(nextLevel('pond', ['pond', 'pond:2'])).toBe(3);
-    expect(nextLevel('pond', ['pond', 'pond:2', 'pond:3'])).toBeNull();
+    expect(nextLevel('pond', ['pond', 'pond:2', 'pond:3'])).toBe(4);
+    expect(nextLevel('pond', ['pond', 'pond:2', 'pond:3', 'pond:4'])).toBeNull();
     expect(nextLevel('fair', [])).toBeNull();
-    expect([lessonSteps(1), lessonSteps(2), lessonSteps(3)]).toEqual([4, 3, 3]);
+    expect([lessonSteps(1), lessonSteps(2), lessonSteps(3), lessonSteps(4)]).toEqual([4, 3, 3, 3]);
     expect(lessonTotalCoins(2)).toBe(8);
   });
   it('a singer on stage can only be tapped: no dragging it off, no long press', () => {
@@ -229,10 +230,10 @@ describe('level 3: volume', () => {
 
 describe('level map', () => {
   it('shows finished circles, the one that waits and the ones not open yet', () => {
-    expect(levelMapStates('pond', []).map((x) => x.state)).toEqual(['current', 'locked', 'locked']);
-    expect(levelMapStates('pond', ['pond']).map((x) => x.state)).toEqual(['done', 'current', 'locked']);
-    expect(levelMapStates('pond', ['pond', 'pond:2', 'pond:3']).map((x) => x.state)).toEqual(['done', 'done', 'done']);
-    expect(levelMapStates('pond', ['pond:2']).map((x) => x.state)).toEqual(['current', 'done', 'current']); // an older save: the order is only a guide
+    expect(levelMapStates('pond', []).map((x) => x.state)).toEqual(['current', 'locked', 'locked', 'locked']);
+    expect(levelMapStates('pond', ['pond']).map((x) => x.state)).toEqual(['done', 'current', 'locked', 'locked']);
+    expect(levelMapStates('pond', ['pond', 'pond:2', 'pond:3', 'pond:4']).map((x) => x.state)).toEqual(['done', 'done', 'done', 'done']);
+    expect(levelMapStates('pond', ['pond:2']).map((x) => x.state)).toEqual(['current', 'done', 'current', 'locked']); // an older save: the order is only a guide
   });
   it('a new player goes straight into level 1, everyone else sees the map, other worlds have none', () => {
     expect(worldStart('pond', [])).toBe('play');
@@ -240,5 +241,32 @@ describe('level map', () => {
     expect(worldStart('pond', ['pond:3'])).toBe('map');
     expect(worldStart('fair', [])).toBeNull();
     expect(worldStart('fair', ['pond'])).toBeNull();
+  });
+});
+
+describe('level 4: swap', () => {
+  const l = phone();
+  const band = level4Band(stage);
+  const full = (): (string | null)[] => { const a: (string | null)[] = Array(6).fill(null); band.forEach((id, i) => { a[LEVEL4_SPOTS[i]!] = id; }); return a; };
+  it('is a full stage of six different singers, all four groups among them', () => {
+    expect(new Set(band).size).toBe(6);
+    expect(new Set(band.map((id) => stage.creatures.find((c) => c.id === id)!.layer))).toEqual(new Set(['drums', 'bass', 'melody', 'voice']));
+    expect(levelBand(4, stage)).toEqual({ ids: band, spots: LEVEL4_SPOTS });
+  });
+  it('counts swaps up to three', () => {
+    expect([0, 1, 2, 3, 4].map(level4Step)).toEqual([0, 1, 2, 3, 3]);
+    expect(lessonTotalCoins(4)).toBe(9);
+  });
+  it('carries a free singer onto a different singer on stage each time, then stops', () => {
+    const spots = full();
+    const a = level4Cue(stage, l, 0, spots, 0)!, b = level4Cue(stage, l, 0, spots, 1)!;
+    expect(a.kind).toBe('drag');
+    expect(spots[a.spot]).not.toBeNull();
+    expect(spots.includes(stage.creatures[a.slot]!.id)).toBe(false);
+    expect(b.spot).not.toBe(a.spot);
+    expect(level4Cue(stage, l, 0, spots, 3)).toBeNull();
+  });
+  it('everything can be picked from the menu', () => {
+    for (const step of [0, 1, 2]) expect(lessonPickable(4, stage, step, first('voice'))).toBe(true);
   });
 });

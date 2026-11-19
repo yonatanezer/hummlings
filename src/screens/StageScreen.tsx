@@ -11,7 +11,7 @@ import { randomBand } from '../core/surprise';
 import { AccentContext } from '../ui/IconButton';
 import { coachKind, pickSlot, pickSpot, pickTapSpot, type CoachCue } from '../core/coach';
 import { audibleIds, emptyStage, nextFreeSpot, swapSpot } from '../core/stageState';
-import { LESSON_FINISH_MS, LESSON_LAYERS, LESSON_SCROLL_WAIT_MS, QUIET_BELOW, level2Cue, level2Step, level3Cue, level3Step, levelBand, levelMapStates, worldStart, lessonCue, lessonLit, lessonPickable, lessonScrollTarget, lessonStep, lessonSteps, lessonTotalCoins, levelKey, type LessonFx, type LessonLevel } from '../core/lesson';
+import { LESSON_FINISH_MS, LESSON_LAYERS, LESSON_SCROLL_WAIT_MS, QUIET_BELOW, level4Cue, level4Step, level2Cue, level2Step, level3Cue, level3Step, levelBand, levelMapStates, worldStart, lessonCue, lessonLit, lessonPickable, lessonScrollTarget, lessonStep, lessonSteps, lessonTotalCoins, levelKey, type LessonFx, type LessonLevel } from '../core/lesson';
 import { autoName, defaultNameNumber, warnBars, type Song } from '../core/timeline';
 import { TUNING, barSec } from '../core/tuning';
 import { exportSong, saveSongToDevice, type ExportResult } from '../app/exportSong';
@@ -127,6 +127,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
   levelRef.current = level;
   const silencedRef = useRef(false); // level 2: a singer was silenced at least once
   const quietRef = useRef(false); // level 3: a singer's volume went under the quiet line at least once
+  const swapsRef = useRef(0); // level 4: how many times a singer on stage was replaced
   const lessonMeta = useRef({ step: -1, prev: null as Layer | null, since: 0, sinceMs: Date.now(), fx: [] as LessonFx[] }).current;
   const [lessonDir, setLessonDir] = useState<-1 | 0 | 1>(0); // the lit group is out of sight on this side (an arrow points there)
   const finishTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -146,7 +147,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
   /** Where the running level stands: level 1 counts the groups that have a singer on stage, level 2 follows silence, wake, choose. */
   const lessonStepNow = useCallback((): number => {
     const lvl = levelRef.current, st = session.state;
-    return lvl === 1 ? lessonStep(stage, st.spots) : lvl === 2 ? level2Step(st.spots, st.muted, silencedRef.current) : level3Step(st.spots, st.volume, st.solo, quietRef.current);
+    return lvl === 1 ? lessonStep(stage, st.spots) : lvl === 2 ? level2Step(st.spots, st.muted, silencedRef.current) : lvl === 3 ? level3Step(st.spots, st.volume, st.solo, quietRef.current) : level4Step(swapsRef.current);
   }, [stage, session]);
   const publishLesson = useCallback(() => {
     if (lessonRef.current !== 'play') { if (sv.lesson.value) sv.lesson.value = null; return; }
@@ -156,7 +157,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     m.fx = m.fx.filter((f) => t0 - f.t0 < 1300);
     sv.lesson.value = lvl === 1
       ? { slots: LESSON_LAYERS.map((l) => LAYER_COLORS[l]), dim: false, lit: lessonLit(step), prev: m.prev, since: m.since, done: step, topY: insets.top + 38, fx: m.fx }
-      : { slots: ['#FFE066', '#FFE066', '#FFE066'], dim: lvl === 3 || step < 2, lit: null, prev: null, since: m.since, done: step, topY: insets.top + 38, fx: m.fx };
+      : { slots: ['#FFE066', '#FFE066', '#FFE066'], dim: lvl === 3 || (lvl === 2 && step < 2), lit: null, prev: null, since: m.since, done: step, topY: insets.top + 38, fx: m.fx };
   }, [sv, lessonMeta, insets.top, lessonStepNow]);
   const syncScene = useCallback(() => {
     const st = session.state;
@@ -260,7 +261,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
 
   const world = (): World => {
     const on = lessonRef.current === 'play', lvl = levelRef.current, step = on ? lessonStepNow() : 99;
-    return { layout: layoutRef.current, scrollX: sv.scrollX.value, trayIds: stage.creatures.map((c) => c.id), onStage: session.state.spots, popup: sv.popup.value ? { spot: sv.popup.value.spot, creatureId: sv.popup.value.creatureId } : null, volumeOf: (id) => session.state.volume[id] ?? 1, trayHidden: !trayOpen.current, canPick: on ? (id) => lessonPickable(lvl, stage, step, id) : undefined, locked: on && lvl === 1, tapOnly: on && lvl === 2, holdOnly: on && lvl === 3, noHide: on };
+    return { layout: layoutRef.current, scrollX: sv.scrollX.value, trayIds: stage.creatures.map((c) => c.id), onStage: session.state.spots, popup: sv.popup.value ? { spot: sv.popup.value.spot, creatureId: sv.popup.value.creatureId } : null, volumeOf: (id) => session.state.volume[id] ?? 1, trayHidden: !trayOpen.current, canPick: on ? (id) => lessonPickable(lvl, stage, step, id) : undefined, locked: on && (lvl === 1 || lvl === 4), tapOnly: on && lvl === 2, holdOnly: on && lvl === 3, noHide: on };
   };
 
   /** A singer of the lit group landed: a coin flies to the counter, stars burst, and when the fourth is in the whole song plays and the success card follows. */
@@ -300,6 +301,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     session.countIn = false;
     silencedRef.current = false;
     quietRef.current = false;
+    swapsRef.current = 0;
     syncScene();
   }
   const startLevel = (next: LessonLevel) => {
@@ -325,7 +327,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     const l = layoutRef.current;
     const lessonOn = lessonRef.current === 'play';
     if (lessonOn && ev.type === 'trayTap' && !lessonPickable(levelRef.current, stage, lessonStepNow(), ev.creatureId)) return; // a dark group (a screen reader can reach it)
-    if (lessonOn && ev.type === 'drop' && session.state.spots[ev.spot]) { apply({ type: 'returnToTray', touch: ev.touch, creatureId: ev.creatureId, p: ev.p }); return; } // never take another singer's place
+    if (lessonOn && levelRef.current !== 4 && ev.type === 'drop' && session.state.spots[ev.spot]) { apply({ type: 'returnToTray', touch: ev.touch, creatureId: ev.creatureId, p: ev.p }); return; } // never take another singer's place
     const withoutDrag = (id: string) => sv.drags.value.filter((d) => d.id !== id);
     const goBack = (id: string, from: { x: number; y: number }) => {
       const r: ReturningCreature = { id, since: now(), from };
@@ -347,6 +349,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
         anim.set(ev.creatureId, { since: now(), from: { x: ev.p.x, y: ev.p.y + l.size * 0.6 } });
         hapticMedium();
         const stepBefore = lessonOn ? lessonStepNow() : 0;
+        if (lessonOn && levelRef.current === 4 && old && old !== ev.creatureId) swapsRef.current += 1; // a singer took the place of another
         { const t0 = sv.timeMs.value, sp = l.spots[ev.spot]!; sv.taps.value = [...sv.taps.value.filter((e) => t0 - e.t0 < 1400), { x: sp.x, y: sp.y - l.size * 0.3, t0, kind: 'drop', color: lessonOn && levelRef.current === 1 ? LAYER_COLORS[LESSON_LAYERS[stepBefore] ?? 'voice'] : stage.palette.glow }]; }
         engine.playSfx('pop', lessonOn ? popRate(stage.key, Math.min(5, stepBefore + 1)) : popRate(stage.key, ev.spot)); // in the lesson every singer sings a higher note than the last
         session.dispatch({ kind: 'drop', creatureId: ev.creatureId, spot: ev.spot });
@@ -490,7 +493,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
         if (!ready || paused) return;
         const l = layoutRef.current, lvl = levelRef.current, step = lessonStepNow();
         const pop = sv.popup.value;
-        const cue = lvl === 1 ? lessonCue(stage, l, sv.scrollX.value, st.spots, step) : lvl === 2 ? level2Cue(stage, l, sv.scrollX.value, st.spots, st.muted, step) : level3Cue(stage, st.spots, st.volume, pop ? { spot: pop.spot } : null, step);
+        const cue = lvl === 1 ? lessonCue(stage, l, sv.scrollX.value, st.spots, step) : lvl === 2 ? level2Cue(stage, l, sv.scrollX.value, st.spots, st.muted, step) : lvl === 3 ? level3Cue(stage, st.spots, st.volume, pop ? { spot: pop.spot } : null, step) : level4Cue(stage, l, sv.scrollX.value, st.spots, step);
         const cur = sv.coach.value;
         if ((cue?.kind ?? null) !== (cur?.kind ?? null) || (cue?.spot ?? -1) !== (cur?.spot ?? -1) || (cue?.slot ?? -1) !== (cur?.slot ?? -1) || (cue?.dir ?? 0) !== (cur?.dir ?? 0)) sv.coach.value = cue;
         const dir = cue?.kind === 'swipe' ? (cue.dir ?? 1) : 0;

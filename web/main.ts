@@ -20,7 +20,7 @@ import type { SceneInput } from '../src/ui/draw/scene';
 import type { TapEffect } from '../src/ui/draw/scenery';
 import { initHome } from './home';
 import { isRtl, resolveLang, setLang, t as tr } from '../src/i18n';
-import { LESSON_FINISH_MS, LESSON_LAYERS, LESSON_SCROLL_WAIT_MS, QUIET_BELOW, level2Cue, level2Step, level3Cue, level3Step, levelBand, levelMapStates, worldStart, lessonCue, lessonLit, lessonPickable, lessonScrollTarget, lessonStep, lessonSteps, lessonTotalCoins, levelKey, type LessonFx, type LessonLevel, type LessonView } from '../src/core/lesson';
+import { LESSON_FINISH_MS, LESSON_LAYERS, LESSON_SCROLL_WAIT_MS, QUIET_BELOW, level4Cue, level4Step, level2Cue, level2Step, level3Cue, level3Step, levelBand, levelMapStates, worldStart, lessonCue, lessonLit, lessonPickable, lessonScrollTarget, lessonStep, lessonSteps, lessonTotalCoins, levelKey, type LessonFx, type LessonLevel, type LessonView } from '../src/core/lesson';
 import type { CoachCue } from '../src/core/coach';
 import { en } from '../src/i18n/en';
 import { popRate } from '../src/core/sfx';
@@ -90,10 +90,11 @@ let lessonMode: 'map' | 'play' | 'done' | null = null; // 'map' = the level map 
 let lessonLevel: LessonLevel = 1; // 1: four groups lit one at a time, 2: my band (silence, wake, choose), 3: volume (lower, raise, star)
 let silenced = false; // level 2: a singer was silenced at least once
 let quiet = false; // level 3: a singer's volume went under the quiet line at least once
+let swaps = 0; // level 4: how many times a singer on stage was replaced
 const lessonStepNow = (): number => {
   const st = session?.state;
   if (!st) return 0;
-  return lessonLevel === 1 ? lessonStep(stage, st.spots) : lessonLevel === 2 ? level2Step(st.spots, st.muted, silenced) : level3Step(st.spots, st.volume, st.solo, quiet);
+  return lessonLevel === 1 ? lessonStep(stage, st.spots) : lessonLevel === 2 ? level2Step(st.spots, st.muted, silenced) : lessonLevel === 3 ? level3Step(st.spots, st.volume, st.solo, quiet) : level4Step(swaps);
 };
 const lessonMeta = { step: -1, prev: null as Layer | null, since: 0, sinceMs: 0, fx: [] as LessonFx[] };
 let lessonDir: -1 | 0 | 1 = 0;
@@ -159,10 +160,10 @@ function frame(t: number) {
     const step = lessonStepNow(), m = lessonMeta;
     if (step !== m.step) { m.prev = lessonLevel === 1 && m.step >= 0 ? lessonLit(m.step) : null; m.step = step; m.since = t; m.sinceMs = t; }
     m.fx = m.fx.filter((f) => t - f.t0 < 1300);
-    coach = lessonLevel === 1 ? lessonCue(stage, layout, scrollX, st.spots, step) : lessonLevel === 2 ? level2Cue(stage, layout, scrollX, st.spots, st.muted, step) : level3Cue(stage, st.spots, st.volume, popup ? { spot: popup.spot } : null, step);
+    coach = lessonLevel === 1 ? lessonCue(stage, layout, scrollX, st.spots, step) : lessonLevel === 2 ? level2Cue(stage, layout, scrollX, st.spots, st.muted, step) : lessonLevel === 3 ? level3Cue(stage, st.spots, st.volume, popup ? { spot: popup.spot } : null, step) : level4Cue(stage, layout, scrollX, st.spots, step);
     lessonView = lessonLevel === 1
       ? { slots: LESSON_LAYERS.map((l) => LAYER_COLORS[l]), dim: false, lit: lessonLit(step), prev: m.prev, since: m.since, done: step, topY: 34, fx: m.fx }
-      : { slots: ['#FFE066', '#FFE066', '#FFE066'], dim: lessonLevel === 3 || step < 2, lit: null, prev: null, since: m.since, done: step, topY: 34, fx: m.fx };
+      : { slots: ['#FFE066', '#FFE066', '#FFE066'], dim: lessonLevel === 3 || (lessonLevel === 2 && step < 2), lit: null, prev: null, since: m.since, done: step, topY: 34, fx: m.fx };
     lessonDir = coach?.kind === 'swipe' ? (coach.dir ?? 1) : 0;
     const lit = lessonLevel === 1 ? lessonLit(step) : null;
     // the menu slides to the lit group by itself when nobody does
@@ -227,7 +228,7 @@ function updateHud() {
 
 function world(): World {
   const on = lessonMode === 'play', step = on ? lessonStepNow() : 99, lvl = lessonLevel;
-  return { layout, scrollX, trayIds: stage.creatures.map((c) => c.id), onStage: session!.state.spots, popup, volumeOf: (id) => session!.state.volume[id] ?? 1, trayHidden: !trayOpen, canPick: on ? (id) => lessonPickable(lvl, stage, step, id) : undefined, locked: on && lvl === 1, tapOnly: on && lvl === 2, holdOnly: on && lvl === 3, noHide: on };
+  return { layout, scrollX, trayIds: stage.creatures.map((c) => c.id), onStage: session!.state.spots, popup, volumeOf: (id) => session!.state.volume[id] ?? 1, trayHidden: !trayOpen, canPick: on ? (id) => lessonPickable(lvl, stage, step, id) : undefined, locked: on && (lvl === 1 || lvl === 4), tapOnly: on && lvl === 2, holdOnly: on && lvl === 3, noHide: on };
 }
 
 function syncLessonUi() {
@@ -245,7 +246,7 @@ function placeBand(t: number) {
     placedAnim.set(id, { since: t + k * 140, from: { x: layout.slotPos[i]!.x - scrollX, y: layout.slotPos[i]!.y } });
     s.dispatch({ kind: 'drop', creatureId: id, spot: band.spots[k]! });
   });
-  s.countIn = false; hint = false; silenced = false; quiet = false;
+  s.countIn = false; hint = false; silenced = false; quiet = false; swaps = 0;
 }
 /** The map of this world's levels: gold = finished (tap to play again), the glowing one is next, dark ones are not open yet; the last circle is free play. */
 function showLevelMap() {
@@ -329,7 +330,7 @@ function apply(ev: GestureEvent, t: number) {
   const s = session!;
   const lessonOn = lessonMode === 'play';
   if (lessonOn && ev.type === 'trayTap' && !lessonPickable(lessonLevel, stage, lessonStepNow(), ev.creatureId)) return;
-  if (lessonOn && ev.type === 'drop' && s.state.spots[ev.spot]) { apply({ type: 'returnToTray', touch: ev.touch, creatureId: ev.creatureId, p: ev.p }, t); return; } // never take another singer's place
+  if (lessonOn && lessonLevel !== 4 && ev.type === 'drop' && s.state.spots[ev.spot]) { apply({ type: 'returnToTray', touch: ev.touch, creatureId: ev.creatureId, p: ev.p }, t); return; } // never take another singer's place
   const drop = (id: string) => (drags = drags.filter((d) => d.id !== id));
   const back = (id: string, from: { x: number; y: number }) => returning.push({ id, since: t, from });
   switch (ev.type) {
@@ -341,6 +342,7 @@ function apply(ev: GestureEvent, t: number) {
       if (old && old !== ev.creatureId) back(old, layout.spots[ev.spot]!);
       placedAnim.set(ev.creatureId, { since: t, from: { x: ev.p.x, y: ev.p.y + layout.size * 0.6 } });
       const stepBefore = lessonOn ? lessonStepNow() : 0;
+      if (lessonOn && lessonLevel === 4 && old && old !== ev.creatureId) swaps += 1; // a singer took the place of another
       engine.playSfx('pop', lessonOn ? popRate(stage.key, Math.min(5, stepBefore + 1)) : popRate(stage.key, ev.spot)); // in the lesson every singer sings a higher note than the last
       addTap(layout.spots[ev.spot]!.x, layout.spots[ev.spot]!.y - layout.size * 0.3, 'drop', t, lessonOn && lessonLevel === 1 ? LAYER_COLORS[LESSON_LAYERS[stepBefore] ?? 'voice'] : stage.palette.glow);
       s.dispatch({ kind: 'drop', creatureId: ev.creatureId, spot: ev.spot });
@@ -425,7 +427,7 @@ async function openStage(i: number) {
   stageIdx = i; stage = STAGES[i]!;
   placedAnim.clear(); drags = []; returning = []; celebration = null; scrollX = 0; hint = true;
   clearTimeout(lessonTimer);
-  lessonMode = worldStart(stage.id, [...lessonsDone]); lessonLevel = 1; silenced = false; quiet = false;
+  lessonMode = worldStart(stage.id, [...lessonsDone]); lessonLevel = 1; silenced = false; quiet = false; swaps = 0;
   lessonMeta.step = -1; lessonMeta.prev = null; lessonMeta.fx = []; lessonDir = 0; lessonTouchAt = performance.now(); $('lessonDone').classList.add('hide');
   if (lessonMode === 'play') hint = false; // the lesson has its own hand
   syncLessonUi();

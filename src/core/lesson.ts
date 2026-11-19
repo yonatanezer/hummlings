@@ -14,9 +14,9 @@ import { LAYERS, type Layer, type Stage } from './types';
 export const LESSON_STAGE_IDS: readonly string[] = ['pond'];
 export const hasLesson = (stageId: string): boolean => LESSON_STAGE_IDS.includes(stageId);
 
-/** Level 1: four groups lit one at a time (drag + scroll). Level 2: "my band": silence a singer, wake it, choose one more. Level 3: "volume": lower a singer, raise it, try the star (only this singer). */
-export type LessonLevel = 1 | 2 | 3;
-export const LESSON_LEVELS: readonly LessonLevel[] = [1, 2, 3];
+/** Level 1: four groups lit one at a time (drag + scroll). Level 2: "my band": silence a singer, wake it, choose one more. Level 3: "volume": lower a singer, raise it, try the star (only this singer). Level 4: "swap": the stage is full; a new singer dropped on one of them takes its place. */
+export type LessonLevel = 1 | 2 | 3 | 4;
+export const LESSON_LEVELS: readonly LessonLevel[] = [1, 2, 3, 4];
 /** What `progress.lessonsDone` holds for a finished level: the bare world id for level 1 (as it always was), `world:2` for level 2. */
 export const levelKey = (stageId: string, level: LessonLevel): string => (level === 1 ? stageId : `${stageId}:${level}`);
 export type LevelState = 'done' | 'current' | 'locked';
@@ -43,9 +43,10 @@ export const LESSON_LAYERS: readonly Layer[] = LAYERS;
 export const LESSON_STEPS = LESSON_LAYERS.length; // level 1: 4
 export const LEVEL2_STEPS = 3; // level 2: silence, wake, choose
 export const LEVEL3_STEPS = 3; // level 3: lower, raise, star
-export const LESSON_COINS = { perStep: 1, finish: { 1: 6, 2: 5, 3: 6 } as Record<LessonLevel, number> } as const;
+export const LEVEL4_STEPS = 3; // level 4: three swaps
+export const LESSON_COINS = { perStep: 1, finish: { 1: 6, 2: 5, 3: 6, 4: 6 } as Record<LessonLevel, number> } as const;
 /** Coin slots in the counter: one per step. */
-export const lessonSteps = (level: LessonLevel): number => (level === 1 ? LESSON_STEPS : level === 2 ? LEVEL2_STEPS : LEVEL3_STEPS);
+export const lessonSteps = (level: LessonLevel): number => (level === 1 ? LESSON_STEPS : level === 2 ? LEVEL2_STEPS : level === 3 ? LEVEL3_STEPS : LEVEL4_STEPS);
 export const lessonTotalCoins = (level: LessonLevel = 1): number => lessonSteps(level) * LESSON_COINS.perStep + LESSON_COINS.finish[level];
 /** Without a touch for this long the menu slides to the lit group by itself. */
 export const LESSON_SCROLL_WAIT_MS = 3500;
@@ -164,7 +165,7 @@ export function level2Cue(stage: Stage, layout: Layout, scrollX: number, spots: 
 
 /** What may be picked up from the menu: level 1 the lit group only; level 2 nothing until the third step, then anything; level 3 nothing. */
 export function lessonPickable(level: LessonLevel, stage: Stage, step: number, id: string): boolean {
-  return level === 1 ? lessonCanPick(stage, step, id) : level === 2 ? step >= 2 : false;
+  return level === 1 ? lessonCanPick(stage, step, id) : level === 2 ? step >= 2 : level === 3 ? false : true;
 }
 
 // ---------------- level 3: volume ----------------
@@ -180,6 +181,7 @@ export const LOUD_FROM = 0.75;
 export function levelBand(level: LessonLevel, stage: Stage): { ids: string[]; spots: readonly number[] } | null {
   if (level === 2) return { ids: level2Band(stage), spots: LEVEL2_SPOTS };
   if (level === 3) return { ids: level3Band(stage), spots: LEVEL3_SPOTS };
+  if (level === 4) return { ids: level4Band(stage), spots: LEVEL4_SPOTS };
   return null;
 }
 
@@ -204,3 +206,30 @@ export function level3Cue(stage: Stage, spots: readonly (string | null)[], volum
   return popup ? { kind: 'slide', slot: -1, spot: popup.spot, dir: -1 } : { kind: 'hold', slot: -1, spot: low < 0 ? first : low, dir: -1 };
 }
 
+
+// ---------------- level 4: swap ----------------
+
+/** A full stage: one singer of every group, plus a second drummer and a second melody singer, on all six spots. */
+export const level4Band = (stage: Stage): string[] => {
+  const of = (layer: Layer, n: number) => stage.creatures.filter((c) => c.layer === layer)[n]!.id;
+  return [of('drums', 0), of('bass', 0), of('melody', 0), of('voice', 0), of('drums', 1), of('melody', 1)];
+};
+export const LEVEL4_SPOTS: readonly number[] = [0, 1, 2, 3, 4, 5];
+
+/** Level 4 is simply the number of swaps made so far (a new singer dropped on a singer that stands on the stage), up to three. */
+export const level4Step = (swaps: number): number => Math.min(LEVEL4_STEPS, Math.max(0, swaps));
+
+/** The hand of level 4: carries a singer from the menu onto a singer on stage (a different one each time), which hops back to the menu. */
+export function level4Cue(stage: Stage, layout: Layout, scrollX: number, spots: readonly (string | null)[], step: number): CoachCue | null {
+  if (step >= LEVEL4_STEPS) return null;
+  const placed = new Set(spots.filter((id): id is string => !!id));
+  const free = stage.creatures.map((c, i) => i).filter((i) => !placed.has(stage.creatures[i]!.id) && visibleX(layout.slotPos[i]!.x - scrollX, layout.W));
+  if (free.length === 0) return { kind: 'swipe', slot: 0, spot: 0, dir: scrollX < layout.scrollMax / 2 ? 1 : -1 };
+  const occupied = spots.map((id, i) => (id ? i : -1)).filter((i) => i >= 0);
+  if (occupied.length === 0) return null;
+  const spot = occupied[(step * 2) % occupied.length]!;
+  const layer = stage.creatures.find((c) => c.id === spots[spot])?.layer;
+  const same = free.filter((i) => stage.creatures[i]!.layer === layer); // the same kind of singer: the song keeps its shape, only the voice changes
+  const pool = same.length ? same : free;
+  return { kind: 'drag', slot: pool[Math.floor((pool.length - 1) / 2)]!, spot };
+}
