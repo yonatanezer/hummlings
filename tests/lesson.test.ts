@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { STAGES } from '../src/content';
 import { computeLayout } from '../src/core/layout';
 import { GestureTracker, type World } from '../src/core/gestures';
-import { hasLesson, LESSON_STEPS, lessonCanPick, lessonCue, lessonDirection, lessonLit, lessonScrollTarget, lessonStep, lessonTotalCoins } from '../src/core/lesson';
+import { hasLesson, LEVEL2_SPOTS, level2Band, level2Cue, level2Step, lessonPickable, lessonSteps, levelKey, nextLevel, LESSON_STEPS, lessonCanPick, lessonCue, lessonDirection, lessonLit, lessonScrollTarget, lessonStep, lessonTotalCoins } from '../src/core/lesson';
 
 const stage = STAGES[0]!;
 const first = (layer: string) => stage.creatures.find((c) => c.layer === layer)!.id;
@@ -115,5 +115,66 @@ describe('lesson: the gesture layer', () => {
     t2.start(2, sp, 0, world(1, on));
     const evs = [...t2.move(2, { x: sp.x + 60, y: sp.y }, 50, world(1, on)), ...t2.end(2, { x: sp.x + 60, y: sp.y }, 80, world(1, on))];
     expect(evs.some((e) => e.type === 'pickup' || e.type === 'remove' || e.type === 'tap' || e.type === 'longPress')).toBe(false);
+  });
+});
+
+describe('level 2: my band', () => {
+  const l = phone();
+  const band = level2Band(stage);
+  const onStage = (...ids: string[]): (string | null)[] => { const a: (string | null)[] = Array(6).fill(null); ids.forEach((id, i) => { a[LEVEL2_SPOTS[i] ?? i + 1] = id; }); return a; };
+  it('is the first singer of the drums, bass and melody groups', () => {
+    expect(band.map((id) => stage.creatures.find((c) => c.id === id)!.layer)).toEqual(['drums', 'bass', 'melody']);
+  });
+  it('goes silence, wake, choose, done', () => {
+    const three = onStage(...band);
+    expect(level2Step(three, {}, false)).toBe(0);
+    expect(level2Step(three, { [band[0]!]: true }, true)).toBe(1);
+    expect(level2Step(three, {}, true)).toBe(2); // woken again
+    expect(level2Step(onStage(...band, first('voice')), {}, true)).toBe(3);
+    expect(level2Step(onStage(...band, first('voice')), {}, false)).toBe(0); // a fourth singer alone does not skip the taps
+  });
+  it('shows a tap on the singer to silence, then on the silenced one, then a drag', () => {
+    const three = onStage(...band);
+    expect(level2Cue(stage, l, 0, three, {}, 0)).toMatchObject({ kind: 'tap', spot: LEVEL2_SPOTS[0] });
+    expect(level2Cue(stage, l, 0, three, { [band[1]!]: true }, 1)).toMatchObject({ kind: 'tap', spot: LEVEL2_SPOTS[1] });
+    const drag = level2Cue(stage, l, 0, three, {}, 2)!;
+    expect(drag.kind).toBe('drag');
+    expect(three.includes(stage.creatures[drag.slot]!.id)).toBe(false);
+    expect(three[drag.spot]).toBeNull();
+    expect(level2Cue(stage, l, 0, onStage(...band, first('voice')), {}, 3)).toBeNull();
+  });
+  it('the menu is dark until the third step, then anything can be picked', () => {
+    for (const step of [0, 1]) expect(lessonPickable(2, stage, step, first('voice'))).toBe(false);
+    expect(lessonPickable(2, stage, 2, first('voice'))).toBe(true);
+    expect(lessonPickable(2, stage, 2, first('drums'))).toBe(true);
+  });
+  it('knows which level comes next and what it pays', () => {
+    expect(levelKey('pond', 1)).toBe('pond');
+    expect(levelKey('pond', 2)).toBe('pond:2');
+    expect(nextLevel('pond', [])).toBe(1);
+    expect(nextLevel('pond', ['pond'])).toBe(2);
+    expect(nextLevel('pond', ['pond', 'pond:2'])).toBeNull();
+    expect(nextLevel('fair', [])).toBeNull();
+    expect([lessonSteps(1), lessonSteps(2)]).toEqual([4, 3]);
+    expect(lessonTotalCoins(2)).toBe(8);
+  });
+  it('a singer on stage can only be tapped: no dragging it off, no long press', () => {
+    const w: World = { layout: l, scrollX: 0, trayIds: stage.creatures.map((c) => c.id), onStage: onStage(...band), canPick: () => false, tapOnly: true, noHide: true };
+    const t = new GestureTracker();
+    const sp = { x: l.spots[LEVEL2_SPOTS[0]!]!.x, y: l.spots[LEVEL2_SPOTS[0]!]!.y - l.size * 0.4 };
+    t.start(1, sp, 0, w);
+    expect(t.move(1, { x: sp.x + 60, y: sp.y + 40 }, 40, w)).toEqual([]);
+    expect(t.end(1, { x: sp.x + 60, y: sp.y + 40 }, 80, w)).toEqual([{ type: 'tap', creatureId: band[0] }]);
+    const t2 = new GestureTracker();
+    t2.start(2, sp, 0, w);
+    expect(t2.tick(5000, w)).toEqual([]);
+  });
+  it('the menu cannot be tucked away and a dark singer only slides it', () => {
+    const w: World = { layout: l, scrollX: 0, trayIds: stage.creatures.map((c) => c.id), onStage: onStage(...band), canPick: () => false, tapOnly: true, noHide: true };
+    const t = new GestureTracker();
+    const p = { x: l.slotPos[3]!.x, y: l.slotPos[3]!.y - l.size * 0.2 };
+    t.start(1, p, 0, w);
+    const evs = t.move(1, { x: p.x, y: p.y + 70 }, 50, w);
+    expect(evs.some((e) => e.type === 'trayHide' || e.type === 'pickup')).toBe(false);
   });
 });

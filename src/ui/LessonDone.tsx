@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
-import { LESSON_STEPS, lessonTotalCoins } from '../core/lesson';
+import { lessonSteps, lessonTotalCoins, type LessonLevel } from '../core/lesson';
 import { t } from '../i18n';
 import { Icon } from './Icon';
 import { IconButton } from './IconButton';
@@ -26,10 +26,10 @@ function Coin({ size }: { size: number }) {
 }
 
 /** The success card of a level: three stars pop in, the coins add up, then a big continue button. No reading needed (the title is for those who can). */
-export function LessonDone({ onNext }: { onNext: () => void }) {
+export function LessonDone({ level = 1, onNext }: { level?: LessonLevel; onNext: () => void }) {
   const { height } = useWindowDimensions();
   const compact = height < 380;
-  const total = lessonTotalCoins();
+  const total = lessonTotalCoins(level);
   const [shown, setShown] = useState(0);
   useEffect(() => {
     let alive = true;
@@ -54,7 +54,7 @@ export function LessonDone({ onNext }: { onNext: () => void }) {
         </View>
         <PopIn delay={900} spring={false}>
           <View style={styles.row} accessible accessibilityLabel={`${total}`}>
-            {Array.from({ length: LESSON_STEPS }, (_, i) => <Coin key={i} size={compact ? 26 : 32} />)}
+            {Array.from({ length: lessonSteps(level) }, (_, i) => <Coin key={i} size={compact ? 26 : 32} />)}
             <Text style={[styles.count, compact && { fontSize: 26 }]}>{`+${shown}`}</Text>
           </View>
         </PopIn>

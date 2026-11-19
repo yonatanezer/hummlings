@@ -29,6 +29,8 @@ export interface World {
   trayHidden?: boolean; // the singer menu is slid away; only its handle strip at the bottom edge reacts
   canPick?: (creatureId: string) => boolean; // the first lesson: only the lit group may be picked up (the rest only scrolls the menu)
   locked?: boolean; // the first lesson: singers on stage cannot be touched and the menu cannot be tucked away
+  tapOnly?: boolean; // level 2: a singer on stage can only be tapped (no dragging it off, no long press)
+  noHide?: boolean; // the menu cannot be tucked away
 }
 
 type Touch =
@@ -95,6 +97,7 @@ export class GestureTracker {
     switch (s.kind) {
       case 'pendingStage':
         if (dist(s.start) > SLOP) {
+          if (w.tapOnly) return []; // a wobbling finger is still a tap
           this.touches.set(touch, { kind: 'drag', id: s.id, from: 'stage', last: p, lastT: t, vy: 0 });
           return [{ type: 'pickup', touch, creatureId: s.id, from: 'stage', p }];
         }
@@ -107,7 +110,7 @@ export class GestureTracker {
       case 'pendingTray': {
         if (dist(s.start) <= TRAY_TAP_SLOP) return [];
         const dx = p.x - s.start.x, dy = p.y - s.start.y;
-        if (dy > 0 && dy > Math.abs(dx) * 1.2 && !w.locked) { this.touches.delete(touch); return [{ type: 'trayHide' }]; } // a downward swipe tucks the menu away
+        if (dy > 0 && dy > Math.abs(dx) * 1.2 && !w.locked && !w.noHide) { this.touches.delete(touch); return [{ type: 'trayHide' }]; } // a downward swipe tucks the menu away
         const horizontal = Math.abs(dx) > Math.abs(dy) * 2; // a clearly flat swipe scrolls; anything steeper picks the singer up
         if (s.id && !(horizontal && w.layout.scrollMax > 0 && dy > -SLOP * 0.8)) {
           this.touches.set(touch, { kind: 'drag', id: s.id, from: 'tray', last: p, lastT: t, vy: 0, origin: s.start });
@@ -194,7 +197,7 @@ export class GestureTracker {
   tick(t: number, w?: World): GestureEvent[] {
     const out: GestureEvent[] = [];
     for (const [id, s] of this.touches) {
-      if (s.kind === 'pendingStage' && !s.fired && t - s.startT >= TUNING.longPressMs) {
+      if (s.kind === 'pendingStage' && !s.fired && t - s.startT >= TUNING.longPressMs && !w?.tapOnly) {
         this.touches.set(id, { kind: 'hold', id: s.id, startY: s.start.y, startVol: w?.volumeOf?.(s.id) ?? 1 });
         out.push({ type: 'longPress', creatureId: s.id });
       }

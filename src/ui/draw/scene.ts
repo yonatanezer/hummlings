@@ -362,7 +362,7 @@ function drawCoin(sk: SkiaApi, c: Canvas, x: number, y: number, r: number, alpha
 function drawLessonVeil(sk: SkiaApi, c: Canvas, s: SceneInput) {
   'worklet';
   const { layout: l, stage } = s, z = s.lesson!;
-  if (!z.lit) return;
+  if (!z.lit && !z.dim) return;
   const per = stage.creatures.length / 4;
   const k = Math.min(1, Math.max(0, (s.timeMs - z.since) / 350));
   const pulse = s.reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(s.timeMs / 260);
@@ -372,7 +372,7 @@ function drawLessonVeil(sk: SkiaApi, c: Canvas, s: SceneInput) {
     const a = l.slotPos[g * per]!, b = l.slotPos[g * per + per - 1]!;
     const layer = stage.creatures[g * per]!.layer;
     const x = a.x - l.slot * 0.55 - s.scrollX, y = l.tray.y + l.tray.h * 0.08, w = b.x - a.x + l.slot * 1.1, h = l.tray.h * 0.84;
-    if (layer === z.lit) {
+    if (z.lit && layer === z.lit) {
       c.drawRRect(sk.RRectXY(rect(x, y, w, h), 22, 22), paint(sk, '#FFE066', (0.1 + 0.1 * pulse) * k));
       c.drawRRect(sk.RRectXY(rect(x, y, w, h), 22, 22), paint(sk, '#FFE066', (0.55 + 0.45 * pulse) * k, STROKE, 4));
     } else c.drawRRect(sk.RRectXY(rect(x - 2, y - 2, w + 4, h + 4), 24, 24), paint(sk, '#05031A', layer === z.prev ? 0.74 * k : 0.74));
@@ -385,12 +385,11 @@ function drawLessonCounter(sk: SkiaApi, c: Canvas, s: SceneInput) {
   'worklet';
   const l = s.layout, z = s.lesson!;
   const gap = 42 * l.u, r = 15 * l.u, cx = l.W / 2, y = z.topY;
-  const FLY = 850;
-  const layers = ['drums', 'bass', 'melody', 'voice'] as const;
-  c.drawRRect(sk.RRectXY(rect(cx - 2 * gap, y - r - 8, 4 * gap, 2 * r + 16), r + 8, r + 8), paint(sk, '#1B1340', 0.8));
-  c.drawRRect(sk.RRectXY(rect(cx - 2 * gap, y - r - 8, 4 * gap, 2 * r + 16), r + 8, r + 8), paint(sk, '#FFFFFF', 0.28, STROKE, 2));
-  for (let i = 0; i < 4; i++) {
-    const x = cx + (i - 1.5) * gap;
+  const FLY = 850, n = z.slots.length;
+  c.drawRRect(sk.RRectXY(rect(cx - (n / 2) * gap, y - r - 8, n * gap, 2 * r + 16), r + 8, r + 8), paint(sk, '#1B1340', 0.8));
+  c.drawRRect(sk.RRectXY(rect(cx - (n / 2) * gap, y - r - 8, n * gap, 2 * r + 16), r + 8, r + 8), paint(sk, '#FFFFFF', 0.28, STROKE, 2));
+  for (let i = 0; i < n; i++) {
+    const x = cx + (i - (n - 1) / 2) * gap;
     let flying = false, pop = 0;
     if (!s.reduceMotion) {
       for (const f of z.fx) {
@@ -407,7 +406,7 @@ function drawLessonCounter(sk: SkiaApi, c: Canvas, s: SceneInput) {
     if (i < z.done && !flying) drawCoin(sk, c, x, y, r * (1 + 0.45 * pop), 1);
     else {
       c.drawCircle(x, y, r, paint(sk, '#000000', 0.35));
-      c.drawCircle(x, y, r, paint(sk, LAYER_COLORS[layers[i]!], i === z.done ? 0.95 : 0.5, STROKE, i === z.done ? 3.5 : 2.5));
+      c.drawCircle(x, y, r, paint(sk, z.slots[i]!, i === z.done ? 0.95 : 0.5, STROKE, i === z.done ? 3.5 : 2.5));
     }
   }
 }

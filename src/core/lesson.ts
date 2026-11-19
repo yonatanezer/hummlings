@@ -10,14 +10,28 @@ import { COACH_SPOT_ORDER } from './coach';
 import type { Layout } from './layout';
 import { LAYERS, type Layer, type Stage } from './types';
 
-/** Only the first world has a lesson for now; the other worlds stay in free play. */
+/** Only the first world has levels for now; the other worlds stay in free play. */
 export const LESSON_STAGE_IDS: readonly string[] = ['pond'];
 export const hasLesson = (stageId: string): boolean => LESSON_STAGE_IDS.includes(stageId);
 
+/** Level 1: four groups lit one at a time (drag + scroll). Level 2: "my band": silence a singer, wake it, choose one more. */
+export type LessonLevel = 1 | 2;
+export const LESSON_LEVELS: readonly LessonLevel[] = [1, 2];
+/** What `progress.lessonsDone` holds for a finished level: the bare world id for level 1 (as it always was), `world:2` for level 2. */
+export const levelKey = (stageId: string, level: LessonLevel): string => (level === 1 ? stageId : `${stageId}:${level}`);
+/** The first level of this world that is not finished yet (null: all done, or the world has no levels). */
+export function nextLevel(stageId: string, done: readonly string[]): LessonLevel | null {
+  if (!hasLesson(stageId)) return null;
+  return LESSON_LEVELS.find((l) => !done.includes(levelKey(stageId, l))) ?? null;
+}
+
 export const LESSON_LAYERS: readonly Layer[] = LAYERS;
-export const LESSON_STEPS = LESSON_LAYERS.length; // 4
-export const LESSON_COINS = { perSinger: 1, finish: 6 } as const;
-export const lessonTotalCoins = (): number => LESSON_STEPS * LESSON_COINS.perSinger + LESSON_COINS.finish;
+export const LESSON_STEPS = LESSON_LAYERS.length; // level 1: 4
+export const LEVEL2_STEPS = 3; // level 2: silence, wake, choose
+export const LESSON_COINS = { perStep: 1, finish: { 1: 6, 2: 5 } as Record<LessonLevel, number> } as const;
+/** Coin slots in the counter: one per step. */
+export const lessonSteps = (level: LessonLevel): number => (level === 1 ? LESSON_STEPS : LEVEL2_STEPS);
+export const lessonTotalCoins = (level: LessonLevel = 1): number => lessonSteps(level) * LESSON_COINS.perStep + LESSON_COINS.finish[level];
 /** Without a touch for this long the menu slides to the lit group by itself. */
 export const LESSON_SCROLL_WAIT_MS = 3500;
 /** After the last singer the whole song plays for this long before the success card appears. */
@@ -27,7 +41,9 @@ export const LESSON_FINISH_MS = 2800;
 export interface LessonFx { x: number; y: number; t0: number; slot: number }
 /** What the scene draws for the lesson (plain data, lives in a shared value). */
 export interface LessonView {
-  lit: Layer | null; // the group that is lit (null: the lesson is finished)
+  slots: string[]; // colours of the coin slots (their number is the number of steps)
+  dim: boolean; // every group in the menu is dark (level 2 before the menu is needed)
+  lit: Layer | null; // the group that is lit (null: no group is singled out)
   prev: Layer | null; // the group that was lit just before (it fades dark)
   since: number; // scene time at which this group lit up
   done: number; // groups already on stage (filled coins)
@@ -94,4 +110,44 @@ export function lessonCue(stage: Stage, layout: Layout, scrollX: number, spots: 
   if (slots.length === 0) return { kind: 'swipe', slot: 0, spot: 0, dir: lessonDirection(stage, layout, scrollX, lit) === -1 ? -1 : 1 };
   const spot = COACH_SPOT_ORDER.find((i) => !spots[i]) ?? 0;
   return { kind: 'drag', slot: slots[Math.floor((slots.length - 1) / 2)]!, spot };
+}
+
+// ---------------- level 2: my band ----------------
+
+/** The ready-made band: the first singer of the drums, bass and melody groups, on spots 1, 2 and 3. */
+export const level2Band = (stage: Stage): string[] => LESSON_LAYERS.slice(0, 3).map((l) => stage.creatures.find((c) => c.layer === l)!.id);
+export const LEVEL2_SPOTS: readonly number[] = [1, 2, 3];
+
+/**
+ * 0: silence a singer (a tap), 1: wake it (a tap), 2: choose one more singer (any), 3: done (four on stage).
+ * `silenced` is remembered by the screen (once a singer was silenced): after it is woken nothing on stage shows it any more.
+ */
+export function level2Step(spots: readonly (string | null)[], muted: Readonly<Record<string, true | undefined>>, silenced: boolean): number {
+  if (!silenced) return 0;
+  if (spots.some((id) => !!id && muted[id])) return 1;
+  return spots.filter(Boolean).length >= 4 ? 3 : 2;
+}
+
+/** The hand of level 2: taps the singer to silence, taps it again to wake it, then drags any visible singer onto the stage. */
+export function level2Cue(stage: Stage, layout: Layout, scrollX: number, spots: readonly (string | null)[], muted: Readonly<Record<string, true | undefined>>, step: number): CoachCue | null {
+  if (step >= 3) return null;
+  if (step === 0) {
+    const spot = Math.max(spots.indexOf(level2Band(stage)[0]!), spots.findIndex(Boolean));
+    return spot < 0 ? null : { kind: 'tap', slot: -1, spot };
+  }
+  if (step === 1) {
+    const spot = spots.findIndex((id) => !!id && !!muted[id]);
+    return spot < 0 ? null : { kind: 'tap', slot: -1, spot };
+  }
+  const placed = new Set(spots.filter((id): id is string => !!id));
+  const free = stage.creatures.map((c, i) => i).filter((i) => !placed.has(stage.creatures[i]!.id) && visibleX(layout.slotPos[i]!.x - scrollX, layout.W));
+  if (free.length === 0) return { kind: 'swipe', slot: 0, spot: 0, dir: scrollX < layout.scrollMax / 2 ? 1 : -1 };
+  const voice = free.filter((i) => stage.creatures[i]!.layer === 'voice'); // the group the band does not have yet
+  const pool = voice.length ? voice : free;
+  return { kind: 'drag', slot: pool[Math.floor((pool.length - 1) / 2)]!, spot: COACH_SPOT_ORDER.find((i) => !spots[i]) ?? 0 };
+}
+
+/** What may be picked up from the menu: level 1 the lit group only; level 2 nothing until the third step, then anything. */
+export function lessonPickable(level: LessonLevel, stage: Stage, step: number, id: string): boolean {
+  return level === 1 ? lessonCanPick(stage, step, id) : step >= 2;
 }
