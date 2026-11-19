@@ -1,6 +1,7 @@
 import { AudioContext, AudioManager } from 'react-native-audio-api';
 import type { AudioBuffer, AudioBufferSourceNode, GainNode } from 'react-native-audio-api';
 import type { AudioEngine, BarPlan, BarProvider, EngineState, SfxKind } from '../core/engine';
+import { BASS_BOOST, bassHarmonicsCurve } from '../core/bassBoost';
 import { softClipCurve } from '../core/mix';
 import { TUNING, barSec, beatSec, masterTrim } from '../core/tuning';
 import type { Stage } from '../core/types';
@@ -32,6 +33,8 @@ export class NativeEngine implements AudioEngine {
   private volume = 0.8;
   private interrupted = new Set<() => void>();
   private fileIndex = new Map<string, string>(); // creature id -> loop file
+  private bassIds = new Set<string>(); // the singers of the bass group (they get harmonics so small speakers can play them)
+  private bassCurve = bassHarmonicsCurve();
   private sfxBuf = new Map<string, AudioBuffer>();
   private ambFile = '';
 
@@ -92,6 +95,7 @@ export class NativeEngine implements AudioEngine {
    */
   async loadStage(stage: Stage, opts?: { background?: boolean }): Promise<void> {
     this.fileIndex = new Map(stage.creatures.map((c) => [c.id, c.loopFile]));
+    this.bassIds = new Set(stage.creatures.filter((c) => c.layer === 'bass').map((c) => c.id));
     this.ambFile = stage.ambienceFile;
     const files = [...stage.creatures.map((c) => c.loopFile), ...stage.combos.map((c) => c.bonusLoopFile), stage.ambienceFile];
     this.wanted = new Set(files);
@@ -169,6 +173,7 @@ export class NativeEngine implements AudioEngine {
       const vol = ctx.createGain();
       vol.gain.value = plan.gains[key] ?? 1;
       src.connect(gain);
+      if (this.bassIds.has(key)) this.addBassHarmonics(src, gain);
       gain.connect(vol);
       vol.connect(this.master!);
       // Always in phase with the global clock: a late joiner enters at its place in the 4-bar chord loop.
@@ -194,6 +199,18 @@ export class NativeEngine implements AudioEngine {
   }
 
   private fileOf(id: string): string { return this.fileIndex.get(id) ?? ''; }
+
+  /** The bass voice also plays harmonics of its own low notes, so small speakers can reproduce it (see core/bassBoost.ts). `dest` is the voice's envelope gain. */
+  private addBassHarmonics(src: AudioBufferSourceNode, dest: GainNode): void {
+    const ctx = this.ctx!;
+    const lp = ctx.createBiquadFilter(), hp1 = ctx.createBiquadFilter(), hp2 = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = BASS_BOOST.lowpassHz; lp.Q.value = BASS_BOOST.q;
+    for (const h of [hp1, hp2]) { h.type = 'highpass'; h.frequency.value = BASS_BOOST.highpassHz; h.Q.value = BASS_BOOST.q; }
+    const pre = ctx.createGain(); pre.gain.value = BASS_BOOST.drive;
+    const sh = ctx.createWaveShaper(); sh.curve = this.bassCurve;
+    const wet = ctx.createGain(); wet.gain.value = BASS_BOOST.wet;
+    src.connect(lp); lp.connect(pre); pre.connect(sh); sh.connect(hp1); hp1.connect(hp2); hp2.connect(wet); wet.connect(dest);
+  }
 
   private sfxAt(kind: SfxKind, when: number, rate: number, gain: number): void {
     const ctx = this.ctx, buf = this.sfxBuf.get(kind);

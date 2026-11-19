@@ -1,4 +1,5 @@
 import type { AudioEngine, BarPlan, BarProvider, EngineState, SfxKind } from '../src/core/engine';
+import { BASS_BOOST, bassHarmonicsCurve } from '../src/core/bassBoost';
 import { softClipCurve } from '../src/core/mix';
 import { TUNING, barSec, beatSec, masterTrim } from '../src/core/tuning';
 import type { Stage } from '../src/core/types';
@@ -19,6 +20,8 @@ export class WebEngine implements AudioEngine {
   private sfxBuf = new Map<string, AudioBuffer>();
   private ambFile = '';
   private fileOf = new Map<string, string>();
+  private bassIds = new Set<string>(); // the singers of the bass group (they get harmonics so small speakers can play them)
+  private bassCurve = bassHarmonicsCurve();
   private origin = 0;
   private nextBar = 0;
   private bpm = 100;
@@ -45,6 +48,7 @@ export class WebEngine implements AudioEngine {
   }
   async loadStage(stage: Stage): Promise<void> {
     this.fileOf = new Map(stage.creatures.map((c) => [c.id, c.loopFile]));
+    this.bassIds = new Set(stage.creatures.filter((c) => c.layer === 'bass').map((c) => c.id));
     this.ambFile = stage.ambienceFile;
     const files = [...stage.creatures.map((c) => c.loopFile), ...stage.combos.map((c) => c.bonusLoopFile), stage.ambienceFile];
     await Promise.all(files.filter((f) => !this.buffers.has(f)).map(async (f) => this.buffers.set(f, await this.load(`audio/${f.replace('.m4a', '.mp3')}`))));
@@ -101,6 +105,7 @@ export class WebEngine implements AudioEngine {
       const vol = ctx.createGain();
       vol.gain.value = plan.gains[key] ?? 1;
       src.connect(gain); gain.connect(vol); vol.connect(this.master);
+      if (this.bassIds.has(key)) this.addBassHarmonics(src, gain);
       src.start(t, (bar % TUNING.loopBars) * bs); // in phase with the global clock
       this.voices.set(key, { src, gain, vol });
     };
@@ -116,6 +121,17 @@ export class WebEngine implements AudioEngine {
         src.connect(g); g.connect(this.master); src.start(t + k * beatSec(this.bpm));
       }
     }
+  }
+  /** The bass voice also plays harmonics of its own low notes, so small speakers can reproduce it (see src/core/bassBoost.ts). `dest` is the voice's envelope gain. */
+  private addBassHarmonics(src: AudioBufferSourceNode, dest: GainNode): void {
+    const ctx = this.ctx;
+    const lp = ctx.createBiquadFilter(), hp1 = ctx.createBiquadFilter(), hp2 = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = BASS_BOOST.lowpassHz; lp.Q.value = BASS_BOOST.q;
+    for (const h of [hp1, hp2]) { h.type = 'highpass'; h.frequency.value = BASS_BOOST.highpassHz; h.Q.value = BASS_BOOST.q; }
+    const pre = ctx.createGain(); pre.gain.value = BASS_BOOST.drive;
+    const sh = ctx.createWaveShaper(); sh.curve = this.bassCurve as Float32Array<ArrayBuffer>;
+    const wet = ctx.createGain(); wet.gain.value = BASS_BOOST.wet;
+    src.connect(lp); lp.connect(pre); pre.connect(sh); sh.connect(hp1); hp1.connect(hp2); hp2.connect(wet); wet.connect(dest);
   }
   private sfxAt(kind: SfxKind, when: number, rate: number, gain: number): void {
     const buf = this.sfxBuf.get(kind);
