@@ -146,6 +146,7 @@ export const zh: Record<StringKey, string> = {
   'a11y.freePlay': '自由玩',
   'a11y.level': '第{n}关',
   'lesson.done': '做得好！',
+  'lesson.final': '现在舞台是你的！',
   'a11y.record': "录音",
   'a11y.stopRecord': "停止录音",
   'a11y.comboBook': "组合书",

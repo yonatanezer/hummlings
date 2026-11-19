@@ -11,7 +11,7 @@ import { randomBand } from '../core/surprise';
 import { AccentContext } from '../ui/IconButton';
 import { coachKind, pickSlot, pickSpot, pickTapSpot, type CoachCue } from '../core/coach';
 import { audibleIds, emptyStage, nextFreeSpot, swapSpot } from '../core/stageState';
-import { lessonFinishMs, LESSON_LAYERS, LESSON_SCROLL_WAIT_MS, QUIET_BELOW, level5Cue, level5Ghosts, level5Missing, level5Plan, level5Step, slotScrollTarget, level4Cue, level4Step, level2Cue, level2Step, level3Cue, level3Step, levelBand, levelMapStates, worldStart, lessonCue, lessonLit, lessonPickable, lessonScrollTarget, lessonStep, lessonSteps, lessonTotalCoins, levelKey, type LessonFx, type LessonLevel } from '../core/lesson';
+import { lessonFinishMs, LESSON_LAYERS, LESSON_LEVELS, LESSON_SCROLL_WAIT_MS, QUIET_BELOW, level5Cue, level5Ghosts, level5Missing, level5Plan, level5Step, slotScrollTarget, level4Cue, level4Step, level2Cue, level2Step, level3Cue, level3Step, levelBand, levelMapStates, worldStart, lessonCue, lessonLit, lessonPickable, lessonScrollTarget, lessonStep, lessonSteps, lessonTotalCoins, levelKey, type LessonFx, type LessonLevel } from '../core/lesson';
 import { autoName, defaultNameNumber, warnBars, type Song } from '../core/timeline';
 import { TUNING, barSec } from '../core/tuning';
 import { exportSong, saveSongToDevice, type ExportResult } from '../app/exportSong';
@@ -22,7 +22,7 @@ import { useProgress } from '../app/progress';
 import { StageHud } from '../ui/StageHud';
 import { recallBand, rememberBand } from '../app/bandMemory';
 import { ComboBook, GOAL_ICON } from './ComboBook';
-import { LessonDone } from '../ui/LessonDone';
+import { LessonDone, LevelIntro } from '../ui/LessonDone';
 import { LevelMap } from '../ui/LevelMap';
 import { STAGES, FREE_STAGE_IDS } from '../content';
 import type { GoalId } from '../core/goals';
@@ -122,6 +122,8 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
   const [lesson, setLesson] = useState<'map' | 'play' | 'done' | null>(() => worldStart(stage.id, progress.lessonsDone)); // 'map' = the level map is up
   const [level, setLevel] = useState<LessonLevel>(1); // which level runs: 1 = four groups, 2 = my band, 3 = volume
   const lessonRef = useRef(lesson);
+  const hopFromRef = useRef(0); // the level map: the level the hummling walks from
+  const [run, setRun] = useState(0); // counts level starts (the banner of a level plays once per start)
   lessonRef.current = lesson;
   const levelRef = useRef(level);
   levelRef.current = level;
@@ -198,7 +200,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
           lessonLanded(before, Math.max(0, session.state.spots.findIndex(Boolean)));
         }
       },
-      onGoal: (key) => { engine.playSfx('goal'); const gid = key.split(':')[1] as GoalId; showToast({ icons: ['star', GOAL_ICON[gid] ?? 'star'], text: t(`goal.${gid}` as StringKey) }); sv.taps.value = [...sv.taps.value.filter((e) => sv.timeMs.value - e.t0 < 1400), ...[0.25, 0.5, 0.75].map((f) => ({ x: layoutRef.current.W * f, y: layoutRef.current.stageH * 0.3, t0: sv.timeMs.value, kind: 'drop' as const, color: '#FFE066' }))]; update((p) => (p.goals.includes(key) ? p : { ...p, goals: [...p.goals, key] })); },
+      onGoal: (key) => { const inLevel = lessonRef.current === 'play' || lessonRef.current === 'done'; if (inLevel) { update((p) => (p.goals.includes(key) ? p : { ...p, goals: [...p.goals, key] })); return; } /* a level has its own cheer: no sticker banner on top of it */ engine.playSfx('goal'); const gid = key.split(':')[1] as GoalId; showToast({ icons: ['star', GOAL_ICON[gid] ?? 'star'], text: t(`goal.${gid}` as StringKey) }); sv.taps.value = [...sv.taps.value.filter((e) => sv.timeMs.value - e.t0 < 1400), ...[0.25, 0.5, 0.75].map((f) => ({ x: layoutRef.current.W * f, y: layoutRef.current.stageH * 0.3, t0: sv.timeMs.value, kind: 'drop' as const, color: '#FFE066' }))]; update((p) => (p.goals.includes(key) ? p : { ...p, goals: [...p.goals, key] })); },
       onCelebrationEnd: () => { sv.celebration.value = null; },
       onRecordingLimit: () => stopRecording(),
       onBar: (bar) => { if (session.recorder) setRecBars(bar - session.recorder.startBar + 1); },
@@ -287,9 +289,13 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     }
     publishLesson();
   };
+  /** After the last level: straight into free play, with the band of the last level still on stage and playing. */
+  const freePlay = () => { clearTimeout(finishTimer.current); sv.popup.value = null; sv.coach.value = null; sv.lesson.value = null; lessonRef.current = null; setLesson(null); };
   /** Leaves the level (without finishing it) for the level map. */
   const toMap = () => {
     clearTimeout(finishTimer.current);
+    // coming from a success card: the hummling walks from the level just finished to the one that waits now
+    hopFromRef.current = lessonRef.current === 'done' ? levelRef.current : 0;
     session.dispatch({ kind: 'endSolo' });
     sv.popup.value = null; sv.coach.value = null;
     setLesson('map');
@@ -318,7 +324,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     sv.taps.value = [];
     lessonMeta.step = -1; lessonMeta.fx = [];
     levelRef.current = next; lessonRef.current = 'play';
-    setLevel(next); setLesson('play');
+    setLevel(next); setLesson('play'); setRun((n) => n + 1);
     scrollTrayTo(0, 300);
     placeBand();
   };
@@ -550,6 +556,25 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
   }, [ready, layout.scrollMax]);
   useEffect(() => () => cancelAnimationFrame(scrollAnim.current), []);
 
+  // the art of the full-screen moments (level map, success card, level banner) is drawn by the scene
+  useEffect(() => {
+    const since = sv.timeMs.value;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    if (lesson === 'map') {
+      const states = levelMapStates(stage.id, progress.lessonsDone);
+      const cur = states.find((q) => q.state === 'current');
+      const from = hopFromRef.current;
+      hopFromRef.current = 0;
+      sv.screen.value = { kind: 'map', since, level: cur?.level ?? 0, hopFrom: cur && from > 0 && cur.level === from + 1 ? from : !cur && from > 0 ? from : 0, states: states.map((q) => q.state), rtl, steps: 0, last: false };
+    } else if (lesson === 'done') {
+      sv.screen.value = { kind: 'done', since, level, hopFrom: 0, states: [], rtl, steps: lessonSteps(level), last: level === LESSON_LEVELS[LESSON_LEVELS.length - 1] };
+    } else if (lesson === 'play') {
+      sv.screen.value = { kind: 'intro', since, level, hopFrom: 0, states: [], rtl, steps: 0, last: false };
+      timer = setTimeout(() => { if (sv.screen.value?.kind === 'intro') sv.screen.value = null; }, 2700);
+    } else sv.screen.value = null;
+    return () => clearTimeout(timer);
+  }, [lesson, run]);
+
   const onStageCount = session.state.spots.filter(Boolean).length;
   const row = rtl ? 'row-reverse' : 'row';
 
@@ -700,7 +725,8 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
           </View>
         </View>
       )}
-      {lesson === 'done' && <LessonDone level={level} onNext={toMap} />}
+      {lesson === 'play' && <LevelIntro key={run} level={level} stageH={layout.stageH} />}
+      {lesson === 'done' && <LessonDone level={level} onNext={level === LESSON_LEVELS[LESSON_LEVELS.length - 1] ? freePlay : toMap} />}
       {lesson === 'map' && <LevelMap levels={levelMapStates(stage.id, progress.lessonsDone)} coins={progress.coins} onPick={(n) => startLevel(n as LessonLevel)} onFree={() => setLesson(null)} onBack={onBack} />}
       {gate}
       {paused && (

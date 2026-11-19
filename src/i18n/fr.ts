@@ -146,6 +146,7 @@ export const fr: Record<StringKey, string> = {
   "a11y.freePlay": "Jeu libre",
   "a11y.level": "Niveau {n}",
   "lesson.done": "Bravo !",
+  "lesson.final": "À toi la scène !",
   "a11y.record": "Enregistrer",
   "a11y.stopRecord": "Arrêter l'enregistrement",
   "a11y.comboBook": "Livre des combos",

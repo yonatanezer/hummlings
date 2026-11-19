@@ -146,6 +146,7 @@ export const ar: Record<StringKey, string> = {
   'a11y.freePlay': 'لعب حر',
   'a11y.level': 'المرحلة {n}',
   'lesson.done': 'أحسنت!',
+  'lesson.final': 'الآن دورك على المسرح!',
   'a11y.record': "تسجيل",
   'a11y.stopRecord': "إيقاف التسجيل",
   'a11y.comboBook': "دفتر التوليفات",

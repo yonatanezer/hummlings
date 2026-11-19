@@ -1,5 +1,6 @@
 import type { CoachCue } from '../core/coach';
 import type { LessonView } from '../core/lesson';
+import type { ScreenView } from '../core/levelscreens';
 import { useCallback, useEffect, useRef } from 'react';
 import { PixelRatio } from 'react-native';
 import { Canvas, Picture, Skia, type SkPicture } from '@shopify/react-native-skia';
@@ -24,6 +25,7 @@ export interface SceneValues {
   hintSlot: SharedValue<number>;
   coach: SharedValue<CoachCue | null>;
   lesson: SharedValue<LessonView | null>;
+  screen: SharedValue<ScreenView | null>;
   popup: SharedValue<SceneInput['popup']>;
   trayK: SharedValue<number>;
   reward: SharedValue<SceneInput['reward']>;
@@ -49,6 +51,7 @@ export function useSceneValues(stage: Stage, layout: Layout, reduceMotion: boole
     hintSlot: useSharedValue(0),
     coach: useSharedValue<CoachCue | null>(null),
     lesson: useSharedValue<LessonView | null>(null),
+    screen: useSharedValue<ScreenView | null>(null),
     popup: useSharedValue<SceneInput['popup']>(null),
     trayK: useSharedValue(1),
     reward: useSharedValue<SceneInput['reward']>(null),
@@ -107,18 +110,18 @@ export function SceneCanvas({ sv, width, height }: { sv: SceneValues; width: num
       }
     })();
   }, [uid]);
-  const { drags, celebration, popup, taps, returning, placed, coach, reward, lesson } = sv;
+  const { drags, celebration, popup, taps, returning, placed, coach, reward, lesson, screen } = sv;
   const onFrame = useCallback((info: FrameInfo) => {
     'worklet';
     if (clockBase.value < 0) clockBase.value = info.timestamp - clock.value;
     const t = info.timestamp - clockBase.value;
     // Every tick redraws the whole scene (about 70 % of a core on a resting stage). The display can run at 120 Hz but the art only needs 60 while something moves under a
     // finger, and 30 while the band just plays: a resting stage ticks every ~32 ms, anything being dragged, dropped, tapped, celebrated or coached every ~15 ms.
-    const busy = drags.value.length > 0 || celebration.value !== null || popup.value !== null || taps.value.length > 0 || returning.value.length > 0 || coach.value !== null || reward.value !== null || lesson.value !== null
+    const busy = drags.value.length > 0 || celebration.value !== null || popup.value !== null || taps.value.length > 0 || returning.value.length > 0 || coach.value !== null || reward.value !== null || lesson.value !== null || screen.value !== null
       || placed.value.some((p) => t - p.since < 900);
     if (t - clock.value < (busy ? 15 : 28)) return; // 28, not 32: at 60 Hz a frame can land at 31.5 ms and would otherwise be skipped (30 / 20 fps flicker)
     clock.value = t;
-  }, [clock, clockBase, drags, celebration, popup, taps, returning, placed, coach, reward, lesson]);
+  }, [clock, clockBase, drags, celebration, popup, taps, returning, placed, coach, reward, lesson, screen]);
   useFrameCallback(onFrame);
   // The singer menu only changes on touches, so it is recorded once per change instead of every frame.
   // Each static layer is recorded as a Picture AND rasterised once into a device-resolution image, together, only when its key changes: replaying their vector ops every frame used to be a large share of the UI-thread time.
@@ -173,7 +176,7 @@ export function SceneCanvas({ sv, width, height }: { sv: SceneValues; width: num
     const input: SceneInput = {
       layout: sv.layout.value, stage: sv.stage.value, placed: sv.placed.value, muted: sv.muted.value, solo: sv.solo.value,
       drags: sv.drags.value, returning: sv.returning.value, scrollX: sv.scrollX.value, beat: sv.beat.value, timeMs: clock.value,
-      reduceMotion: sv.reduceMotion.value, celebration: sv.celebration.value, hint: sv.hint.value, hintSlot: sv.hintSlot.value, coach: sv.coach.value, lesson: sv.lesson.value, popup: sv.popup.value, backdrop: backdropLayer.value.pic, trayPicture: trayLayer.value.pic, backdropImage: backdropLayer.value.img, trayImage: trayLayer.value.img, trayStrip: trayLayer.value.strip, trayStripRatio: trayLayer.value.r, pixelRatio: ratio, trayK: sv.trayK.value, reward: sv.reward.value, taps: sv.taps.value, volumes: sv.volumes.value, recordingBeat: null,
+      reduceMotion: sv.reduceMotion.value, celebration: sv.celebration.value, hint: sv.hint.value, hintSlot: sv.hintSlot.value, coach: sv.coach.value, lesson: sv.lesson.value, screen: sv.screen.value, popup: sv.popup.value, backdrop: backdropLayer.value.pic, trayPicture: trayLayer.value.pic, backdropImage: backdropLayer.value.img, trayImage: trayLayer.value.img, trayStrip: trayLayer.value.strip, trayStripRatio: trayLayer.value.r, pixelRatio: ratio, trayK: sv.trayK.value, reward: sv.reward.value, taps: sv.taps.value, volumes: sv.volumes.value, recordingBeat: null,
     };
     const rec = Skia.PictureRecorder();
     const canvas = rec.beginRecording(Skia.XYWHRect(0, 0, width, height));

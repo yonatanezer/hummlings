@@ -144,6 +144,7 @@ export const en = {
   'a11y.freePlay': 'Free play',
   'a11y.level': 'Level {n}',
   'lesson.done': 'Well done!',
+  'lesson.final': 'Now it\'s your stage!',
   'a11y.record': 'Record',
   'a11y.stopRecord': 'Stop recording',
   'a11y.comboBook': 'Combo book',

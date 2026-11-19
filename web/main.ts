@@ -20,8 +20,9 @@ import type { SceneInput } from '../src/ui/draw/scene';
 import type { TapEffect } from '../src/ui/draw/scenery';
 import { initHome } from './home';
 import { isRtl, resolveLang, setLang, t as tr } from '../src/i18n';
-import { lessonFinishMs, LESSON_LAYERS, LESSON_SCROLL_WAIT_MS, setLevel5Combo, QUIET_BELOW, level5Cue, level5Ghosts, level5Missing, level5Plan, level5Step, slotScrollTarget, level4Cue, level4Step, level2Cue, level2Step, level3Cue, level3Step, levelBand, levelMapStates, worldStart, lessonCue, lessonLit, lessonPickable, lessonScrollTarget, lessonStep, lessonSteps, lessonTotalCoins, levelKey, type LessonFx, type LessonLevel, type LessonView } from '../src/core/lesson';
+import { lessonFinishMs, LESSON_LAYERS, LESSON_SCROLL_WAIT_MS, setLevel5Combo, QUIET_BELOW, level5Cue, level5Ghosts, level5Missing, level5Plan, level5Step, slotScrollTarget, level4Cue, level4Step, level2Cue, level2Step, level3Cue, level3Step, levelBand, levelMapStates, worldStart, LESSON_LEVELS, lessonCue, lessonLit, lessonPickable, lessonScrollTarget, lessonStep, lessonSteps, lessonTotalCoins, levelKey, type LessonFx, type LessonLevel, type LessonView } from '../src/core/lesson';
 import type { CoachCue } from '../src/core/coach';
+import { doneCoinRow, doneLayout, introLayout, mapLayout, type ScreenView } from '../src/core/levelscreens';
 import { en } from '../src/i18n/en';
 import { popRate } from '../src/core/sfx';
 import { randomBand } from '../src/core/surprise';
@@ -109,6 +110,8 @@ const lessonStepNow = (): number => {
   return lessonLevel === 1 ? lessonStep(stage, st.spots) : lessonLevel === 2 ? level2Step(st.spots, st.muted, silenced) : lessonLevel === 3 ? level3Step(st.spots, st.volume, st.solo, quiet) : lessonLevel === 4 ? level4Step(swaps) : level5Step(stage, st.spots, comboFound);
 };
 const lessonMeta = { step: -1, prev: null as Layer | null, since: 0, sinceMs: 0, fx: [] as LessonFx[] };
+let screenView: ScreenView | null = null; // the map, the success card or the level banner: drawn by the scene
+let introTimer: ReturnType<typeof setTimeout> | undefined;
 let lessonDir: -1 | 0 | 1 = 0;
 let lessonTouchAt = 0, lessonScrollAt = 0;
 let lessonTimer: ReturnType<typeof setTimeout> | undefined;
@@ -120,7 +123,7 @@ function resize() {
   layout = computeLayout(W, H, undefined, 12, $('bar').offsetHeight + 4);
   view?.resize(W, H, dpr);
 }
-addEventListener('resize', () => { resize(); $('rotate').classList.toggle('hide', innerWidth >= innerHeight); });
+addEventListener('resize', () => { resize(); if (lessonMode === 'map') placeMap(); $('rotate').classList.toggle('hide', innerWidth >= innerHeight); });
 
 const rnd = (i: number) => { const x = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
 const hash = (s: string) => { let h = 7; for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) >>> 0; return h; };
@@ -136,7 +139,8 @@ function syncArrows() {
   const show = trayOpen && trayK > 0.9 && layout.scrollMax > 0;
   const y = layout.tray.y + layout.tray.h / 2 - 22;
   const l = $('tl'), r = $('tr');
-  if (lessonMode === 'play') { l.classList.toggle('hide', lessonDir !== -1); r.classList.toggle('hide', lessonDir !== 1); }
+  if (lessonMode === 'map' || lessonMode === 'done') { l.classList.add('hide'); r.classList.add('hide'); }
+  else if (lessonMode === 'play') { l.classList.toggle('hide', lessonDir !== -1); r.classList.toggle('hide', lessonDir !== 1); }
   else { l.classList.toggle('hide', !(show && scrollX > 8)); r.classList.toggle('hide', !(show && scrollX < layout.scrollMax - 8)); }
   l.style.left = '10px'; r.style.right = '10px'; l.style.top = r.style.top = `${y}px`;
 }
@@ -195,7 +199,7 @@ function frame(t: number) {
     placed: st.spots.flatMap((id, spot) => { if (!id) return []; const a = placedAnim.get(id); return [{ id, spot, since: a?.since ?? -1e6, from: a?.from ?? layout.spots[spot]! }]; }),
     muted, solo: st.solo, drags, returning, scrollX, beat, timeMs: t, reduceMotion, celebration: celeb,
     hint: hint && ready && drags.length === 0 && st.spots.every((x) => !x), hintSlot: 0, recordingBeat: null,
-    popup: pu, trayK, reward: rewardP, taps, volumes: st.volume, coach, lesson: lessonView,
+    popup: pu, trayK, reward: rewardP, taps, volumes: st.volume, coach, lesson: lessonView, screen: screenView,
   };
   view.draw(input, W, H);
   syncArrows();
@@ -250,7 +254,7 @@ function world(): World {
 }
 
 function syncLessonUi() {
-  document.body.classList.toggle('lesson', lessonMode === 'play');
+  document.body.classList.toggle('lesson', lessonMode !== null);
   $('lessonSkip').classList.toggle('hide', lessonMode !== 'play');
   $('lessonSkip').setAttribute('aria-label', tr('a11y.levelMap'));
   $('lessonSkip').setAttribute('title', tr('a11y.levelMap'));
@@ -266,30 +270,52 @@ function placeBand(t: number) {
   });
   s.countIn = false; hint = false; silenced = false; quiet = false; swaps = 0; comboFound = false;
 }
+/** Puts one of the overlay layers (touch targets and text only; the art is the scene's) exactly over the canvas. */
+function overlayBox(el: HTMLElement) {
+  const r = canvas.getBoundingClientRect();
+  el.style.left = `${r.left}px`; el.style.top = `${r.top}px`; el.style.width = `${r.width}px`; el.style.height = `${r.height}px`;
+}
+const place = (el: HTMLElement, x: number, y: number, w: number, h: number) => { el.style.left = `${x}px`; el.style.top = `${y}px`; el.style.width = `${w}px`; el.style.height = `${h}px`; };
 /** The map of this world's levels: gold = finished (tap to play again), the glowing one is next, dark ones are not open yet; the last circle is free play. */
-function showLevelMap() {
+function placeMap() {
+  const el = $('levelMap');
+  overlayBox(el);
+  const L = mapLayout(W, H, LESSON_LEVELS.length, isRtl());
+  place(el.querySelector('.lm-back') as HTMLElement, L.back.x - 28, L.back.y - 28, 56, 56);
+  place(el.querySelector('.lm-coins') as HTMLElement, L.coins.x + 44, L.coins.y, L.coins.w - 56, L.coins.h);
+  el.querySelectorAll<HTMLElement>('.lm-node[data-lv]').forEach((b) => {
+    const p = L.nodes[Number(b.dataset.lv) - 1]!;
+    place(b, p.x - p.r * 1.1, p.y - p.r * 1.1, p.r * 2.2, p.r * 2.2);
+    b.style.fontSize = `${p.r * 0.98}px`;
+  });
+  const f = L.free;
+  place($('lmFree'), f.x - f.r * 1.1, f.y - f.r * 1.1, f.r * 2.2, f.r * 2.2);
+}
+function showLevelMap(hopFrom = 0) {
   lessonMode = 'map';
   syncLessonUi();
-  clearTimeout(lessonTimer);
-  $('lessonDone').classList.add('hide');
+  clearTimeout(lessonTimer); clearTimeout(introTimer);
+  $('lessonDone').classList.add('hide'); $('levelIntro').classList.add('hide');
+  const states = levelMapStates(stage.id, [...lessonsDone]);
+  const cur = states.find((q) => q.state === 'current');
+  screenView = { kind: 'map', since: performance.now(), level: cur?.level ?? 0, hopFrom: (cur && hopFrom > 0 && cur.level === hopFrom + 1) || (!cur && hopFrom > 0) ? hopFrom : 0, states: states.map((q) => q.state), rtl: isRtl(), steps: 0, last: false };
   const el = $('levelMap');
   el.dir = isRtl() ? 'rtl' : 'ltr';
   el.setAttribute('aria-label', tr('a11y.levelMap'));
-  const coinHtml = `<span class="coin" style="width:28px;height:28px">${P.star(17, '#FFF3C4')}</span>`;
-  const lock = '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
-  const states = levelMapStates(stage.id, [...lessonsDone]);
   const nodes = states.map((lv, i) => {
     const label = tr('a11y.level', { n: lv.level }) + (lv.state === 'locked' ? ', ' + tr('select.locked') : '');
-    const inner = lv.state === 'locked' ? lock : `${lv.level}${lv.state === 'done' ? '<i class="lm-badge"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i>' : ''}`;
-    return `<button class="lm-node ${lv.state}" data-lv="${lv.level}" ${lv.state === 'locked' ? 'disabled' : ''} aria-label="${label}" style="animation-delay:${0.15 + i * 0.14}s">${inner}</button><i class="lm-link ${lv.state === 'done' ? 'done' : ''}"></i>`;
+    return `<button class="lm-node" data-lv="${lv.level}" ${lv.state === 'locked' ? 'disabled' : ''} aria-label="${label}" style="animation-delay:${0.15 + i * 0.12}s">${lv.state === 'locked' ? '' : lv.level}</button>`;
   }).join('');
-  el.innerHTML = `<div class="lm-coins" aria-label="${coins}">${coinHtml}<b>${coins}</b></div>` +
-    `<div class="lm-path">${nodes}<button class="lm-node free" id="lmFree" aria-label="${tr('a11y.freePlay')}" style="animation-delay:${0.15 + states.length * 0.14}s"><svg viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z"/></svg></button></div>`;
+  el.innerHTML = `<button class="lm-back" aria-label="${tr('a11y.back')}"></button><div class="lm-coins" aria-label="${coins}">${coins}</div>${nodes}` +
+    `<button class="lm-node" id="lmFree" aria-label="${tr('a11y.freePlay')}"></button>`;
+  placeMap();
   el.classList.remove('hide');
   el.querySelectorAll<HTMLButtonElement>('.lm-node[data-lv]').forEach((b) => b.addEventListener('click', () => startLevel(Number(b.dataset.lv) as LessonLevel)));
-  $('lmFree').addEventListener('click', () => { lessonMode = null; el.classList.add('hide'); syncLessonUi(); });
+  const free = () => { lessonMode = null; screenView = null; el.classList.add('hide'); syncLessonUi(); };
+  $('lmFree').addEventListener('click', free);
+  (el.querySelector('.lm-back') as HTMLElement).addEventListener('click', free);
 }
-/** Starts (or restarts) a level: the stage is cleared, levels 2 and 3 get their ready-made band. */
+/** Starts (or restarts) a level: the stage is cleared, levels 2 to 5 get their ready-made band; the level's banner drops in for a moment. */
 function startLevel(lv: LessonLevel) {
   if (!session) return;
   const t = performance.now();
@@ -303,25 +329,47 @@ function startLevel(lv: LessonLevel) {
   scrollTrayTo(0, 300);
   placeBand(t);
   syncLessonUi();
+  showIntro(t);
 }
-/** Leaves the level (without finishing it) for the level map. */
-function toMap() { session?.dispatch({ kind: 'endSolo' }); popup = null; showLevelMap(); }
+/** The banner that names the level: drawn by the scene, its text is an overlay that drops in with it. */
+function showIntro(t: number) {
+  screenView = { kind: 'intro', since: t, level: lessonLevel, hopFrom: 0, states: [], rtl: isRtl(), steps: 0, last: false };
+  const el = $('levelIntro'), B = introLayout(W, layout.stageH), r = canvas.getBoundingClientRect();
+  el.textContent = tr('a11y.level', { n: lessonLevel });
+  place(el, r.left + B.x, r.top + B.y, B.w, B.h);
+  el.style.fontSize = `${B.h * 0.5}px`;
+  el.classList.remove('hide');
+  el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+  clearTimeout(introTimer);
+  introTimer = setTimeout(() => { el.classList.add('hide'); if (screenView?.kind === 'intro') screenView = null; }, 2600);
+}
+/** Leaves the level (without finishing it) for the level map; from a success card the hummling walks on from the level just finished. */
+function toMap() { const from = lessonMode === 'done' ? lessonLevel : 0; session?.dispatch({ kind: 'endSolo' }); popup = null; showLevelMap(from); }
+/** After the last level: straight into free play, the band of the last level still on stage. */
+function freePlay() { clearTimeout(lessonTimer); lessonMode = null; screenView = null; $('lessonDone').classList.add('hide'); $('levelMap').classList.add('hide'); syncLessonUi(); }
 function showLessonDone() {
   lessonMode = 'done';
   syncLessonUi();
-  const total = lessonTotalCoins(lessonLevel);
-  const coin = (px: number) => `<span class="coin" style="width:${px}px;height:${px}px">${P.star(px * 0.6, '#FFF3C4')}</span>`;
-  const el = $('lessonDone');
-  el.setAttribute('aria-label', tr('lesson.done'));
-  el.innerHTML = `<div class="lcard"><h2>${tr('lesson.done')}</h2>` +
-    `<div class="lstars">${[0, 1, 2].map((i) => `<span style="animation-delay:${0.35 + i * 0.26}s">${P.star(i === 1 ? 74 : 58, '#FFC857')}</span>`).join('')}</div>` +
-    `<div class="lcoins" aria-label="${total}">${Array.from({ length: lessonSteps(lessonLevel) }, () => coin(30)).join('')}<b id="lcount">+0</b></div>` +
-    `<button id="lessonNext" aria-label="${tr('a11y.lessonNext')}"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></div>`;
+  clearTimeout(introTimer); $('levelIntro').classList.add('hide');
+  const last = lessonLevel === LESSON_LEVELS[LESSON_LEVELS.length - 1];
+  const total = lessonTotalCoins(lessonLevel), steps = lessonSteps(lessonLevel);
+  screenView = { kind: 'done', since: performance.now(), level: lessonLevel, hopFrom: 0, states: [], rtl: isRtl(), steps, last };
+  const el = $('lessonDone'), D = doneLayout(W, H), row = doneCoinRow(D.card, D.countX, D.u, steps);
+  overlayBox(el);
+  el.setAttribute('aria-label', tr(last ? 'lesson.final' : 'lesson.done'));
+  el.innerHTML = `<div class="ld-title">${tr(last ? 'lesson.final' : 'lesson.done')}</div><div class="ld-count" id="lcount" aria-label="${total}">+0</div>` +
+    `<button id="lessonNext" aria-label="${tr(last ? 'a11y.freePlay' : 'a11y.lessonNext')}"></button>`;
+  const title = el.querySelector('.ld-title') as HTMLElement, count = $('lcount');
+  place(title, D.ribbon.x, D.ribbon.y, D.ribbon.w, D.ribbon.h);
+  title.style.fontSize = `${24 * D.u}px`;
+  place(count, row.endX, D.coinsY - 22 * D.u, 80 * D.u, 44 * D.u);
+  count.style.fontSize = `${30 * D.u}px`;
+  place($('lessonNext'), D.button.x - D.button.r * 1.3, D.button.y - D.button.r * 1.3, D.button.r * 2.6, D.button.r * 2.6);
   el.classList.remove('hide');
-  $('lessonNext').addEventListener('click', toMap);
-  const t0 = performance.now() + 900;
+  $('lessonNext').addEventListener('click', last ? freePlay : toMap);
+  const t0 = performance.now() + 950;
   const id = setInterval(() => {
-    const k = Math.min(1, Math.max(0, (performance.now() - t0) / 1200));
+    const k = Math.min(1, Math.max(0, (performance.now() - t0) / 1100));
     const c = document.getElementById('lcount');
     if (c) c.textContent = `+${Math.round(total * k)}`;
     if (k >= 1 || !c) clearInterval(id);
@@ -459,13 +507,13 @@ async function openStage(i: number) {
       if (lessonMode === 'play' && lessonLevel === 5 && id === level5Plan(stage).comboId) { const before = lessonStepNow(); comboFound = true; lessonLanded(before, Math.max(0, session!.state.spots.findIndex(Boolean)), performance.now()); } // level 5: the secret combo was found
     },
     onCelebrationEnd: () => { celebration = null; },
-    onGoal: (key) => { stickers.add(key); store.set('hum.goals', [...stickers]); engine.playSfx('goal'); toast(`${P.sticker(30)}${GOAL_PICTO[key.split(':')[1]!]?.(24) ?? ''}<span>${(en as Record<string, string>)['goal.' + key.split(':')[1]]}</span>`); burst(W / 2, H * 0.3, ['#FFC857', '#FFFFFF', '#5FE3C0'], 16, 'star', performance.now(), 220); },
+    onGoal: (key) => { stickers.add(key); store.set('hum.goals', [...stickers]); if (lessonMode === 'play' || lessonMode === 'done') return; /* a level has its own cheer */ engine.playSfx('goal'); toast(`${P.sticker(30)}${GOAL_PICTO[key.split(':')[1]!]?.(24) ?? ''}<span>${(en as Record<string, string>)['goal.' + key.split(':')[1]]}</span>`); burst(W / 2, H * 0.3, ['#FFC857', '#FFFFFF', '#5FE3C0'], 16, 'star', performance.now(), 220); },
   }, [...found], [...stickers]);
   session.countIn = true;
   session.start();
   ready = true;
   $('loading').classList.add('hide');
-  if (lessonMode === 'map') showLevelMap();
+  if (lessonMode === 'map') showLevelMap(); else if (lessonMode === 'play') showIntro(performance.now());
 }
 
 $('worlds').innerHTML = NAMES.map((n, i) => `<button data-i="${i}" aria-label="${n}" title="${n}"><span class="wi">${worldIconSvg(STAGES[i]!.id, 32)}</span><span class="long">${n}</span><span class="short">${SHORT[i]}</span></button>`).join('');

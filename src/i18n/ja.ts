@@ -146,6 +146,7 @@ export const ja: Record<StringKey, string> = {
   'a11y.freePlay': 'じゆうにあそぶ',
   'a11y.level': 'レベル{n}',
   'lesson.done': 'よくできました！',
+  'lesson.final': 'つぎはきみのステージ！',
   'a11y.record': 'ろくおん',
   'a11y.stopRecord': 'ろくおんを とめる',
   'a11y.comboBook': 'コンボブック',

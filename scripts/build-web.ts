@@ -199,34 +199,18 @@ button.ic svg{width:26px;height:26px;flex:none}button.ic .off{display:none}butto
 body.lesson #sideL,body.lesson #sideR,body.lesson #bar{visibility:hidden!important}
 #lessonSkip{position:fixed;z-index:4;top:max(10px,env(safe-area-inset-top,0px));right:max(10px,env(safe-area-inset-right,0px));width:48px;height:48px;min-height:0;padding:0;border-radius:50%;display:grid;place-items:center;background:rgba(27,19,64,.92)}
 #lessonSkip svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
-#lessonDone{position:fixed;inset:0;z-index:9;display:grid;place-items:center;background:rgba(10,6,32,.62);transition:opacity .3s}
-.lcard{background:#241a5c;border:3px solid #FFC857;border-radius:28px;padding:16px 28px;display:flex;flex-direction:column;align-items:center;gap:8px}
-.lcard h2{margin:0;color:#FFE066;font-size:26px}
-.lstars{display:flex;align-items:center;gap:8px}
-.lstars>*{transform:scale(0);animation:lpop .55s cubic-bezier(.3,1.6,.5,1) forwards}
-.lcoins{display:flex;align-items:center;gap:8px;opacity:0;animation:lfade .3s .9s forwards}
-.coin{display:grid;place-items:center;border-radius:50%;background:#FFC857;border:2px solid #B8741A}
-.lcoins b{color:#FFE066;font-size:30px;min-width:64px;margin-left:6px}
-#lessonNext{width:76px;height:76px;min-height:0;padding:0;border-radius:50%;display:grid;place-items:center;border:3.5px solid #FF4D6D;background:#1B1340;opacity:0;animation:lfade .3s 1.9s forwards}
-#lessonNext svg{width:42px;height:42px;stroke:#fff;fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+#levelMap,#lessonDone,#levelIntro{position:fixed;z-index:9;pointer-events:none;overflow:hidden}
+#levelMap>*,#lessonDone>*{position:absolute;pointer-events:auto}
+#levelMap button,#lessonDone button{border:0;background:transparent;padding:0;min-height:0;border-radius:50%;box-shadow:none}
+.lm-coins{pointer-events:none!important;display:grid;place-items:center;color:#FFE066;font-size:24px;font-weight:900}
+.lm-node{display:grid;place-items:center;color:#4A2B00;font-weight:900;text-shadow:0 1px 1px rgba(255,255,255,.55);transform:scale(0);animation:lpop .55s cubic-bezier(.3,1.6,.5,1) forwards}
+.lm-node:disabled{cursor:default}
+.ld-title{pointer-events:none!important;display:grid;place-items:center;color:#fff;font-weight:900;white-space:nowrap;text-shadow:0 2px 2px rgba(120,20,60,.7)}
+.ld-count{pointer-events:none!important;display:grid;align-items:center;color:#FFE066;font-weight:900;text-shadow:0 2px 2px rgba(0,0,0,.5);min-width:70px}
+#lessonNext{opacity:0;animation:lfade .3s 1.9s forwards}
+#levelIntro{display:grid;place-items:center;color:#fff;font-weight:900;white-space:nowrap;text-shadow:0 2px 2px rgba(30,10,90,.8);animation:lintro 2.5s forwards}
+@keyframes lintro{0%{opacity:0;transform:translateY(-140%) scale(.7)}22%{opacity:1;transform:translateY(0) scale(1)}76%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(24px) scale(1)}}
 @keyframes lpop{to{transform:scale(1)}}@keyframes lfade{to{opacity:1}}
-/*levels*/#levelMap{position:fixed;inset:0;z-index:9;display:grid;place-items:center;background:rgba(10,6,32,.78);transition:opacity .3s}
-.lm-coins{position:fixed;top:max(12px,env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:rgba(27,19,64,.92);border:2px solid #FFC857;border-radius:24px;padding:6px 16px}
-.lm-coins b{color:#FFE066;font-size:24px}
-.lm-path{display:flex;align-items:center}
-.lm-link{width:30px;height:7px;border-radius:4px;margin:0 4px;background:rgba(255,255,255,.22)}.lm-link.done{background:#FFC857}
-.lm-node{position:relative;width:80px;height:80px;min-height:0;padding:0;border-radius:50%;display:grid;place-items:center;border:4px solid #B8741A;background:#FFE8A3;color:#3A2400;font-size:36px;font-weight:900;transform:scale(0);animation:lpop .55s cubic-bezier(.3,1.6,.5,1) forwards}
-.lm-node.done{background:#FFC857}
-.lm-node.locked{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3);color:#fff;cursor:default}
-.lm-node.locked svg{width:34px;height:34px;stroke:#fff;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
-.lm-node.current::before{content:"";position:absolute;inset:-9px;border-radius:50%;border:4px solid #FFE066;animation:lring 1.3s ease-in-out infinite}
-.lm-node.free{background:#5FE3C0;border-color:#1E8F72}.lm-node.free svg{width:38px;height:38px;fill:#10282A;stroke:none}
-.lm-badge{position:absolute;right:-4px;bottom:-4px;width:26px;height:26px;border-radius:50%;background:#5FE3C0;border:2px solid #10282A;display:grid;place-items:center}.lm-badge svg{width:15px;height:15px;stroke:#10282A;fill:none;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
-.lm-back{position:fixed;top:max(10px,env(safe-area-inset-top,0px));left:max(10px,env(safe-area-inset-left,0px));width:48px;height:48px;min-height:0;padding:0;border-radius:50%;display:grid;place-items:center;background:rgba(27,19,64,.92)}
-.lm-back svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
-@keyframes lring{0%,100%{opacity:.35;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
-@media (max-height:380px){.lm-node{width:64px;height:64px;font-size:30px}}
-@media (max-height:380px){.lcard{padding:10px 22px;gap:4px}.lcard h2{font-size:22px}#lessonNext{width:62px;height:62px}}
 </style>
 <div id="wrap"><canvas id="game" aria-label="Hummlings stage"></canvas></div>
 <div id="sideL"><div id="worlds" role="group" aria-label="Worlds"></div></div>
@@ -255,6 +239,7 @@ body.lesson #sideL,body.lesson #sideR,body.lesson #bar{visibility:hidden!importa
 <button id="lessonSkip" class="ic hide" aria-label="Level map" title="Level map"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
 <div id="levelMap" class="hide" role="dialog"></div>
 <div id="lessonDone" class="hide" role="dialog"></div>
+<div id="levelIntro" class="hide"></div>
 <div id="rotate" class="hide"><svg viewBox="0 0 96 96" width="132" height="132"><rect class="ph" x="12" y="30" width="22" height="38" rx="6" opacity=".45"/><path class="ar" d="M22 22A34 34 0 0 1 66 22"/><path class="ar" d="M58 15l9 7-10 5"/><rect x="50" y="46" width="38" height="22" rx="6"/><path d="M82 57h.01" stroke-width="5"/></svg></div>
 <div id="loading" class="hide"><p>Loading music…</p></div>
 <div id="splash"><canvas id="homeBg" aria-hidden="true"></canvas><div id="homeDecor" aria-hidden="true"></div><canvas id="homeCv" aria-hidden="true"></canvas></div>

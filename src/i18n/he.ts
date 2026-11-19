@@ -146,6 +146,7 @@ export const he: Record<StringKey, string> = {
   'a11y.freePlay': 'משחק חופשי',
   'a11y.level': 'שלב {n}',
   'lesson.done': 'כל הכבוד!',
+  'lesson.final': 'עכשיו הבמה שלך!',
   'a11y.record': 'הקלטה',
   'a11y.stopRecord': 'עצירת הקלטה',
   'a11y.comboBook': 'ספר השילובים',

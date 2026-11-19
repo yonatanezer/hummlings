@@ -146,6 +146,7 @@ export const ko: Record<StringKey, string> = {
   'a11y.freePlay': '자유롭게 놀기',
   'a11y.level': '레벨 {n}',
   'lesson.done': '잘했어요!',
+  'lesson.final': '이제 네 무대야!',
   'a11y.record': '녹음',
   'a11y.stopRecord': '녹음 멈추기',
   'a11y.comboBook': '콤보 북',

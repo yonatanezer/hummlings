@@ -5,8 +5,10 @@ import { beatBounce, blinkOpen, breath, hop, onsetPulse } from '../../core/anim'
 import type { Layout } from '../../core/layout';
 import type { CoachCue } from '../../core/coach';
 import type { LessonView } from '../../core/lesson';
+import type { ScreenView } from '../../core/levelscreens';
 import { IDLE_POSE, bodyDims, drawCreature, type Pose } from './creature';
 import { gradientPaint, mix, freshPaint, paint, radialPaint, STROKE, type Canvas, type SkiaApi, rect } from './common';
+import { coinArt, drawFloorRing, drawHand, sparkle, unit, drawLevelMapScreen, drawDoneScreen, drawIntroScreen, drawBurstRing } from './levelart';
 import { drawCelebration, danceOffset } from './celebrations';
 import { drawComboBanner, drawDecor, drawFloatingNotes, drawScenery, drawTaps, type TapEffect } from './scenery';
 import { popupRects } from '../../core/layout';
@@ -46,6 +48,7 @@ export interface SceneInput {
   trayK?: number; // 1 = singer menu shown, 0 = slid away (animated by the screen)
   popup?: { spot: number; creatureId: string; volume: number; solo: boolean } | null; // volume popup after a long press
   volumes?: Record<string, number>;
+  screen?: ScreenView | null; // a full-screen moment of the levels: the map, the success card or the level banner
   lesson?: LessonView | null; // the first lesson of a world: dark groups in the menu, the lit one, and the coin counter
 }
 
@@ -265,9 +268,7 @@ function drawHintHand(sk: SkiaApi, c: Canvas, s: SceneInput, byId: Record<string
   if (cr && move > 0) drawCreature(sk, c, cr, x, y + l.size * 0.45, l.size * 0.9, { ...IDLE_POSE, alpha: 0.85 * fade });
   // finger
   const pressed = move > 0 && move < 1 ? 1 : 0;
-  c.drawCircle(x + 3, y + 8, 26, paint(sk, '#000000', 0.25 * fade));
-  c.drawCircle(x, y, 24 - pressed * 2, paint(sk, '#FFFFFF', 0.9 * fade));
-  c.drawCircle(x, y, 24 - pressed * 2, paint(sk, '#FFC857', 0.8 * fade, STROKE, 3));
+  drawHand(sk, c, x, y, l.u * 1.05, pressed, fade, l.H);
   c.drawCircle(x, y, 38 + 6 * Math.sin(t * 40), paint(sk, '#FFFFFF', 0.35 * fade * (1 - move), STROKE, 2));
 }
 
@@ -290,9 +291,7 @@ function drawCoachHand(sk: SkiaApi, c: Canvas, s: SceneInput, cue: CoachCue, byI
     const y = y0 + (y1 - y0) * e;
     const fade = t < 0.08 ? t / 0.08 : t > 0.9 ? (1 - t) / 0.1 : 1;
     c.drawLine(x, y0, x, y, paint(sk, '#FFE8A3', 0.6 * fade, STROKE, 7));
-    c.drawCircle(x + 3, y + 8, 26, paint(sk, '#000000', 0.25 * fade));
-    c.drawCircle(x, y, 22, paint(sk, '#FFFFFF', 0.92 * fade));
-    c.drawCircle(x, y, 22, paint(sk, '#FFC857', 0.85 * fade, STROKE, 3));
+  drawHand(sk, c, x, y, l.u * 1.05, 0, fade, l.H);
     return;
   }
   if (cue.kind === 'solo') {
@@ -305,9 +304,7 @@ function drawCoachHand(sk: SkiaApi, c: Canvas, s: SceneInput, cue: CoachCue, byI
     const fade = t > 0.9 ? (1 - t) / 0.1 : 1;
     const glow = 0.5 + 0.5 * Math.sin(s.timeMs / 200);
     c.drawCircle(r.solo.x + r.solo.w / 2, r.solo.y + r.solo.h / 2, r.solo.w * (0.55 + 0.08 * glow), paint(sk, '#FFE8A3', 0.8 * fade, STROKE, 4));
-    c.drawCircle(x + 3, y + 8, 26, paint(sk, '#000000', 0.25 * fade));
-    c.drawCircle(x, y, 22 - press * 3, paint(sk, '#FFFFFF', 0.92 * fade));
-    c.drawCircle(x, y, 22 - press * 3, paint(sk, '#FFC857', 0.85 * fade, STROKE, 3));
+  drawHand(sk, c, x, y, l.u * 1.05, press, fade, l.H);
     return;
   }
   if (cue.kind === 'hold') {
@@ -317,9 +314,7 @@ function drawCoachHand(sk: SkiaApi, c: Canvas, s: SceneInput, cue: CoachCue, byI
     const x = p.x + l.size * 0.1, y = p.y - l.size * 0.5;
     const fade = t > 0.92 ? (1 - t) / 0.08 : 1;
     const fill = Math.min(1, Math.max(0, (t - 0.1) / 0.45));
-    c.drawCircle(x + 3, y + 8, 26, paint(sk, '#000000', 0.25 * fade));
-    c.drawCircle(x, y, 22, paint(sk, '#FFFFFF', 0.92 * fade));
-    c.drawCircle(x, y, 22, paint(sk, '#FFC857', 0.85 * fade, STROKE, 3));
+  drawHand(sk, c, x, y, l.u * 1.05, 0, fade, l.H);
     c.drawCircle(x, y, 28 + fill * 22, paint(sk, '#FFE8A3', (0.25 + 0.5 * (1 - fill)) * fade, STROKE, 4));
     if (t > 0.55) {
       const open = Math.min(1, (t - 0.55) / 0.12);
@@ -341,9 +336,7 @@ function drawCoachHand(sk: SkiaApi, c: Canvas, s: SceneInput, cue: CoachCue, byI
     const x = x0 + (x1 - x0) * e, y = l.tray.y + l.tray.h * 0.45;
     const fade = t < 0.08 ? t / 0.08 : t > 0.88 ? (1 - t) / 0.12 : 1;
     c.drawLine(x0, y, x, y, paint(sk, '#FFE8A3', 0.55 * fade, STROKE, 7));
-    c.drawCircle(x + 3, y + 8, 26, paint(sk, '#000000', 0.25 * fade));
-    c.drawCircle(x, y, 24 - (move > 0 && move < 1 ? 2 : 0), paint(sk, '#FFFFFF', 0.92 * fade));
-    c.drawCircle(x, y, 24 - (move > 0 && move < 1 ? 2 : 0), paint(sk, '#FFC857', 0.85 * fade, STROKE, 3));
+  drawHand(sk, c, x, y, l.u * 1.05, (move > 0 && move < 1 ? 1 : 0), fade, l.H);
     return;
   }
   if (cue.kind === 'tap') {
@@ -353,9 +346,7 @@ function drawCoachHand(sk: SkiaApi, c: Canvas, s: SceneInput, cue: CoachCue, byI
     const p = l.spots[cue.spot]!;
     const x = p.x + l.size * 0.12, y = p.y - l.size * 0.5 + (1 - press) * l.size * 0.28;
     const fade = t > 0.9 ? (1 - t) / 0.1 : 1;
-    c.drawCircle(x + 3, y + 8, 26, paint(sk, '#000000', 0.25 * fade));
-    c.drawCircle(x, y, 24 - press * 3, paint(sk, '#FFFFFF', 0.92 * fade));
-    c.drawCircle(x, y, 24 - press * 3, paint(sk, '#FFC857', 0.85 * fade, STROKE, 3));
+  drawHand(sk, c, x, y, l.u * 1.05, press, fade, l.H);
     if (press > 0.5) c.drawCircle(x, y, 30 + (press - 0.5) * 70, paint(sk, '#FFFFFF', 0.5 * (1 - press) * 2 * fade, STROKE, 3));
     return;
   }
@@ -374,21 +365,8 @@ function drawCoachHand(sk: SkiaApi, c: Canvas, s: SceneInput, cue: CoachCue, byI
   const cr = byId[s.stage.creatures[cue.slot]!.id];
   if (cr && move > 0) drawCreature(sk, c, cr, x, y + l.size * 0.45, l.size * 0.9, { ...IDLE_POSE, alpha: 0.85 * fade });
   const pressed = move > 0 && move < 1 ? 1 : 0;
-  c.drawCircle(x + 3, y + 8, 26, paint(sk, '#000000', 0.25 * fade));
-  c.drawCircle(x, y, 24 - pressed * 2, paint(sk, '#FFFFFF', 0.92 * fade));
-  c.drawCircle(x, y, 24 - pressed * 2, paint(sk, '#FFC857', 0.85 * fade, STROKE, 3));
+  drawHand(sk, c, x, y, l.u * 1.05, pressed, fade, l.H);
   c.drawCircle(x, y, 38 + 6 * Math.sin(t * 40), paint(sk, '#FFFFFF', 0.35 * fade * (1 - move), STROKE, 2));
-}
-
-/** A gold coin with a star. */
-function drawCoin(sk: SkiaApi, c: Canvas, x: number, y: number, r: number, alpha: number) {
-  'worklet';
-  c.drawCircle(x, y, r, paint(sk, '#FFC857', alpha));
-  c.drawCircle(x, y, r, paint(sk, '#B8741A', alpha, STROKE, Math.max(1.5, r * 0.14)));
-  const q = sk.PathBuilder.Make();
-  for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? r * 0.28 : r * 0.62; if (k === 0) q.moveTo(x + Math.cos(a) * d, y + Math.sin(a) * d); else q.lineTo(x + Math.cos(a) * d, y + Math.sin(a) * d); }
-  q.close();
-  c.drawPath(q.build(), paint(sk, '#FFF3C4', alpha));
 }
 
 /** First lesson: the groups that may not be touched yet are dark, the lit one glows. Drawn on top of the (cached) singer strip, so it costs a few rectangles per frame. */
@@ -429,17 +407,21 @@ function drawLessonVeil(sk: SkiaApi, c: Canvas, s: SceneInput) {
   c.restore();
 }
 
-/** First lesson: four coin slots at the top, one per group; a coin flies in from every singer that lands. */
+/** The coin counter at the top: one slot per step, in the colour of its group; a coin flies in from every singer that lands, and the slot it fills pops with a sparkle. */
 function drawLessonCounter(sk: SkiaApi, c: Canvas, s: SceneInput) {
   'worklet';
   const l = s.layout, z = s.lesson!;
-  const gap = 42 * l.u, r = 15 * l.u, cx = l.W / 2, y = z.topY;
+  const gap = 46 * l.u, r = 16 * l.u, cx = l.W / 2, y = z.topY;
   const FLY = 850, n = z.slots.length;
-  c.drawRRect(sk.RRectXY(rect(cx - (n / 2) * gap, y - r - 8, n * gap, 2 * r + 16), r + 8, r + 8), paint(sk, '#1B1340', 0.8));
-  c.drawRRect(sk.RRectXY(rect(cx - (n / 2) * gap, y - r - 8, n * gap, 2 * r + 16), r + 8, r + 8), paint(sk, '#FFFFFF', 0.28, STROKE, 2));
+  const bx = cx - (n / 2) * gap - 2, bw = n * gap + 4, bh = 2 * r + 16, by = y - bh / 2;
+  c.drawRRect(sk.RRectXY(rect(bx, by + 4, bw, bh), bh / 2, bh / 2), paint(sk, '#000000', 0.35));
+  c.drawRRect(sk.RRectXY(rect(bx, by, bw, bh), bh / 2, bh / 2), gradientPaint(sk, 0, by, 0, by + bh, ['#34277F', '#1A1249'], 0.97));
+  c.drawRRect(sk.RRectXY(rect(bx + 3, by + 3, bw - 6, bh * 0.42), bh * 0.2, bh * 0.2), paint(sk, '#FFFFFF', 0.1));
+  c.drawRRect(sk.RRectXY(rect(bx, by, bw, bh), bh / 2, bh / 2), paint(sk, '#FFFFFF', 0.4, STROKE, 2));
+  const pulse = s.reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(s.timeMs / 300);
   for (let i = 0; i < n; i++) {
     const x = cx + (i - (n - 1) / 2) * gap;
-    let flying = false, pop = 0;
+    let flying = false, pop = 0, sinceLand = 9999;
     if (!s.reduceMotion) {
       for (const f of z.fx) {
         if (f.slot !== i) continue;
@@ -448,14 +430,19 @@ function drawLessonCounter(sk: SkiaApi, c: Canvas, s: SceneInput) {
           flying = true;
           const e = Math.max(0, age) / FLY, ee = e * e * (3 - 2 * e);
           const fx = f.x + (x - f.x) * ee, fy = f.y + (y - f.y) * ee - Math.sin(ee * Math.PI) * l.size * 0.5;
-          drawCoin(sk, c, fx, fy, r * (1.5 - 0.5 * ee), 1);
-        } else if (age < FLY + 300) pop = Math.sin(((age - FLY) / 300) * Math.PI);
+          coinArt(sk, c, fx, fy, r * (1.5 - 0.5 * ee), 1, 0);
+          c.drawCircle(fx, fy, r * 1.9, radialPaint(sk, fx, fy, r * 1.9, ['#FFE88A', '#00000000'], 0.4));
+        } else if (age < FLY + 420) { pop = Math.sin(((age - FLY) / 420) * Math.PI); sinceLand = age - FLY; }
       }
     }
-    if (i < z.done && !flying) drawCoin(sk, c, x, y, r * (1 + 0.45 * pop), 1);
-    else {
-      c.drawCircle(x, y, r, paint(sk, '#000000', 0.35));
-      c.drawCircle(x, y, r, paint(sk, z.slots[i]!, i === z.done ? 0.95 : 0.5, STROKE, i === z.done ? 3.5 : 2.5));
+    if (i < z.done && !flying) {
+      coinArt(sk, c, x, y, r * (1 + 0.45 * pop), 1, sinceLand < 420 ? sinceLand / 420 : 0);
+      if (sinceLand < 420) drawBurstRing(sk, c, x, y, r * 2.2, sinceLand / 420, '#FFE88A');
+    } else {
+      const active = i === z.done;
+      if (active) c.drawCircle(x, y, r * 1.5, radialPaint(sk, x, y, r * 1.5, [z.slots[i]!, '#00000000'], 0.35 + 0.25 * pulse));
+      c.drawCircle(x, y, r, paint(sk, '#0C0830', 0.85));
+      c.drawCircle(x, y, r, paint(sk, z.slots[i]!, active ? 0.7 + 0.3 * pulse : 0.45, STROKE, active ? 3.8 : 2.6));
     }
   }
 }
@@ -540,7 +527,32 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
     }
   }
 
+  // the fuller the band, the more fireflies drift over the night stage
+  if (!s.reduceMotion && (stage.id === 'pond' || stage.id === 'neon' || stage.id === 'clouds')) {
+    const n = Math.min(14, s.placed.length * 2);
+    for (let i = 0; i < n; i++) {
+      const born = Math.min(1, Math.max(0, (s.timeMs - (s.placed[Math.floor(i / 2)]?.since ?? 0) - 400) / 900));
+      const fx = l.W * (0.08 + 0.84 * unit(i)) + Math.sin(s.timeMs / 1300 + i * 2.1) * 22;
+      const fy = l.stageH * (0.22 + 0.42 * unit(i + 30)) + Math.cos(s.timeMs / 1700 + i) * 14;
+      const tw = 0.5 + 0.5 * Math.sin(s.timeMs / 420 + i * 1.7), col = mix(LAYER_COLORS[(['drums', 'bass', 'melody', 'voice'] as const)[i % 4]!], '#FFFFFF', 0.5);
+      c.drawCircle(fx, fy, 9, radialPaint(sk, fx, fy, 9, [col, '#00000000'], 0.5 * tw * born));
+      c.drawCircle(fx, fy, 1.8, paint(sk, '#FFFFFF', 0.9 * tw * born));
+    }
+  }
   if (s.celebration) drawCelebration(sk, c, s.celebration.celebrationId, l, stage.palette, s.timeMs, s.beat - s.celebration.startBeat, s.reduceMotion);
+
+  // toy feel: when a singer lands the others cheer (a little hop, mouth open) one after another outward from the newcomer, and the landing spot shows a ring and sparkles
+  let fresh: PlacedCreature | null = null;
+  for (const q of s.placed) if (!fresh || q.since > fresh.since) fresh = q;
+  const landT = fresh && !s.reduceMotion && s.placed.length > 1 ? s.timeMs - fresh.since - TUNING.hopMs : -1;
+  if (fresh && landT >= 0 && landT < 900) {
+    const f = l.spots[fresh.spot]!, fcr = byId[fresh.id], col = fcr ? mix(LAYER_COLORS[fcr.layer], '#FFFFFF', 0.4) : '#FFFFFF';
+    drawFloorRing(sk, c, f.x, f.y, l.size * 0.95, landT / 700, col);
+    for (let i = 0; i < 6; i++) {
+      const a0 = (i / 6) * Math.PI * 2 + 0.4, e = Math.min(1, landT / 800);
+      sparkle(sk, c, f.x + Math.cos(a0) * l.size * (0.4 + 0.55 * e), f.y - l.size * 0.45 + Math.sin(a0) * l.size * 0.45 * e - 18 * e, l.size * 0.07 * (1 - e), col, 1 - e);
+    }
+  }
 
   // creatures on stage, back row first (higher on screen = further back)
   const order = [...s.placed].sort((a, b) => l.spots[a.spot]!.y - l.spots[b.spot]!.y);
@@ -557,6 +569,10 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
     const dance = danceIds.includes(pl.id) && s.celebration ? danceOffset(s.celebration.celebrationId, danceIds.indexOf(pl.id), s.beat - s.celebration.startBeat, l.size, s.reduceMotion) : { dx: 0, dy: 0, tilt: 0 };
     const pose = poseFor(cr, s, { lift: dance.dy, tilt: dance.tilt }, age >= TUNING.hopMs);
     pose.sx *= pos.sx; pose.sy *= pos.sy;
+    if (fresh && landT >= 0 && pl !== fresh && s.muted[pl.id] !== true) {
+      const ck = (landT - 80 * Math.abs(pl.spot - fresh.spot)) / 540; // outward from the newcomer
+      if (ck > 0 && ck < 1) { pose.lift += Math.sin(ck * Math.PI) * l.size * 0.1; pose.mouth = Math.max(pose.mouth, 0.7 * Math.sin(ck * Math.PI)); }
+    }
     drawCreature(sk, c, cr, pos.x + dance.dx, pos.y, l.size, pose);
     // state badges: muted = speaker with a slash, solo = star
     const isMuted = s.muted[pl.id] === true, isSolo = s.solo === pl.id;
@@ -632,6 +648,9 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
   }
 
   if (s.lesson) drawLessonCounter(sk, c, s);
+  if (s.screen?.kind === 'map') { drawLevelMapScreen(sk, c, l.W, l.H, s.timeMs, s.screen, stage.creatures[0]); return; }
+  if (s.screen?.kind === 'done') { drawDoneScreen(sk, c, l.W, l.H, s.timeMs, s.screen, stage.creatures); return; }
+  if (s.screen?.kind === 'intro') drawIntroScreen(sk, c, l, s.timeMs, s.screen);
   if (s.hint && s.drags.length === 0) drawHintHand(sk, c, s, byId);
   if (s.coach && s.drags.length === 0 && (!s.popup || s.coach.kind === 'slide' || s.coach.kind === 'solo')) drawCoachHand(sk, c, s, s.coach, byId);
 }
