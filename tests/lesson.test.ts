@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { STAGES } from '../src/content';
 import { computeLayout } from '../src/core/layout';
 import { GestureTracker, type World } from '../src/core/gestures';
-import { level4Band, level4Cue, level4Step, LEVEL4_SPOTS, levelMapStates, worldStart, hasLesson, LEVEL3_SPOTS, level3Band, level3Cue, level3Step, levelBand, LEVEL2_SPOTS, level2Band, level2Cue, level2Step, lessonPickable, lessonSteps, levelKey, nextLevel, LESSON_STEPS, lessonCanPick, lessonCue, lessonDirection, lessonLit, lessonScrollTarget, lessonStep, lessonTotalCoins } from '../src/core/lesson';
+import { setLevel5Combo, level5Cue, level5Ghosts, level5Missing, level5Plan, level5Step, slotScrollTarget, LEVEL5_GHOST_SPOTS, LEVEL5_BAND_SPOTS, lessonFinishMs, level4Band, level4Cue, level4Step, LEVEL4_SPOTS, levelMapStates, worldStart, hasLesson, LEVEL3_SPOTS, level3Band, level3Cue, level3Step, levelBand, LEVEL2_SPOTS, level2Band, level2Cue, level2Step, lessonPickable, lessonSteps, levelKey, nextLevel, LESSON_STEPS, lessonCanPick, lessonCue, lessonDirection, lessonLit, lessonScrollTarget, lessonStep, lessonTotalCoins } from '../src/core/lesson';
 
 const stage = STAGES[0]!;
 const first = (layer: string) => stage.creatures.find((c) => c.layer === layer)!.id;
@@ -155,9 +155,11 @@ describe('level 2: my band', () => {
     expect(nextLevel('pond', ['pond'])).toBe(2);
     expect(nextLevel('pond', ['pond', 'pond:2'])).toBe(3);
     expect(nextLevel('pond', ['pond', 'pond:2', 'pond:3'])).toBe(4);
-    expect(nextLevel('pond', ['pond', 'pond:2', 'pond:3', 'pond:4'])).toBeNull();
+    expect(nextLevel('pond', ['pond', 'pond:2', 'pond:3', 'pond:4'])).toBe(5);
+    expect(nextLevel('pond', ['pond', 'pond:2', 'pond:3', 'pond:4', 'pond:5'])).toBeNull();
     expect(nextLevel('fair', [])).toBeNull();
     expect([lessonSteps(1), lessonSteps(2), lessonSteps(3), lessonSteps(4)]).toEqual([4, 3, 3, 3]);
+    expect(lessonSteps(5)).toBe(3);
     expect(lessonTotalCoins(2)).toBe(8);
   });
   it('a singer on stage can only be tapped: no dragging it off, no long press', () => {
@@ -230,10 +232,10 @@ describe('level 3: volume', () => {
 
 describe('level map', () => {
   it('shows finished circles, the one that waits and the ones not open yet', () => {
-    expect(levelMapStates('pond', []).map((x) => x.state)).toEqual(['current', 'locked', 'locked', 'locked']);
-    expect(levelMapStates('pond', ['pond']).map((x) => x.state)).toEqual(['done', 'current', 'locked', 'locked']);
-    expect(levelMapStates('pond', ['pond', 'pond:2', 'pond:3', 'pond:4']).map((x) => x.state)).toEqual(['done', 'done', 'done', 'done']);
-    expect(levelMapStates('pond', ['pond:2']).map((x) => x.state)).toEqual(['current', 'done', 'current', 'locked']); // an older save: the order is only a guide
+    expect(levelMapStates('pond', []).map((x) => x.state)).toEqual(['current', 'locked', 'locked', 'locked', 'locked']);
+    expect(levelMapStates('pond', ['pond']).map((x) => x.state)).toEqual(['done', 'current', 'locked', 'locked', 'locked']);
+    expect(levelMapStates('pond', ['pond', 'pond:2', 'pond:3', 'pond:4', 'pond:5']).map((x) => x.state)).toEqual(['done', 'done', 'done', 'done', 'done']);
+    expect(levelMapStates('pond', ['pond:2']).map((x) => x.state)).toEqual(['current', 'done', 'current', 'locked', 'locked']); // an older save: the order is only a guide
   });
   it('a new player goes straight into level 1, everyone else sees the map, other worlds have none', () => {
     expect(worldStart('pond', [])).toBe('play');
@@ -268,5 +270,52 @@ describe('level 4: swap', () => {
   });
   it('everything can be picked from the menu', () => {
     for (const step of [0, 1, 2]) expect(lessonPickable(4, stage, step, first('voice'))).toBe(true);
+  });
+});
+
+describe('level 5: the first secret combo', () => {
+  const l = phone();
+  const plan = level5Plan(stage);
+  const onStage = (...ids: string[]): (string | null)[] => { const a: (string | null)[] = Array(6).fill(null); ids.forEach((id, i) => { a[LEVEL5_BAND_SPOTS[i] ?? LEVEL5_GHOST_SPOTS[i - 2]!] = id; }); return a; };
+  it('is the first combo of the world: two singers play, two are missing', () => {
+    expect(plan.comboId).toBe(stage.combos[1]!.id);
+    expect(plan.band).toHaveLength(2);
+    expect(plan.needed).toHaveLength(2);
+    expect([...plan.band, ...plan.needed].sort()).toEqual([...stage.combos[1]!.creatureIds].sort());
+    setLevel5Combo(3);
+    expect(level5Plan(stage).comboId).toBe(stage.combos[3]!.id);
+    setLevel5Combo(1);
+    expect(levelBand(5, stage)).toEqual({ ids: plan.band, spots: LEVEL5_BAND_SPOTS });
+  });
+  it('shows the missing singers as silhouettes on their places until they are on stage', () => {
+    expect(level5Ghosts(stage, onStage(...plan.band)).map((g) => g.spot)).toEqual([...LEVEL5_GHOST_SPOTS]);
+    expect(level5Missing(stage, onStage(...plan.band, plan.needed[0]!))).toEqual([plan.needed[1]]);
+    expect(level5Ghosts(stage, onStage(...plan.band, ...plan.needed))).toEqual([]);
+  });
+  it('goes one, two, then found', () => {
+    expect(level5Step(stage, onStage(...plan.band), false)).toBe(0);
+    expect(level5Step(stage, onStage(...plan.band, plan.needed[0]!), false)).toBe(1);
+    expect(level5Step(stage, onStage(...plan.band, ...plan.needed), false)).toBe(2);
+    expect(level5Step(stage, onStage(...plan.band, ...plan.needed), true)).toBe(3);
+  });
+  it('only the two missing singers can be picked up', () => {
+    for (const id of plan.needed) expect(lessonPickable(5, stage, 0, id)).toBe(true);
+    expect(lessonPickable(5, stage, 0, first('voice') === plan.needed[1] ? first('drums') : first('voice'))).toBe(false);
+  });
+  it('carries the next missing singer to its silhouette, slides the menu when it is out of sight, then waits', () => {
+    const spots = onStage(...plan.band);
+    const cue = level5Cue(stage, l, 0, spots)!;
+    if (cue.kind === 'drag') expect(stage.creatures[cue.slot]!.id).toBe(plan.needed[0]);
+    else {
+      expect(cue.kind).toBe('swipe');
+      expect(stage.creatures[cue.slot]!.id).toBe(plan.needed[0]);
+      const target = slotScrollTarget(l, 0, cue.slot)!;
+      expect(target).toBeGreaterThan(0);
+      expect(level5Cue(stage, l, target, spots)).toMatchObject({ kind: 'drag', slot: cue.slot, spot: LEVEL5_GHOST_SPOTS[0] });
+    }
+    expect(level5Cue(stage, l, 0, onStage(...plan.band, ...plan.needed))).toBeNull();
+  });
+  it('waits longer for the success card after a combo', () => {
+    expect(lessonFinishMs(5)).toBeGreaterThan(lessonFinishMs(4));
   });
 });

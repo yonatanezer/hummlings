@@ -395,10 +395,26 @@ function drawCoin(sk: SkiaApi, c: Canvas, x: number, y: number, r: number, alpha
 function drawLessonVeil(sk: SkiaApi, c: Canvas, s: SceneInput) {
   'worklet';
   const { layout: l, stage } = s, z = s.lesson!;
-  if (!z.lit && !z.dim) return;
+  if (!z.lit && !z.dim && !z.litIds) return;
   const per = stage.creatures.length / 4;
   const k = Math.min(1, Math.max(0, (s.timeMs - z.since) / 350));
   const pulse = s.reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(s.timeMs / 260);
+  if (z.litIds) {
+    // level 5: only the singers that are needed shine, the rest of the menu is dark
+    c.save();
+    c.clipRect(rect(0, l.tray.y + 2, l.W, l.tray.h), 1, true);
+    stage.creatures.forEach((cr, i) => {
+      const x = l.slotPos[i]!.x - l.slot * 0.5 - s.scrollX;
+      if (x > l.W || x + l.slot < 0) return;
+      const y = l.tray.y + l.tray.h * 0.1, w = l.slot - 3, h = l.tray.h * 0.8;
+      if (z.litIds!.includes(cr.id)) {
+        c.drawRRect(sk.RRectXY(rect(x, y, w, h), 18, 18), paint(sk, '#FFE066', (0.12 + 0.12 * pulse) * k));
+        c.drawRRect(sk.RRectXY(rect(x, y, w, h), 18, 18), paint(sk, '#FFE066', (0.6 + 0.4 * pulse) * k, STROKE, 4));
+      } else c.drawRRect(sk.RRectXY(rect(x - 1, y - 1, w + 2, h + 2), 19, 19), paint(sk, '#05031A', 0.74));
+    });
+    c.restore();
+    return;
+  }
   c.save();
   c.clipRect(rect(0, l.tray.y + 2, l.W, l.tray.h), 1, true);
   [0, 1, 2, 3].forEach((g) => {
@@ -486,6 +502,16 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
       landingPad(sk, c, p.x, p.y, l.size, stage.palette.glow, ringCol, pulse, young);
     }
   });
+
+  // level 5: the singers still missing from the secret combo wait as grey silhouettes on their places
+  if (s.lesson?.ghosts) {
+    const gp = s.reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(s.timeMs / 420);
+    for (const g of s.lesson.ghosts) {
+      const cr = byId[g.id], f = l.spots[g.spot];
+      if (!cr || !f) continue;
+      drawCreature(sk, c, cr, f.x, f.y, l.size, { ...IDLE_POSE, sat: 0, level: 0, eyes: 0, alpha: 0.34 + 0.16 * gp });
+    }
+  }
 
   // a spotlight on every singer that is playing (a muted one stands in the dark); while one singer is solo it has its own, stronger cone below
   if (!s.solo) {

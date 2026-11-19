@@ -20,7 +20,7 @@ import type { SceneInput } from '../src/ui/draw/scene';
 import type { TapEffect } from '../src/ui/draw/scenery';
 import { initHome } from './home';
 import { isRtl, resolveLang, setLang, t as tr } from '../src/i18n';
-import { LESSON_FINISH_MS, LESSON_LAYERS, LESSON_SCROLL_WAIT_MS, QUIET_BELOW, level4Cue, level4Step, level2Cue, level2Step, level3Cue, level3Step, levelBand, levelMapStates, worldStart, lessonCue, lessonLit, lessonPickable, lessonScrollTarget, lessonStep, lessonSteps, lessonTotalCoins, levelKey, type LessonFx, type LessonLevel, type LessonView } from '../src/core/lesson';
+import { lessonFinishMs, LESSON_LAYERS, LESSON_SCROLL_WAIT_MS, setLevel5Combo, QUIET_BELOW, level5Cue, level5Ghosts, level5Missing, level5Plan, level5Step, slotScrollTarget, level4Cue, level4Step, level2Cue, level2Step, level3Cue, level3Step, levelBand, levelMapStates, worldStart, lessonCue, lessonLit, lessonPickable, lessonScrollTarget, lessonStep, lessonSteps, lessonTotalCoins, levelKey, type LessonFx, type LessonLevel, type LessonView } from '../src/core/lesson';
 import type { CoachCue } from '../src/core/coach';
 import { en } from '../src/i18n/en';
 import { popRate } from '../src/core/sfx';
@@ -79,6 +79,17 @@ function resetIfAsked(): boolean {
 }
 resetIfAsked();
 addEventListener('hashchange', () => { if (resetIfAsked()) location.reload(); }); // the page was already open: forget everything, then start over
+// #combo1 ... #combo4: which of the pond's four secret combos level 5 uses (to listen to each and choose); it is remembered in this browser
+function chooseCombo(): boolean {
+  const m = /^#combo([1-4])$/.exec(location.hash);
+  if (!m) return false;
+  try { localStorage.setItem('hum.combo5', m[1]!); } catch { /* storage unavailable */ }
+  try { history.replaceState(null, '', location.pathname + location.search); } catch { /* ignore */ }
+  return true;
+}
+chooseCombo();
+addEventListener('hashchange', () => { if (chooseCombo()) location.reload(); });
+try { const n = Number(localStorage.getItem('hum.combo5')); if (n >= 1 && n <= 4) setLevel5Combo(n - 1); } catch { /* default */ }
 const store = { get: (k: string): string[] => { try { return JSON.parse(localStorage.getItem(k) ?? '[]') as string[]; } catch { return []; } }, set: (k: string, v: string[]) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } } };
 const found = new Set<string>(store.get('hum.combos'));
 const stickers = new Set<string>(store.get('hum.goals'));
@@ -91,10 +102,11 @@ let lessonLevel: LessonLevel = 1; // 1: four groups lit one at a time, 2: my ban
 let silenced = false; // level 2: a singer was silenced at least once
 let quiet = false; // level 3: a singer's volume went under the quiet line at least once
 let swaps = 0; // level 4: how many times a singer on stage was replaced
+let comboFound = false; // level 5: the secret combo's celebration began
 const lessonStepNow = (): number => {
   const st = session?.state;
   if (!st) return 0;
-  return lessonLevel === 1 ? lessonStep(stage, st.spots) : lessonLevel === 2 ? level2Step(st.spots, st.muted, silenced) : lessonLevel === 3 ? level3Step(st.spots, st.volume, st.solo, quiet) : level4Step(swaps);
+  return lessonLevel === 1 ? lessonStep(stage, st.spots) : lessonLevel === 2 ? level2Step(st.spots, st.muted, silenced) : lessonLevel === 3 ? level3Step(st.spots, st.volume, st.solo, quiet) : lessonLevel === 4 ? level4Step(swaps) : level5Step(stage, st.spots, comboFound);
 };
 const lessonMeta = { step: -1, prev: null as Layer | null, since: 0, sinceMs: 0, fx: [] as LessonFx[] };
 let lessonDir: -1 | 0 | 1 = 0;
@@ -130,6 +142,12 @@ function syncArrows() {
 }
 const scrollToLit = () => {
   if (lessonLevel === 2) { scrollTrayTo(scrollX + (lessonDir || 1) * layout.W * 0.6, 600); return; }
+  if (lessonLevel === 5) {
+    const cue = level5Cue(stage, layout, scrollX, session?.state.spots ?? []);
+    const target = cue?.kind === 'swipe' ? slotScrollTarget(layout, scrollX, cue.slot) : null;
+    if (target !== null) scrollTrayTo(target, 700);
+    return;
+  }
   const lit = lessonLit(lessonStep(stage, session?.state.spots ?? []));
   const target = lit ? lessonScrollTarget(stage, layout, scrollX, lit) : null;
   if (target !== null) scrollTrayTo(target, 700);
@@ -160,15 +178,15 @@ function frame(t: number) {
     const step = lessonStepNow(), m = lessonMeta;
     if (step !== m.step) { m.prev = lessonLevel === 1 && m.step >= 0 ? lessonLit(m.step) : null; m.step = step; m.since = t; m.sinceMs = t; }
     m.fx = m.fx.filter((f) => t - f.t0 < 1300);
-    coach = lessonLevel === 1 ? lessonCue(stage, layout, scrollX, st.spots, step) : lessonLevel === 2 ? level2Cue(stage, layout, scrollX, st.spots, st.muted, step) : lessonLevel === 3 ? level3Cue(stage, st.spots, st.volume, popup ? { spot: popup.spot } : null, step) : level4Cue(stage, layout, scrollX, st.spots, step);
+    coach = lessonLevel === 1 ? lessonCue(stage, layout, scrollX, st.spots, step) : lessonLevel === 2 ? level2Cue(stage, layout, scrollX, st.spots, st.muted, step) : lessonLevel === 3 ? level3Cue(stage, st.spots, st.volume, popup ? { spot: popup.spot } : null, step) : lessonLevel === 4 ? level4Cue(stage, layout, scrollX, st.spots, step) : level5Cue(stage, layout, scrollX, st.spots);
     lessonView = lessonLevel === 1
       ? { slots: LESSON_LAYERS.map((l) => LAYER_COLORS[l]), dim: false, lit: lessonLit(step), prev: m.prev, since: m.since, done: step, topY: 34, fx: m.fx }
-      : { slots: ['#FFE066', '#FFE066', '#FFE066'], dim: lessonLevel === 3 || (lessonLevel === 2 && step < 2), lit: null, prev: null, since: m.since, done: step, topY: 34, fx: m.fx };
+      : { slots: ['#FFE066', '#FFE066', '#FFE066'], dim: lessonLevel === 3 || (lessonLevel === 2 && step < 2), lit: null, prev: null, since: m.since, done: step, topY: 34, fx: m.fx, ...(lessonLevel === 5 ? { litIds: level5Missing(stage, st.spots), ghosts: level5Ghosts(stage, st.spots) } : {}) };
     lessonDir = coach?.kind === 'swipe' ? (coach.dir ?? 1) : 0;
     const lit = lessonLevel === 1 ? lessonLit(step) : null;
     // the menu slides to the lit group by itself when nobody does
-    if (lit && lessonDir !== 0 && tracker.activeCount === 0 && t - lessonTouchAt > LESSON_SCROLL_WAIT_MS && t - m.sinceMs > LESSON_SCROLL_WAIT_MS && t - lessonScrollAt > 2000) {
-      const target = lessonScrollTarget(stage, layout, scrollX, lit);
+    if ((lit || lessonLevel === 5) && lessonDir !== 0 && tracker.activeCount === 0 && t - lessonTouchAt > LESSON_SCROLL_WAIT_MS && t - m.sinceMs > LESSON_SCROLL_WAIT_MS && t - lessonScrollAt > 2000) {
+      const target = lessonLevel === 5 ? slotScrollTarget(layout, scrollX, coach!.slot) : lessonScrollTarget(stage, layout, scrollX, lit!);
       if (target !== null) { lessonScrollAt = t; scrollTrayTo(target, 900); }
     }
   } else lessonDir = 0;
@@ -228,7 +246,7 @@ function updateHud() {
 
 function world(): World {
   const on = lessonMode === 'play', step = on ? lessonStepNow() : 99, lvl = lessonLevel;
-  return { layout, scrollX, trayIds: stage.creatures.map((c) => c.id), onStage: session!.state.spots, popup, volumeOf: (id) => session!.state.volume[id] ?? 1, trayHidden: !trayOpen, canPick: on ? (id) => lessonPickable(lvl, stage, step, id) : undefined, locked: on && (lvl === 1 || lvl === 4), tapOnly: on && lvl === 2, holdOnly: on && lvl === 3, noHide: on };
+  return { layout, scrollX, trayIds: stage.creatures.map((c) => c.id), onStage: session!.state.spots, popup, volumeOf: (id) => session!.state.volume[id] ?? 1, trayHidden: !trayOpen, canPick: on ? (id) => lessonPickable(lvl, stage, step, id) : undefined, locked: on && (lvl === 1 || lvl === 4 || lvl === 5), tapOnly: on && lvl === 2, holdOnly: on && lvl === 3, noHide: on };
 }
 
 function syncLessonUi() {
@@ -246,7 +264,7 @@ function placeBand(t: number) {
     placedAnim.set(id, { since: t + k * 140, from: { x: layout.slotPos[i]!.x - scrollX, y: layout.slotPos[i]!.y } });
     s.dispatch({ kind: 'drop', creatureId: id, spot: band.spots[k]! });
   });
-  s.countIn = false; hint = false; silenced = false; quiet = false; swaps = 0;
+  s.countIn = false; hint = false; silenced = false; quiet = false; swaps = 0; comboFound = false;
 }
 /** The map of this world's levels: gold = finished (tap to play again), the glowing one is next, dark ones are not open yet; the last circle is free play. */
 function showLevelMap() {
@@ -280,7 +298,7 @@ function startLevel(lv: LessonLevel) {
   session.state.spots.forEach((id, sp) => { if (id) returning.push({ id, since: t, from: layout.spots[sp]! }); });
   session.dispatch({ kind: 'clear' });
   taps.length = 0; lessonMeta.step = -1; lessonMeta.prev = null; lessonMeta.fx = []; lessonDir = 0; lessonTouchAt = t;
-  lessonLevel = lv; lessonMode = 'play'; silenced = false; quiet = false; hint = false;
+  lessonLevel = lv; lessonMode = 'play'; silenced = false; quiet = false; swaps = 0; comboFound = false; hint = false;
   $('levelMap').classList.add('hide'); $('lessonDone').classList.add('hide');
   scrollTrayTo(0, 300);
   placeBand(t);
@@ -318,12 +336,14 @@ function lessonLanded(stepBefore: number, spot: number, t: number) {
   for (let k = 0; k < step - stepBefore; k++) lessonMeta.fx.push({ x: sp.x, y: sp.y - layout.size * 0.6, t0: t + k * 200, slot: stepBefore + k });
   if (!reduceMotion) addTap(sp.x, sp.y - layout.size * 0.5, 'star', t);
   if (step >= lessonSteps(lessonLevel)) {
-    engine.playSfx('combo');
-    [0.18, 0.38, 0.62, 0.82].forEach((f, i) => addTap(W * f, layout.stageH * (0.28 + 0.1 * (i % 2)), 'spark', t));
+    if (lessonLevel !== 5) { // level 5 has the combo's own celebration
+      engine.playSfx('combo');
+      [0.18, 0.38, 0.62, 0.82].forEach((f, i) => addTap(W * f, layout.stageH * (0.28 + 0.1 * (i % 2)), 'spark', t));
+    }
     const key = levelKey(stage.id, lessonLevel);
     if (!lessonsDone.has(key)) { coins += lessonTotalCoins(lessonLevel); try { localStorage.setItem('hum.coins', String(coins)); } catch { /* storage unavailable */ } }
     lessonsDone.add(key); store.set('hum.lessons', [...lessonsDone]);
-    lessonTimer = setTimeout(() => { engine.playSfx('goal'); session?.dispatch({ kind: 'endSolo' }); popup = null; if (lessonMode === 'play') showLessonDone(); }, LESSON_FINISH_MS);
+    lessonTimer = setTimeout(() => { engine.playSfx('goal'); session?.dispatch({ kind: 'endSolo' }); popup = null; if (lessonMode === 'play') showLessonDone(); }, lessonFinishMs(lessonLevel));
   }
 }
 function apply(ev: GestureEvent, t: number) {
@@ -427,7 +447,7 @@ async function openStage(i: number) {
   stageIdx = i; stage = STAGES[i]!;
   placedAnim.clear(); drags = []; returning = []; celebration = null; scrollX = 0; hint = true;
   clearTimeout(lessonTimer);
-  lessonMode = worldStart(stage.id, [...lessonsDone]); lessonLevel = 1; silenced = false; quiet = false; swaps = 0;
+  lessonMode = worldStart(stage.id, [...lessonsDone]); lessonLevel = 1; silenced = false; quiet = false; swaps = 0; comboFound = false;
   lessonMeta.step = -1; lessonMeta.prev = null; lessonMeta.fx = []; lessonDir = 0; lessonTouchAt = performance.now(); $('lessonDone').classList.add('hide');
   if (lessonMode === 'play') hint = false; // the lesson has its own hand
   syncLessonUi();
@@ -435,7 +455,9 @@ async function openStage(i: number) {
   await engine.init();
   await Promise.all([engine.loadStage(stage), loadAtlas(stage.id)]);
   session = new Session(stage, engine, {
-    onCelebration: (id, bar) => { const c = stage.combos.find((q) => q.id === id)!; celebration = { comboId: id, creatureIds: [...c.creatureIds], startBeat: bar * 4 }; found.add(id); store.set('hum.combos', [...found]); engine.playSfx('combo'); toast(`${P.star(30)}${P.book(30)}<span>${en['combo.found']}</span>`); },
+    onCelebration: (id, bar) => { const c = stage.combos.find((q) => q.id === id)!; celebration = { comboId: id, creatureIds: [...c.creatureIds], startBeat: bar * 4 }; found.add(id); store.set('hum.combos', [...found]); engine.playSfx('combo'); toast(`${P.star(30)}${P.book(30)}<span>${en['combo.found']}</span>`);
+      if (lessonMode === 'play' && lessonLevel === 5 && id === level5Plan(stage).comboId) { const before = lessonStepNow(); comboFound = true; lessonLanded(before, Math.max(0, session!.state.spots.findIndex(Boolean)), performance.now()); } // level 5: the secret combo was found
+    },
     onCelebrationEnd: () => { celebration = null; },
     onGoal: (key) => { stickers.add(key); store.set('hum.goals', [...stickers]); engine.playSfx('goal'); toast(`${P.sticker(30)}${GOAL_PICTO[key.split(':')[1]!]?.(24) ?? ''}<span>${(en as Record<string, string>)['goal.' + key.split(':')[1]]}</span>`); burst(W / 2, H * 0.3, ['#FFC857', '#FFFFFF', '#5FE3C0'], 16, 'star', performance.now(), 220); },
   }, [...found], [...stickers]);

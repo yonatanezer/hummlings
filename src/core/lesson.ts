@@ -14,9 +14,9 @@ import { LAYERS, type Layer, type Stage } from './types';
 export const LESSON_STAGE_IDS: readonly string[] = ['pond'];
 export const hasLesson = (stageId: string): boolean => LESSON_STAGE_IDS.includes(stageId);
 
-/** Level 1: four groups lit one at a time (drag + scroll). Level 2: "my band": silence a singer, wake it, choose one more. Level 3: "volume": lower a singer, raise it, try the star (only this singer). Level 4: "swap": the stage is full; a new singer dropped on one of them takes its place. */
-export type LessonLevel = 1 | 2 | 3 | 4;
-export const LESSON_LEVELS: readonly LessonLevel[] = [1, 2, 3, 4];
+/** Level 1: four groups lit one at a time (drag + scroll). Level 2: "my band": silence a singer, wake it, choose one more. Level 3: "volume": lower a singer, raise it, try the star (only this singer). Level 4: "swap": the stage is full; a new singer dropped on one of them takes its place. Level 5: the first secret combo: two of its four singers play, the other two stand as silhouettes. */
+export type LessonLevel = 1 | 2 | 3 | 4 | 5;
+export const LESSON_LEVELS: readonly LessonLevel[] = [1, 2, 3, 4, 5];
 /** What `progress.lessonsDone` holds for a finished level: the bare world id for level 1 (as it always was), `world:2` for level 2. */
 export const levelKey = (stageId: string, level: LessonLevel): string => (level === 1 ? stageId : `${stageId}:${level}`);
 export type LevelState = 'done' | 'current' | 'locked';
@@ -44,20 +44,25 @@ export const LESSON_STEPS = LESSON_LAYERS.length; // level 1: 4
 export const LEVEL2_STEPS = 3; // level 2: silence, wake, choose
 export const LEVEL3_STEPS = 3; // level 3: lower, raise, star
 export const LEVEL4_STEPS = 3; // level 4: three swaps
-export const LESSON_COINS = { perStep: 1, finish: { 1: 6, 2: 5, 3: 6, 4: 6 } as Record<LessonLevel, number> } as const;
+export const LEVEL5_STEPS = 3; // level 5: the two missing singers, then the combo is found
+export const LESSON_COINS = { perStep: 1, finish: { 1: 6, 2: 5, 3: 6, 4: 6, 5: 8 } as Record<LessonLevel, number> } as const;
 /** Coin slots in the counter: one per step. */
-export const lessonSteps = (level: LessonLevel): number => (level === 1 ? LESSON_STEPS : level === 2 ? LEVEL2_STEPS : level === 3 ? LEVEL3_STEPS : LEVEL4_STEPS);
+export const lessonSteps = (level: LessonLevel): number => (level === 1 ? LESSON_STEPS : level === 2 ? LEVEL2_STEPS : level === 3 ? LEVEL3_STEPS : level === 4 ? LEVEL4_STEPS : LEVEL5_STEPS);
 export const lessonTotalCoins = (level: LessonLevel = 1): number => lessonSteps(level) * LESSON_COINS.perStep + LESSON_COINS.finish[level];
 /** Without a touch for this long the menu slides to the lit group by itself. */
 export const LESSON_SCROLL_WAIT_MS = 3500;
 /** After the last singer the whole song plays for this long before the success card appears. */
 export const LESSON_FINISH_MS = 2800;
+/** Level 5 ends with the combo's own celebration, which gets longer before the success card comes. */
+export const lessonFinishMs = (level: LessonLevel): number => (level === 5 ? 6500 : LESSON_FINISH_MS);
 
 /** A coin that flies from a singer that just landed to its place in the counter at the top. */
 export interface LessonFx { x: number; y: number; t0: number; slot: number }
 /** What the scene draws for the lesson (plain data, lives in a shared value). */
 export interface LessonView {
   slots: string[]; // colours of the coin slots (their number is the number of steps)
+  litIds?: string[]; // level 5: the singers in the menu that are needed (the rest of the menu is dark)
+  ghosts?: { id: string; spot: number }[]; // level 5: the missing singers, drawn as grey silhouettes on their places
   dim: boolean; // every group in the menu is dark (level 2 before the menu is needed)
   lit: Layer | null; // the group that is lit (null: no group is singled out)
   prev: Layer | null; // the group that was lit just before (it fades dark)
@@ -165,7 +170,7 @@ export function level2Cue(stage: Stage, layout: Layout, scrollX: number, spots: 
 
 /** What may be picked up from the menu: level 1 the lit group only; level 2 nothing until the third step, then anything; level 3 nothing. */
 export function lessonPickable(level: LessonLevel, stage: Stage, step: number, id: string): boolean {
-  return level === 1 ? lessonCanPick(stage, step, id) : level === 2 ? step >= 2 : level === 3 ? false : true;
+  return level === 1 ? lessonCanPick(stage, step, id) : level === 2 ? step >= 2 : level === 3 ? false : level === 4 ? true : level5Plan(stage).needed.includes(id);
 }
 
 // ---------------- level 3: volume ----------------
@@ -182,6 +187,7 @@ export function levelBand(level: LessonLevel, stage: Stage): { ids: string[]; sp
   if (level === 2) return { ids: level2Band(stage), spots: LEVEL2_SPOTS };
   if (level === 3) return { ids: level3Band(stage), spots: LEVEL3_SPOTS };
   if (level === 4) return { ids: level4Band(stage), spots: LEVEL4_SPOTS };
+  if (level === 5) return { ids: level5Plan(stage).band, spots: LEVEL5_BAND_SPOTS };
   return null;
 }
 
@@ -232,4 +238,44 @@ export function level4Cue(stage: Stage, layout: Layout, scrollX: number, spots: 
   const same = free.filter((i) => stage.creatures[i]!.layer === layer); // the same kind of singer: the song keeps its shape, only the voice changes
   const pool = same.length ? same : free;
   return { kind: 'drag', slot: pool[Math.floor((pool.length - 1) / 2)]!, spot };
+}
+
+// ---------------- level 5: the first secret combo ----------------
+
+export const LEVEL5_BAND_SPOTS: readonly number[] = [1, 2];
+export const LEVEL5_GHOST_SPOTS: readonly number[] = [3, 4];
+
+const level5State = { index: 1 }; // which of the world's combos the level uses (the second one: the first did not sound good enough)
+/** Chooses the combo of level 5 by its place in the world's list (the web demo uses it to let a listener try them all). */
+export const setLevel5Combo = (index: number): void => { level5State.index = Math.max(0, Math.floor(index)); };
+/** One of the world's combos: its first two singers play from the start, the other two have to be found (their silhouettes stand on their places). */
+export function level5Plan(stage: Stage): { comboId: string; band: string[]; needed: string[] } {
+  const combo = stage.combos[level5State.index] ?? stage.combos[0]!;
+  const ids = [...combo.creatureIds] as string[];
+  return { comboId: combo.id, band: ids.slice(0, 2), needed: ids.slice(2) };
+}
+/** The needed singers that are not on stage yet. */
+export const level5Missing = (stage: Stage, spots: readonly (string | null)[]): string[] => level5Plan(stage).needed.filter((id) => !spots.includes(id));
+export const level5Ghosts = (stage: Stage, spots: readonly (string | null)[]): { id: string; spot: number }[] => {
+  const { needed } = level5Plan(stage);
+  return level5Missing(stage, spots).map((id) => ({ id, spot: LEVEL5_GHOST_SPOTS[needed.indexOf(id)]! }));
+};
+/** 0, 1: how many of the two missing singers are on stage; 2: both are, the combo is held; 3: the combo was found (its celebration began). `found` is remembered by the screen. */
+export function level5Step(stage: Stage, spots: readonly (string | null)[], found: boolean): number {
+  const n = level5Plan(stage).needed.length - level5Missing(stage, spots).length;
+  return n >= 2 ? (found ? 3 : 2) : n;
+}
+/** Where the menu has to go so that this slot is on screen (null: it already is). */
+export function slotScrollTarget(layout: Layout, scrollX: number, slot: number): number | null {
+  if (visibleX(layout.slotPos[slot]!.x - scrollX, layout.W)) return null;
+  return Math.max(0, Math.min(layout.scrollMax, layout.slotPos[slot]!.x - layout.W / 2));
+}
+/** The hand of level 5: carries the next missing singer onto its silhouette (or slides the menu towards it when it is out of sight); nothing while the combo is being held. */
+export function level5Cue(stage: Stage, layout: Layout, scrollX: number, spots: readonly (string | null)[]): CoachCue | null {
+  const { needed } = level5Plan(stage);
+  const id = level5Missing(stage, spots)[0];
+  if (!id) return null;
+  const slot = stage.creatures.findIndex((c) => c.id === id);
+  if (visibleX(layout.slotPos[slot]!.x - scrollX, layout.W)) return { kind: 'drag', slot, spot: LEVEL5_GHOST_SPOTS[needed.indexOf(id)]! };
+  return { kind: 'swipe', slot, spot: 0, dir: layout.slotPos[slot]!.x - scrollX > layout.W / 2 ? 1 : -1 };
 }
