@@ -1,0 +1,97 @@
+/**
+ * Level 1 of every world: the guided first lesson. Pure rules, no UI.
+ *
+ * The singer menu has four groups (drums, bass, melody, voice). Only one group is lit at a time and the others are dark and cannot be touched:
+ * the child must carry one singer of the lit group onto the stage, then the next group lights up (the menu slides to it when it is out of sight), and so on.
+ * The lesson step is never stored: it is simply how many of the four groups already have a singer on stage, in order.
+ */
+import type { CoachCue } from './coach';
+import { COACH_SPOT_ORDER } from './coach';
+import type { Layout } from './layout';
+import { LAYERS, type Layer, type Stage } from './types';
+
+/** Only the first world has a lesson for now; the other worlds stay in free play. */
+export const LESSON_STAGE_IDS: readonly string[] = ['pond'];
+export const hasLesson = (stageId: string): boolean => LESSON_STAGE_IDS.includes(stageId);
+
+export const LESSON_LAYERS: readonly Layer[] = LAYERS;
+export const LESSON_STEPS = LESSON_LAYERS.length; // 4
+export const LESSON_COINS = { perSinger: 1, finish: 6 } as const;
+export const lessonTotalCoins = (): number => LESSON_STEPS * LESSON_COINS.perSinger + LESSON_COINS.finish;
+/** Without a touch for this long the menu slides to the lit group by itself. */
+export const LESSON_SCROLL_WAIT_MS = 3500;
+/** After the last singer the whole song plays for this long before the success card appears. */
+export const LESSON_FINISH_MS = 2800;
+
+/** A coin that flies from a singer that just landed to its place in the counter at the top. */
+export interface LessonFx { x: number; y: number; t0: number; slot: number }
+/** What the scene draws for the lesson (plain data, lives in a shared value). */
+export interface LessonView {
+  lit: Layer | null; // the group that is lit (null: the lesson is finished)
+  prev: Layer | null; // the group that was lit just before (it fades dark)
+  since: number; // scene time at which this group lit up
+  done: number; // groups already on stage (filled coins)
+  topY: number; // vertical centre of the coin counter
+  fx: LessonFx[];
+}
+
+const layerOf = (stage: Stage, id: string): Layer | undefined => stage.creatures.find((c) => c.id === id)?.layer;
+
+/** 0..4: how many groups, in order, already have a singer on stage. 4 = the lesson is complete. */
+export function lessonStep(stage: Stage, spots: readonly (string | null)[]): number {
+  const have = new Set<Layer>();
+  for (const id of spots) { if (id) { const l = layerOf(stage, id); if (l) have.add(l); } }
+  let step = 0;
+  while (step < LESSON_STEPS && have.has(LESSON_LAYERS[step]!)) step++;
+  return step;
+}
+
+export const lessonLit = (step: number): Layer | null => LESSON_LAYERS[step] ?? null;
+
+/** Only singers of the lit group may be picked up. */
+export const lessonCanPick = (stage: Stage, step: number, id: string): boolean => {
+  const lit = lessonLit(step);
+  return lit !== null && layerOf(stage, id) === lit;
+};
+
+/** First tray slots of a group (the group is `per` consecutive creatures). */
+const groupRange = (stage: Stage, layer: Layer): { first: number; last: number } => {
+  const per = stage.creatures.length / LESSON_STEPS;
+  const g = LESSON_LAYERS.indexOf(layer);
+  return { first: g * per, last: g * per + per - 1 };
+};
+
+const visibleX = (x: number, W: number): boolean => x > W * 0.06 && x < W * 0.94;
+
+/** The tray slots of the lit group that are on screen now. */
+export function litSlotsOnScreen(stage: Stage, layout: Layout, scrollX: number, layer: Layer): number[] {
+  const { first, last } = groupRange(stage, layer);
+  const out: number[] = [];
+  for (let i = first; i <= last; i++) if (visibleX(layout.slotPos[i]!.x - scrollX, layout.W)) out.push(i);
+  return out;
+}
+
+/** Where the menu has to scroll so that the lit group is on screen, or null when part of it already is. */
+export function lessonScrollTarget(stage: Stage, layout: Layout, scrollX: number, layer: Layer): number | null {
+  if (litSlotsOnScreen(stage, layout, scrollX, layer).length > 0) return null;
+  const { first } = groupRange(stage, layer);
+  const target = layout.slotPos[first]!.x - layout.slot * 0.55 - Math.max(16, layout.W * 0.04);
+  return Math.max(0, Math.min(layout.scrollMax, target));
+}
+
+/** Which way the lit group lies (1: to the right, -1: to the left, 0: on screen). */
+export function lessonDirection(stage: Stage, layout: Layout, scrollX: number, layer: Layer): -1 | 0 | 1 {
+  if (litSlotsOnScreen(stage, layout, scrollX, layer).length > 0) return 0;
+  const { first } = groupRange(stage, layer);
+  return layout.slotPos[first]!.x - scrollX > layout.W / 2 ? 1 : -1;
+}
+
+/** The hand of the lesson: drag the first visible singer of the lit group to the first free spot, or swipe the menu towards the lit group. */
+export function lessonCue(stage: Stage, layout: Layout, scrollX: number, spots: readonly (string | null)[], step: number): CoachCue | null {
+  const lit = lessonLit(step);
+  if (!lit) return null;
+  const slots = litSlotsOnScreen(stage, layout, scrollX, lit);
+  if (slots.length === 0) return { kind: 'swipe', slot: 0, spot: 0, dir: lessonDirection(stage, layout, scrollX, lit) === -1 ? -1 : 1 };
+  const spot = COACH_SPOT_ORDER.find((i) => !spots[i]) ?? 0;
+  return { kind: 'drag', slot: slots[Math.floor((slots.length - 1) / 2)]!, spot };
+}

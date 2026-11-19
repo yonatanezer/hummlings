@@ -10,17 +10,19 @@ import { popRate } from '../core/sfx';
 import { randomBand } from '../core/surprise';
 import { AccentContext } from '../ui/IconButton';
 import { coachKind, pickSlot, pickSpot, pickTapSpot, type CoachCue } from '../core/coach';
-import { audibleIds, nextFreeSpot, swapSpot } from '../core/stageState';
+import { audibleIds, emptyStage, nextFreeSpot, swapSpot } from '../core/stageState';
+import { hasLesson, LESSON_FINISH_MS, LESSON_LAYERS, LESSON_SCROLL_WAIT_MS, LESSON_STEPS, lessonCanPick, lessonCue, lessonLit, lessonScrollTarget, lessonStep, lessonTotalCoins, type LessonFx } from '../core/lesson';
 import { autoName, defaultNameNumber, warnBars, type Song } from '../core/timeline';
 import { TUNING, barSec } from '../core/tuning';
 import { exportSong, saveSongToDevice, type ExportResult } from '../app/exportSong';
-import type { Stage } from '../core/types';
+import { LAYER_COLORS, type Layer, type Stage } from '../core/types';
 import { t, type StringKey } from '../i18n';
 import { useLang } from '../i18n/useLang';
 import { useProgress } from '../app/progress';
 import { StageHud } from '../ui/StageHud';
 import { recallBand, rememberBand } from '../app/bandMemory';
 import { ComboBook, GOAL_ICON } from './ComboBook';
+import { LessonDone } from '../ui/LessonDone';
 import { STAGES, FREE_STAGE_IDS } from '../content';
 import type { GoalId } from '../core/goals';
 import { Icon, type IconName } from '../ui/Icon';
@@ -115,6 +117,14 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
   progressRef.current = progress;
   const [recordCue, setRecordCue] = useState(false); // the record button pulses (the coach's last step)
   const lastTouch = useRef(Date.now()); // the coach waits for a pause before it shows the next step
+  // Level 1 of the world: the guided first lesson (core/lesson.ts). 'play' = running, 'done' = the success card is up, null = free play.
+  const [lesson, setLesson] = useState<'play' | 'done' | null>(() => (!hasLesson(stage.id) || progress.lessonsDone.includes(stage.id) ? null : 'play'));
+  const lessonRef = useRef(lesson);
+  lessonRef.current = lesson;
+  const lessonMeta = useRef({ step: -1, prev: null as Layer | null, since: 0, sinceMs: Date.now(), fx: [] as LessonFx[] }).current;
+  const [lessonDir, setLessonDir] = useState<-1 | 0 | 1>(0); // the lit group is out of sight on this side (an arrow points there)
+  const finishTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const autoScrollAt = useRef(0);
 
   useEffect(() => { setHapticsEnabled(progress.settings.haptics); engine.setVolume(progress.settings.musicVolume); }, [engine, progress.settings.haptics, progress.settings.musicVolume]);
   useEffect(() => {
@@ -126,6 +136,15 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
   }, []);
 
   const now = () => sv.timeMs.value;
+  /** Hands the lesson's state (lit group, coins, flying coins) to the scene. */
+  const publishLesson = useCallback(() => {
+    if (lessonRef.current !== 'play') { if (sv.lesson.value) sv.lesson.value = null; return; }
+    const m = lessonMeta, t0 = sv.timeMs.value;
+    const step = lessonStep(stage, session.state.spots);
+    if (step !== m.step) { m.prev = m.step >= 0 ? lessonLit(m.step) : null; m.step = step; m.since = t0; m.sinceMs = Date.now(); }
+    m.fx = m.fx.filter((f) => t0 - f.t0 < 1300);
+    sv.lesson.value = { lit: lessonLit(step), prev: m.prev, since: m.since, done: step, topY: insets.top + 38, fx: m.fx };
+  }, [sv, stage, session, lessonMeta, insets.top]);
   const syncScene = useCallback(() => {
     const st = session.state;
     const l = layoutRef.current;
@@ -140,8 +159,10 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     const pu = sv.popup.value;
     if (pu) sv.popup.value = st.spots[pu.spot] === pu.creatureId ? { ...pu, volume: st.volume[pu.creatureId] ?? 1, solo: st.solo === pu.creatureId } : null;
     onDebug?.(`${stage.id} on=${audibleIds(st).length}`);
+    publishLesson();
     force((n) => n + 1);
-  }, [session, sv, anim, onDebug, stage.id]);
+  }, [session, sv, anim, onDebug, stage.id, publishLesson]);
+  useEffect(() => { publishLesson(); }, [publishLesson, lesson, ready]);
 
   // Boot: audio engine, content, session
   useEffect(() => {
@@ -167,7 +188,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
       await engine.loadStage(stage, { background: true });
       if (!alive) return;
       session.start();
-      const before = recallBand(stage.id); // coming back from the guide, songs or settings: the band is still on stage
+      const before = lessonRef.current === 'play' ? undefined : recallBand(stage.id); // coming back from the guide, songs or settings: the band is still on stage (the first lesson always starts from an empty stage)
       if (before) {
         before.spots.forEach((id, spot) => { if (id) { session.dispatch({ kind: 'drop', creatureId: id, spot }); const v = before.volume[id]; if (v !== undefined) session.dispatch({ kind: 'volume', creatureId: id, value: v }); if (before.muted[id]) session.dispatch({ kind: 'mute', creatureId: id }); } });
         syncScene();
@@ -203,7 +224,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
-    return () => { alive = false; rememberBand(stage.id, session.state); cancelAnimationFrame(raf); unsub(); app.remove(); engine.stop(); };
+    return () => { alive = false; clearTimeout(finishTimer.current); rememberBand(stage.id, lessonRef.current === 'play' ? emptyStage() : session.state); cancelAnimationFrame(raf); unsub(); app.remove(); engine.stop(); };
   }, []);
 
   const stopRecording = useCallback(() => {
@@ -223,10 +244,45 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     if (!progressRef.current.coachRecordDone) update((p) => ({ ...p, coachRecordDone: true }));
   };
 
-  const world = (): World => ({ layout: layoutRef.current, scrollX: sv.scrollX.value, trayIds: stage.creatures.map((c) => c.id), onStage: session.state.spots, popup: sv.popup.value ? { spot: sv.popup.value.spot, creatureId: sv.popup.value.creatureId } : null, volumeOf: (id) => session.state.volume[id] ?? 1, trayHidden: !trayOpen.current });
+  const world = (): World => {
+    const on = lessonRef.current === 'play', step = on ? lessonStep(stage, session.state.spots) : LESSON_STEPS;
+    return { layout: layoutRef.current, scrollX: sv.scrollX.value, trayIds: stage.creatures.map((c) => c.id), onStage: session.state.spots, popup: sv.popup.value ? { spot: sv.popup.value.spot, creatureId: sv.popup.value.creatureId } : null, volumeOf: (id) => session.state.volume[id] ?? 1, trayHidden: !trayOpen.current, canPick: on ? (id) => lessonCanPick(stage, step, id) : undefined, locked: on };
+  };
+
+  /** A singer of the lit group landed: a coin flies to the counter, stars burst, and when the fourth is in the whole song plays and the success card follows. */
+  const lessonLanded = (stepBefore: number, spot: number) => {
+    const l = layoutRef.current, sp = l.spots[spot]!;
+    const step = lessonStep(stage, session.state.spots);
+    if (step <= stepBefore) return;
+    const t0 = sv.timeMs.value;
+    lessonMeta.fx = [...lessonMeta.fx, { x: sp.x, y: sp.y - l.size * 0.6, t0, slot: stepBefore }];
+    if (!reduceMotion) sv.taps.value = [...sv.taps.value.filter((e) => t0 - e.t0 < 1400), { x: sp.x, y: sp.y - l.size * 0.5, t0, kind: 'star' }];
+    if (step >= LESSON_STEPS) {
+      hapticSuccess();
+      engine.playSfx('combo');
+      sv.taps.value = [...sv.taps.value.filter((e) => t0 - e.t0 < 1400), ...[0.18, 0.38, 0.62, 0.82].map((f, i) => ({ x: l.W * f, y: l.stageH * (0.28 + 0.1 * (i % 2)), t0, kind: 'spark' as const }))];
+      const coins = lessonTotalCoins();
+      update((p) => (p.lessonsDone.includes(stage.id) ? p : { ...p, lessonsDone: [...p.lessonsDone, stage.id], coins: p.coins + coins, firstDropDone: true }));
+      finishTimer.current = setTimeout(() => { engine.playSfx('goal'); setLesson('done'); }, LESSON_FINISH_MS);
+    }
+    publishLesson();
+  };
+  const skipLesson = () => {
+    clearTimeout(finishTimer.current);
+    update((p) => (p.lessonsDone.includes(stage.id) ? p : { ...p, lessonsDone: [...p.lessonsDone, stage.id] }));
+    setLesson(null);
+  };
+  const scrollToLit = () => {
+    const lit = lessonLit(lessonStep(stage, session.state.spots));
+    const target = lit ? lessonScrollTarget(stage, layoutRef.current, sv.scrollX.value, lit) : null;
+    if (target !== null) scrollTrayTo(target, 700);
+  };
 
   const apply = (ev: GestureEvent) => {
     const l = layoutRef.current;
+    const lessonOn = lessonRef.current === 'play';
+    if (lessonOn && ev.type === 'trayTap' && !lessonCanPick(stage, lessonStep(stage, session.state.spots), ev.creatureId)) return; // a dark group (a screen reader can reach it)
+    if (lessonOn && ev.type === 'drop' && session.state.spots[ev.spot]) { apply({ type: 'returnToTray', touch: ev.touch, creatureId: ev.creatureId, p: ev.p }); return; } // never take another singer's place
     const withoutDrag = (id: string) => sv.drags.value.filter((d) => d.id !== id);
     const goBack = (id: string, from: { x: number; y: number }) => {
       const r: ReturningCreature = { id, since: now(), from };
@@ -247,14 +303,16 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
         if (old && old !== ev.creatureId) goBack(old, l.spots[ev.spot]!);
         anim.set(ev.creatureId, { since: now(), from: { x: ev.p.x, y: ev.p.y + l.size * 0.6 } });
         hapticMedium();
-        { const t0 = sv.timeMs.value, sp = l.spots[ev.spot]!; sv.taps.value = [...sv.taps.value.filter((e) => t0 - e.t0 < 1400), { x: sp.x, y: sp.y - l.size * 0.3, t0, kind: 'drop', color: stage.palette.glow }]; }
-        engine.playSfx('pop', popRate(stage.key, ev.spot));
+        const stepBefore = lessonOn ? lessonStep(stage, session.state.spots) : 0;
+        { const t0 = sv.timeMs.value, sp = l.spots[ev.spot]!; sv.taps.value = [...sv.taps.value.filter((e) => t0 - e.t0 < 1400), { x: sp.x, y: sp.y - l.size * 0.3, t0, kind: 'drop', color: lessonOn ? LAYER_COLORS[LESSON_LAYERS[stepBefore] ?? 'voice'] : stage.palette.glow }]; }
+        engine.playSfx('pop', lessonOn ? popRate(stage.key, Math.min(5, stepBefore + 1)) : popRate(stage.key, ev.spot)); // in the lesson every singer sings a higher note than the last
         session.dispatch({ kind: 'drop', creatureId: ev.creatureId, spot: ev.spot });
         if (!progressRef.current.firstDropDone) {
           session.countIn = false;
           update((p) => ({ ...p, firstDropDone: true }));
         }
         syncScene();
+        if (lessonOn) lessonLanded(stepBefore, ev.spot);
         break;
       }
       case 'returnToTray':
@@ -348,7 +406,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
   };
   const touchFn = (kind: 'start' | 'move' | 'end' | 'cancel') => (e: GestureResponderEvent) => {
     // Lift/cancel events must always be handled: dropping them while paused left a creature stuck in the "dragged" list, drawn big and forever.
-    if ((!ready || paused) && kind !== 'end' && kind !== 'cancel') return;
+    if ((!ready || paused || lessonRef.current === 'done') && kind !== 'end' && kind !== 'cancel') return;
     lastTouch.current = Date.now();
     if (kind === 'start' && tracker.activeCount === 0 && sv.drags.value.length) sv.drags.value = [];
     if (kind === 'start' && !reduceMotion) { const t0 = sv.timeMs.value, q = e.nativeEvent.changedTouches[0]; if (q) sv.taps.value = [...sv.taps.value.filter((x) => t0 - x.t0 < 1400), { x: q.pageX, y: q.pageY, t0, kind: 'press' }]; }
@@ -372,6 +430,23 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
       const pr = progressRef.current;
       const st = session.state;
       const onStage = st.spots.filter(Boolean).length;
+      if (lessonRef.current === 'play') {
+        // The first lesson takes over the coach: a hand shows the lit group's drag (or slides the menu towards it), and the menu slides by itself when nobody does.
+        setRecordCue(false);
+        if (!ready || paused) return;
+        const l = layoutRef.current, step = lessonStep(stage, st.spots);
+        const cue = lessonCue(stage, l, sv.scrollX.value, st.spots, step);
+        const cur = sv.coach.value;
+        if ((cue?.kind ?? null) !== (cur?.kind ?? null) || (cue?.spot ?? -1) !== (cur?.spot ?? -1) || (cue?.slot ?? -1) !== (cur?.slot ?? -1) || (cue?.dir ?? 0) !== (cur?.dir ?? 0)) sv.coach.value = cue;
+        const dir = cue?.kind === 'swipe' ? (cue.dir ?? 1) : 0;
+        setLessonDir((d) => (d === dir ? d : dir));
+        const lit = lessonLit(step), idle = Date.now() - lastTouch.current;
+        if (lit && dir !== 0 && tracker.activeCount === 0 && idle > LESSON_SCROLL_WAIT_MS && Date.now() - lessonMeta.sinceMs > LESSON_SCROLL_WAIT_MS && Date.now() - autoScrollAt.current > 2000) {
+          const target = lessonScrollTarget(stage, l, sv.scrollX.value, lit);
+          if (target !== null) { autoScrollAt.current = Date.now(); scrollTrayTo(target, 900); }
+        }
+        return;
+      }
       // A new player who has not touched anything for a while: one singer hops onto the stage by itself, so the music starts and the idea is clear without words.
       if (ready && !paused && !book && !recording && !gate && !autoDemo.current && !pr.firstDropDone && onStage === 0 && Date.now() - lastTouch.current > 9000) {
         autoDemo.current = true;
@@ -398,6 +473,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     syncEdges();
     if (!ready || peeked.current || layout.scrollMax <= 0) return;
     peeked.current = true;
+    if (lessonRef.current === 'play') return; // the lesson shows the menu its own way
     const a = setTimeout(() => scrollTrayTo(Math.min(layout.scrollMax, layout.W * 0.32), 700), 1400);
     const b = setTimeout(() => { if (Date.now() - lastTouch.current > 1500) scrollTrayTo(0, 700); }, 3000);
     return () => { clearTimeout(a); clearTimeout(b); };
@@ -413,7 +489,13 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
       <SceneCanvas sv={sv} width={width} height={height} />
       <View style={StyleSheet.absoluteFill} onTouchStart={touchFn('start')} onTouchMove={touchFn('move')} onTouchEnd={touchFn('end')} onTouchCancel={touchFn('cancel')} />
 
-      <View pointerEvents="box-none" style={[styles.top, { top: insets.top + 6, left: insets.left + 10, right: insets.right + 10, flexDirection: row }]}>
+      {lesson === 'play' && (
+        <View pointerEvents="box-none" style={[styles.top, { top: insets.top + 6, left: insets.left + 10, right: insets.right + 10, flexDirection: row, justifyContent: 'space-between' }]}>
+          <IconButton icon="back" label={t('a11y.back')} onPress={onBack} />
+          {progress.lessonsDone.length > 0 ? <IconButton icon="next" label={t('a11y.lessonSkip')} onPress={skipLesson} /> : <View />}
+        </View>
+      )}
+      {lesson !== 'play' && <View pointerEvents="box-none" style={[styles.top, { top: insets.top + 6, left: insets.left + 10, right: insets.right + 10, flexDirection: row }]}>
         <IconButton icon="back" label={t('a11y.back')} onPress={onBack} />
         <Pressable style={styles.world} accessibilityRole="button" accessibilityLabel={t(stage.nameKey as StringKey)} hitSlop={6} onPress={() => { if (!recording) setWorlds((v) => !v); }}><WorldIcon stageId={stage.id} size={34} /></Pressable>
         <View style={{ flex: 1, alignItems: 'center' }}><StageHud stage={stage} state={session.state} discovered={progress.discoveredCombos} compact={width < 700} row={row} /></View>
@@ -428,8 +510,8 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
           <IconButton icon="note" label={t('a11y.songs')} caption={t('ui.songs')} onPress={onSongs} />
           <IconButton icon="help" label={t('a11y.help')} caption={t('ui.help')} onPress={onHelp} />
         </View>
-      </View>
-      <View pointerEvents="box-none" style={[styles.clear, { left: insets.left + 14, top: layout.stageH - 84 }]}>
+      </View>}
+      {lesson !== 'play' && <View pointerEvents="box-none" style={[styles.clear, { left: insets.left + 14, top: layout.stageH - 84 }]}>
         <IconButton icon="dice" label={t('a11y.surprise')} caption={t('ui.surprise')} onPress={() => {
           const l = layoutRef.current;
           for (const id of session.state.spots) if (id) goBackAll(id, l.spots[session.state.spots.indexOf(id)]!);
@@ -441,15 +523,15 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
           engine.playSfx('goal');
           syncScene();
         }} />
-      </View>
-      <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 14, top: layout.stageH - 84 }]}>
+      </View>}
+      {lesson !== 'play' && <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 14, top: layout.stageH - 84 }]}>
         {onStageCount > 0 && <IconButton icon="sweep" label={t('a11y.clear')} caption={t('ui.clear')} onPress={() => {
           const l = layoutRef.current;
           for (const id of session.state.spots) if (id) { const s = session.state.spots.indexOf(id); goBackAll(id, l.spots[s]!); }
           session.dispatch({ kind: 'clear' });
           syncScene();
         }} />}
-      </View>
+      </View>}
 
       {book && <ComboBook stage={stage} session={session} discovered={progress.discoveredCombos} onClose={() => setBook(false)} onReplay={(id) => { setBook(false); session.replayCombo(id); }} />}
       {screenReader && ready && (
@@ -463,7 +545,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
                 onPress={() => (on ? (session.dispatch({ kind: 'remove', creatureId: c.id }), syncScene()) : apply({ type: 'trayTap', creatureId: c.id }))} />;
             })}
           </ScrollView>
-          {session.state.spots.map((id, spot) => {
+          {lesson !== 'play' && session.state.spots.map((id, spot) => {
             if (!id) return null;
             const c = stage.creatures.find((q) => q.id === id)!;
             const sp = layout.spots[spot]!;
@@ -502,7 +584,8 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
           })}
         </View>
       )}
-      {(edges.left || edges.right) && (
+      {lesson === 'play' && lessonDir !== 0 && <TrayArrow side={lessonDir > 0 ? 'right' : 'left'} y={layout.tray.y + layout.tray.h / 2} offset={(lessonDir > 0 ? insets.right : insets.left) + 6} label={t(lessonDir > 0 ? 'a11y.trayRight' : 'a11y.trayLeft')} onPress={scrollToLit} />}
+      {lesson !== 'play' && (edges.left || edges.right) && (
         <>
           {edges.left && <TrayArrow side="left" y={layout.tray.y + layout.tray.h / 2} offset={insets.left + 6} label={t('a11y.trayLeft')} onPress={() => scrollTrayTo(sv.scrollX.value - layout.W * 0.7)} />}
           {edges.right && <TrayArrow side="right" y={layout.tray.y + layout.tray.h / 2} offset={insets.right + 6} label={t('a11y.trayRight')} onPress={() => scrollTrayTo(sv.scrollX.value + layout.W * 0.7)} />}
@@ -547,6 +630,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
           </View>
         </View>
       )}
+      {lesson === 'done' && <LessonDone onNext={() => setLesson(null)} />}
       {gate}
       {paused && (
         <View style={styles.overlay}>

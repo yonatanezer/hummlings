@@ -27,6 +27,8 @@ export interface World {
   popup?: { spot: number; creatureId: string } | null; // volume popup currently open
   volumeOf?: (id: string) => number;
   trayHidden?: boolean; // the singer menu is slid away; only its handle strip at the bottom edge reacts
+  canPick?: (creatureId: string) => boolean; // the first lesson: only the lit group may be picked up (the rest only scrolls the menu)
+  locked?: boolean; // the first lesson: singers on stage cannot be touched and the menu cannot be tucked away
 }
 
 type Touch =
@@ -73,11 +75,11 @@ export class GestureTracker {
     if (!w.trayHidden && p.y >= w.layout.tray.y) {
       const slot = slotAt(w.layout, p, this.scrollX);
       const id = slot >= 0 ? w.trayIds[slot]! : null;
-      const free = id !== null && !w.onStage.includes(id);
+      const free = id !== null && !w.onStage.includes(id) && (w.canPick ? w.canPick(id) : true);
       this.touches.set(touch, { kind: 'pendingTray', id: free ? id : null, slot, start: p, startT: t, scrollStart: this.scrollX });
       return lead;
     }
-    const spot = standingAt(w.layout, p, w.onStage.map((x) => x !== null));
+    const spot = w.locked ? -1 : standingAt(w.layout, p, w.onStage.map((x) => x !== null));
     if (spot >= 0) {
       this.touches.set(touch, { kind: 'pendingStage', id: w.onStage[spot]!, start: p, startT: t, fired: false });
       return lead;
@@ -105,7 +107,7 @@ export class GestureTracker {
       case 'pendingTray': {
         if (dist(s.start) <= TRAY_TAP_SLOP) return [];
         const dx = p.x - s.start.x, dy = p.y - s.start.y;
-        if (dy > 0 && dy > Math.abs(dx) * 1.2) { this.touches.delete(touch); return [{ type: 'trayHide' }]; } // a downward swipe tucks the menu away
+        if (dy > 0 && dy > Math.abs(dx) * 1.2 && !w.locked) { this.touches.delete(touch); return [{ type: 'trayHide' }]; } // a downward swipe tucks the menu away
         const horizontal = Math.abs(dx) > Math.abs(dy) * 2; // a clearly flat swipe scrolls; anything steeper picks the singer up
         if (s.id && !(horizontal && w.layout.scrollMax > 0 && dy > -SLOP * 0.8)) {
           this.touches.set(touch, { kind: 'drag', id: s.id, from: 'tray', last: p, lastT: t, vy: 0, origin: s.start });

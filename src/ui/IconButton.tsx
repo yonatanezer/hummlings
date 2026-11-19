@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { hapticLight } from './haptics';
 import { useLang } from '../i18n/useLang';
 import { Icon, type IconName } from './Icon';
@@ -8,13 +8,24 @@ import { COLORS, MIN_TOUCH } from './theme';
 /** The accent colour of the world being played: it tints the border of every button on the stage, so each world feels like its own place. */
 export const AccentContext = createContext<string | null>(null);
 
-export function IconButton({ icon, label, onPress, color = COLORS.text, bg = 'rgba(27,19,64,0.96)', size = MIN_TOUCH, haptics = true, badge, caption, primary }: {
-  icon: IconName; label: string; onPress: () => void; color?: string; bg?: string; size?: number; haptics?: boolean; badge?: boolean; caption?: string; primary?: boolean; // primary: the one button that matters most on the screen
+export function IconButton({ icon, label, onPress, color = COLORS.text, bg = 'rgba(27,19,64,0.96)', size = MIN_TOUCH, haptics = true, badge, caption, primary, art }: {
+  icon: IconName; label: string; onPress: () => void; color?: string; bg?: string; size?: number; haptics?: boolean; badge?: boolean; caption?: string; primary?: boolean; art?: number; // art: a finished picture of the whole button (replaces the drawn disc and icon); primary: the one button that matters most on the screen
 }) {
   const { rtl } = useLang();
   const accent = useContext(AccentContext);
   const border = primary ? COLORS.rec : accent && /^#[0-9a-f]{6}$/i.test(accent) ? `${accent}99` : 'rgba(255,255,255,0.4)';
-  const button = (
+  const button = art ? (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={4}
+      onPress={() => { if (haptics) hapticLight(); onPress(); }}
+      style={({ pressed }) => [styles.btn, { width: size, height: size, transform: [{ scale: pressed ? 0.92 : 1 }] }]}
+    >
+      <Image source={art} style={{ width: size, height: size }} resizeMode="contain" />
+      {badge ? <View style={[styles.badge, { top: 2, right: 2 }]} /> : null}
+    </Pressable>
+  ) : (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}

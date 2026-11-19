@@ -1,7 +1,7 @@
 // Builds the playable web demo (artifact): sprite atlases rendered by the real draw code, mp3 loops, one bundled script, one page.
 // Run: npx tsx scripts/build-web.ts  -> scripts/out/webdemo/
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { build } from 'esbuild';
 import { IDLE_POSE, drawCreature } from '../src/ui/draw/creature';
 import { drawHelpStep } from '../src/ui/draw/help';
@@ -47,7 +47,10 @@ async function main() {
     execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', 'assets/sfx/tick.m4a', '-b:a', '96k', `${OUT}/audio/tick.mp3`]);
     for (const k of ['pop', 'pickup', 'mute', 'unmute', 'remove', 'goal', 'combo', 'snare']) execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', `assets/sfx/${k}.m4a`, '-b:a', '96k', `${OUT}/audio/sfx_${k}.mp3`]);
   }
-  await build({ entryPoints: ['web/main.ts'], bundle: true, minify: true, format: 'iife', target: 'es2020', outfile: `${OUT}/game.js`, loader: { '.json': 'json' }, logLevel: 'warning' });
+  await build({ entryPoints: ['web/main.ts'], bundle: true, minify: true, format: 'iife', target: 'es2020', outfile: `${OUT}/game.js`, loader: { '.json': 'json' }, external: ['fs', 'path'], define: { __DEV__: 'false' }, logLevel: 'warning' });
+  copyFileSync('node_modules/canvaskit-wasm/bin/full/canvaskit.wasm', `${OUT}/canvaskit.wasm`);
+  mkdirSync(`${OUT}/home`, { recursive: true });
+  for (const f of readdirSync('assets/home')) copyFileSync(`assets/home/${f}`, `${OUT}/home/${f}`);
   writeFileSync(`${OUT}/index.html`, `<title>Hummlings Playground</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
@@ -131,18 +134,24 @@ button.ic svg{width:26px;height:26px;flex:none}button.ic .off{display:none}butto
 #tip{position:fixed;left:50%;bottom:8px;color:#2A1F00;line-height:1.25;white-space:nowrap;transform:translateX(-50%);background:#FFE8A3;color:#2A1F00;padding:9px 18px;border-radius:20px;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.4);transition:opacity .4s;max-width:94vw;overflow:hidden;text-overflow:ellipsis}
 .hide{opacity:0;pointer-events:none;visibility:hidden}
 #splash,#loading{position:fixed;inset:0;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;background:rgba(21,15,51,.94);text-align:center;padding:24px;z-index:5}
-#splash{padding:0;background:#1B1340;justify-content:flex-start;gap:0;touch-action:none}#splash #homeCv{position:absolute;inset:0;z-index:0}
-#splash h1{position:relative;z-index:1;margin:max(10px,env(safe-area-inset-top,0px)) 0 0;font-size:clamp(34px,9vh,54px);font-weight:900;letter-spacing:1px;text-shadow:0 0 14px #FF7AA8;transition:transform .25s;pointer-events:none}
-#homeTitle span{display:inline-block;opacity:0;animation:lp .42s cubic-bezier(.3,1.6,.5,1) forwards}@keyframes lp{from{opacity:0;transform:translateY(-26px) scale(.5)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){#homeTitle span{animation:none;opacity:1}}
-#splash #homeSub{position:relative;z-index:1;pointer-events:none;font-size:clamp(13px,3.2vh,16px)}
-#splash #start{position:absolute;z-index:2;bottom:max(14px,env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:76px;height:76px}
-#splash #start:active{transform:translateX(-50%) scale(.94)}
-#splash #homeHint{position:absolute;z-index:1;pointer-events:none;bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + 26px);left:calc(50% + 58px);right:12px;max-width:none;text-align:left;font-size:14px;opacity:.85}
-#splash #start{border-radius:50%;background:radial-gradient(circle at 36% 28%,#B8FFE9 0,#5FE3C0 42%,#2DBF9B 100%);box-shadow:inset 0 -5px 0 rgba(0,70,60,.25),inset 0 3px 0 rgba(255,255,255,.55),0 0 0 4px rgba(255,255,255,.16),0 6px 18px rgba(0,0,0,.45);animation:pp 2s ease-in-out infinite}@keyframes pp{0%,100%{box-shadow:inset 0 -5px 0 rgba(0,70,60,.25),inset 0 3px 0 rgba(255,255,255,.55),0 0 0 4px rgba(255,255,255,.16),0 6px 18px rgba(0,0,0,.45)}50%{box-shadow:inset 0 -5px 0 rgba(0,70,60,.25),inset 0 3px 0 rgba(255,255,255,.55),0 0 0 11px rgba(95,227,192,.0),0 6px 18px rgba(0,0,0,.45)}}@media (prefers-reduced-motion:reduce){#splash #start{animation:none}}#splash #start svg{margin-left:2px;filter:drop-shadow(0 2px 0 rgba(255,255,255,.35))}
 #loading{background:rgba(21,15,51,.7);z-index:4}
-#splash h1{margin:0;font-size:40px}#splash p{max-width:46ch;color:var(--dim);margin:0}
-#start{background:#5FE3C0;color:#10282A;font-size:20px;font-weight:700;min-height:56px;padding:0 32px;border-radius:28px}
+#splash{padding:0;background:#1B1340;touch-action:none;overflow:hidden}#splash #homeBg,#splash #homeCv{position:absolute;left:0;top:0;pointer-events:none}#splash #homeBg{z-index:0}#homeDecor{position:absolute;inset:0;z-index:1;pointer-events:none}#splash #homeCv{z-index:2}
+#homeUi{position:absolute;inset:0;z-index:3;pointer-events:none}#homeUi>*{pointer-events:auto}#homeUi img{display:block;user-select:none;-webkit-user-drag:none}
+#hlogo{position:absolute;pointer-events:none!important}#hlogo>img{position:absolute;left:0;top:0}
+#hlogo .rib{position:absolute;display:flex;align-items:center;justify-content:center}#hlogo .rib span{color:#fff;font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.hb{position:absolute;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;box-shadow:none;min-height:0;padding:0;border-radius:0;font-weight:800}.hb:hover{background:none}.hb img{width:60px;height:60px}
+.hb span{color:#fff;font-size:14px;text-shadow:0 0 4px #000}.hb .hdot{position:absolute;top:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#FF4D6D;border:2px solid #fff}
+#hcards{position:absolute;left:0;right:0;display:flex;align-items:flex-start;overflow-x:auto;padding:0 16px;box-sizing:border-box}
+.hc{background:none;border:0;box-shadow:none;min-height:0;padding:0;border-radius:0;display:flex;flex-direction:column;align-items:center;gap:6px;flex:none;opacity:0;animation:cardin .42s cubic-bezier(.3,1.4,.5,1) forwards}.hc:hover{background:none}.hc:active{transform:scale(.96)}
+@keyframes cardin{from{opacity:0;transform:translateY(26px) scale(.92)}to{opacity:1;transform:none}}
+.hc .art{position:relative;display:block}.hc .art img{position:absolute;left:0;top:0}
+.hc .pill{position:absolute;display:flex;align-items:center;justify-content:center;pointer-events:none}.hc .pill b{display:block;color:#fff;font-weight:800;text-shadow:0 1px 3px rgba(0,0,0,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.hc .cnt{position:absolute;border-radius:50%;background:rgba(27,19,64,.85);display:flex;align-items:center;justify-content:center;pointer-events:none}
+.hc .ring{position:absolute;left:-6px;top:-6px;border:3px solid #FFE066;border-radius:26px;animation:ringp 1.4s ease-in-out 8;pointer-events:none}@keyframes ringp{50%{opacity:.45}}
+.hc .finger{position:absolute;left:50%;margin-left:-23px;width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.94);border:4px solid #FFC857;box-sizing:border-box;animation:fing 1.4s ease-in-out 8;pointer-events:none}@keyframes fing{50%{transform:translateY(-12px) scale(.9)}}
+.hc .dots{display:flex;gap:8px}.hc .dots i{width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.18);display:block}.hc .dots i.on{background:#FFE066}
+@media (prefers-reduced-motion:reduce){.hc{animation:none;opacity:1}}
+.tarrow{position:fixed;z-index:3;width:44px;height:44px;min-height:0;padding:0;border-radius:50%;display:grid;place-items:center;background:rgba(27,19,64,.92)}.tarrow svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}.tarrow.hide{display:none}
 #toast{position:fixed;top:22%;left:50%;transform:translate(-50%,-10px);background:var(--accent);color:#2A1F00;font-weight:700;padding:10px 20px;border-radius:22px;opacity:0;transition:all .4s}#toast.show{opacity:1;transform:translate(-50%,0)}
 #recBtn.recording{background:#FF4D6D;border-color:#fff}#recBtn.recording svg circle{fill:#fff}#recBtn.warn{animation:pul 0.6s infinite;background:#FF1744}
 #recBtn span{display:inline!important;min-width:2.6em;text-align:left}
@@ -187,6 +196,21 @@ button.ic svg{width:26px;height:26px;flex:none}button.ic .off{display:none}butto
   #help #helpTxt{grid-column:2;grid-row:2;align-self:end;margin:0 0 12px}
   #help .nav{grid-column:2;grid-row:3;align-self:start;justify-content:center}
 }
+body.lesson #sideL,body.lesson #sideR,body.lesson #bar{visibility:hidden!important}
+#lessonSkip{position:fixed;z-index:4;top:max(10px,env(safe-area-inset-top,0px));right:max(10px,env(safe-area-inset-right,0px));width:48px;height:48px;min-height:0;padding:0;border-radius:50%;display:grid;place-items:center;background:rgba(27,19,64,.92)}
+#lessonSkip svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+#lessonDone{position:fixed;inset:0;z-index:9;display:grid;place-items:center;background:rgba(10,6,32,.62);transition:opacity .3s}
+.lcard{background:#241a5c;border:3px solid #FFC857;border-radius:28px;padding:16px 28px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.lcard h2{margin:0;color:#FFE066;font-size:26px}
+.lstars{display:flex;align-items:center;gap:8px}
+.lstars>*{transform:scale(0);animation:lpop .55s cubic-bezier(.3,1.6,.5,1) forwards}
+.lcoins{display:flex;align-items:center;gap:8px;opacity:0;animation:lfade .3s .9s forwards}
+.coin{display:grid;place-items:center;border-radius:50%;background:#FFC857;border:2px solid #B8741A}
+.lcoins b{color:#FFE066;font-size:30px;min-width:64px;margin-left:6px}
+#lessonNext{width:76px;height:76px;min-height:0;padding:0;border-radius:50%;display:grid;place-items:center;border:3.5px solid #FF4D6D;background:#1B1340;opacity:0;animation:lfade .3s 1.9s forwards}
+#lessonNext svg{width:42px;height:42px;stroke:#fff;fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+@keyframes lpop{to{transform:scale(1)}}@keyframes lfade{to{opacity:1}}
+@media (max-height:380px){.lcard{padding:10px 22px;gap:4px}.lcard h2{font-size:22px}#lessonNext{width:62px;height:62px}}
 </style>
 <div id="wrap"><canvas id="game" aria-label="Hummlings stage"></canvas></div>
 <div id="sideL"><div id="worlds" role="group" aria-label="Worlds"></div></div>
@@ -211,9 +235,12 @@ button.ic svg{width:26px;height:26px;flex:none}button.ic .off{display:none}butto
 <div id="songs" class="ov hide" role="dialog" aria-label="My songs"><div class="sheet"><button class="ic x" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div class="hd"><svg viewBox="0 0 24 24" width="30" height="30"><path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="16" r="2.5"/></svg><h2>My songs</h2></div><div id="songList"></div></div></div>
 <div id="playbar" class="hide"><button id="stopPlay" class="ic" aria-label="Stop playback"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor" stroke="none"/></svg><span style="display:inline">Playing a song</span></button></div>
 <div id="help" class="ov hide" role="dialog" aria-label="How to play"><div class="sheet"><button class="ic x" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2>How to play</h2><video id="helpVid" muted loop playsinline autoplay width="560" height="308"></video><p id="helpTxt"></p><div class="nav"><button id="hPrev" class="ic" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span id="hDots"></span><button id="hNext" class="ic" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></div></div></div>
+<button id="tl" class="tarrow hide" aria-label="Scroll left"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><button id="tr" class="tarrow hide" aria-label="Scroll right"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+<button id="lessonSkip" class="ic hide" aria-label="Skip the lesson" title="Skip the lesson"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+<div id="lessonDone" class="hide" role="dialog"></div>
 <div id="rotate" class="hide"><svg viewBox="0 0 96 96" width="132" height="132"><rect class="ph" x="12" y="30" width="22" height="38" rx="6" opacity=".45"/><path class="ar" d="M22 22A34 34 0 0 1 66 22"/><path class="ar" d="M58 15l9 7-10 5"/><rect x="50" y="46" width="38" height="22" rx="6"/><path d="M82 57h.01" stroke-width="5"/></svg></div>
 <div id="loading" class="hide"><p>Loading music…</p></div>
-<div id="splash"><canvas id="homeCv" aria-hidden="true"></canvas><h1 id="homeTitle" aria-label="Hummlings">Hummlings</h1><p id="homeSub">Make music with tiny singers</p><p id="homeHint">Tap the singers, then press play</p><button id="start" aria-label="Play"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M8.5 5.2l11.2 6.2a.7.7 0 0 1 0 1.2L8.5 18.8a.7.7 0 0 1-1-.6V5.8a.7.7 0 0 1 1-.6z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg></button></div>
+<div id="splash"><canvas id="homeBg" aria-hidden="true"></canvas><div id="homeDecor" aria-hidden="true"></div><canvas id="homeCv" aria-hidden="true"></canvas></div>
 <script src="game.js"></script>`);
   console.log('web demo ready');
 }

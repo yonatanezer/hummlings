@@ -4,7 +4,12 @@
  */
 export type CoachKind = 'drag' | 'tap' | 'hold' | 'record';
 /** What the scene draws. 'record' is not drawn there: the record button itself pulses. */
-export interface CoachCue { kind: Exclude<CoachKind, 'record'>; slot: number; spot: number }
+export interface CoachCue {
+  kind: Exclude<CoachKind, 'record'> | 'swipe'; // 'swipe' belongs to the first lesson (core/lesson.ts): a finger slides the singer menu
+  slot: number;
+  spot: number;
+  dir?: 1 | -1; // swipe: 1 = the menu has to go towards its right end
+}
 
 export interface CoachInput {
   onStage: number; // singers on the stage

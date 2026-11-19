@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ElementType } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Canvas, Picture, Skia } from '@shopify/react-native-skia';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,8 +15,7 @@ import { HeroCanvas } from '../ui/HeroCanvas';
 import { HomeTitle, TITLE_SIDE } from '../ui/HomeTitle';
 import { Icon } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
-import { StageCardArt } from '../ui/StageCardArt';
-import { WorldIcon } from '../ui/WorldIcon';
+import { CARD_BY_STAGE_INDEX, HOME_ART } from '../ui/homeArt';
 import { COLORS } from '../ui/theme';
 import { useReduceMotion } from '../ui/useReduceMotion';
 import { hapticLight } from '../ui/haptics';
@@ -42,9 +41,11 @@ function WorldCard({ stage, index, cardW, cardH, locked, found, hint, still, onP
   const fingerStyle = useAnimatedStyle(() => ({ opacity: hint ? 1 : 0, transform: [{ translateY: -pulse.value * 12 }, { scale: 1 - pulse.value * 0.1 }] }));
   const ring = useAnimatedStyle(() => ({ opacity: hint ? 0.45 + pulse.value * 0.55 : 0, transform: [{ scale: 1 + pulse.value * 0.025 }] }));
   const total = stage.combos.length;
-  const em = Math.min(56, cardH * 0.52);
   const lk = Math.min(44, cardH * 0.42);
-  const fs = Math.min(18, cardW * 0.12);
+  // the painted card is nearly square; it is never stretched
+  const artW = Math.min(cardW, cardH * 0.99);
+  const artH = artW * 0.99;
+  const fs = Math.min(16, artW * 0.1);
   const name = t(stage.nameKey as StringKey);
   return (
     <Pressable
@@ -54,15 +55,18 @@ function WorldCard({ stage, index, cardW, cardH, locked, found, hint, still, onP
       onPress={onPress}
       style={({ pressed }) => [{ width: cardW, transform: [{ scale: pressed ? 0.96 : 1 }] }]}>
       <Animated.View style={[{ alignItems: 'center', gap: 6 }, lift]}>
-        <View>
-          <Animated.View pointerEvents="none" style={[styles.ring, { width: cardW + 12, height: cardH + 12, borderRadius: 26 }, ring]} />
-          <StageCardArt stage={stage} locked={locked} width={cardW} height={cardH} />
-          <View style={[styles.emblem, { width: em, height: em, borderRadius: em / 2 }]}><WorldIcon stageId={stage.id} size={em * 0.7} /></View>
-          {locked && <View style={[styles.lock, { width: lk * 0.66, height: lk * 0.66, borderRadius: lk * 0.33 }]}><Icon name="lock" size={lk * 0.4} color="#FFE8A3" /></View>}
-          {locked && <View style={[styles.listen, { width: lk * 0.85, height: lk * 0.85, borderRadius: lk * 0.43 }]}><Icon name="note" size={lk * 0.5} color="#10282A" /></View>}
-          {hint && <Animated.View pointerEvents="none" style={[styles.finger, { top: cardH * 0.42 }, fingerStyle]} />}
+        <View style={{ width: artW, height: artH }}>
+          <Animated.View pointerEvents="none" style={[styles.ring, { width: artW + 12, height: artH + 12, borderRadius: 26 }, ring]} />
+          <Image source={HOME_ART.cards[CARD_BY_STAGE_INDEX[index] ?? 0]} style={{ width: artW, height: artH }} resizeMode="contain" />
+          <View style={[styles.pill, { top: artH * 0.795, height: artH * 0.15, left: artW * 0.12, right: artW * 0.12 }]} pointerEvents="none">
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={[styles.name, { fontSize: fs }]}>{name}</Text>
+          </View>
+          {locked && <View style={[styles.lock, { top: artH * 0.2 - lk * 0.33, left: artW * 0.82 - lk * 0.33, width: lk * 0.66, height: lk * 0.66, borderRadius: lk * 0.33 }]}><Icon name="lock" size={lk * 0.4} color="#FFE8A3" /></View>}
+          {locked
+            ? <View style={[styles.listen, { left: artW * 0.79 - lk * 0.43, top: artH * 0.6 - lk * 0.43, width: lk * 0.85, height: lk * 0.85, borderRadius: lk * 0.43 }]}><Icon name="note" size={lk * 0.5} color="#10282A" /></View>
+            : index > 0 && <View style={[styles.listen, styles.count, { left: artW * 0.79 - lk * 0.43, top: artH * 0.6 - lk * 0.43, width: lk * 0.85, height: lk * 0.85, borderRadius: lk * 0.43 }]}><Icon name="star" size={lk * 0.5} color="#FFC857" /></View>}
+          {hint && <Animated.View pointerEvents="none" style={[styles.finger, { top: artH * 0.42 }, fingerStyle]} />}
         </View>
-        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.name, { fontSize: fs, width: cardW, textAlign: 'center' }]}>{name}</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {stage.combos.map((c, i) => <View key={c.id} style={[styles.dot, i < found ? styles.dotOn : styles.dotOff]} />)}
         </View>
@@ -90,7 +94,7 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
   const availW = (areaW || width) - insets.left * 2 - insets.right - 32;
   const fitW = (availW - GAP * (STAGES.length - 1)) / STAGES.length;
   const cardW = Math.min(Math.max(fitW, 110), 220);
-  const nameBlock = Math.min(18, cardW * 0.12) * 1.5 + 12 + 24; // one-line name, dots, gaps and the float of the card
+  const nameBlock = 14 + 12 + 24; // one-line name, dots, gaps and the float of the card
   const cardH = Math.max(52, Math.min(height - cardsTop - 8 - nameBlock, cardW * 0.92));
   const row = rtl ? 'row-reverse' : 'row';
   const fits = STAGES.length * cardW + (STAGES.length - 1) * GAP <= availW;
@@ -140,6 +144,17 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
   return (
     <View style={styles.root}>
       <Canvas style={StyleSheet.absoluteFill} pointerEvents="none"><Picture picture={backdrop} /></Canvas>
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Image source={HOME_ART.planetRing} style={{ position: 'absolute', left: width * 0.8, top: height * 0.2, width: 78, height: 45, opacity: 0.9 }} resizeMode="contain" />
+        <Image source={HOME_ART.planetB} style={{ position: 'absolute', left: width * 0.07, top: height * 0.3, width: 34, height: 33, opacity: 0.85 }} resizeMode="contain" />
+        <Image source={HOME_ART.planetC} style={{ position: 'absolute', left: width * 0.66, top: height * 0.07, width: 22, height: 21, opacity: 0.8 }} resizeMode="contain" />
+        <Image source={HOME_ART.comet} style={{ position: 'absolute', left: width * 0.28, top: height * 0.04, width: 64, height: 36, opacity: 0.85 }} resizeMode="contain" />
+        <Image source={HOME_ART.cloudA} style={{ position: 'absolute', left: width * 0.04, top: height * 0.43, width: 84, height: 44, opacity: 0.45 }} resizeMode="contain" />
+        <Image source={HOME_ART.cloudB} style={{ position: 'absolute', left: width * 0.78, top: height * 0.42, width: 100, height: 45, opacity: 0.45 }} resizeMode="contain" />
+        <Image source={HOME_ART.starB} style={{ position: 'absolute', left: width * 0.2, top: height * 0.13, width: 20, height: 19 }} resizeMode="contain" />
+        <Image source={HOME_ART.starC} style={{ position: 'absolute', left: width * 0.9, top: height * 0.08, width: 18, height: 17 }} resizeMode="contain" />
+        <Image source={HOME_ART.starA} style={{ position: 'absolute', left: width * 0.58, top: height * 0.25, width: 14, height: 13 }} resizeMode="contain" />
+      </View>
       <View
         style={{ position: 'absolute', top: geo.top, left: 0, width, height: geo.height }}
         onTouchStart={(e) => sing(e.nativeEvent.locationX, e.nativeEvent.locationY)}
@@ -156,11 +171,11 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
         <HomeTitle title={t('app.name')} subtitle={t('app.subtitle')} pulse={pulse} />
       </View>
       <View style={[styles.top, { top: insets.top + 6, left: insets.left + 10, right: insets.right + 10, flexDirection: row }]}>
-        <IconButton icon="note" label={t('a11y.songs')} caption={t('ui.songs')} onPress={onSongs} />
+        <IconButton icon="note" art={HOME_ART.btnNote} size={60} label={t('a11y.songs')} caption={t('ui.songs')} onPress={onSongs} />
         <View style={{ flex: 1 }} />
         <View style={{ flexDirection: row, gap: 10 }}>
-          <IconButton icon="help" label={t('a11y.help')} caption={t('ui.help')} onPress={onHelp} badge={!progress.helpSeen} />
-          <IconButton icon="gear" label={t('a11y.settings')} caption={t('ui.settings')} onPress={onSettings} />
+          <IconButton icon="help" art={HOME_ART.btnHelp} size={60} label={t('a11y.help')} caption={t('ui.help')} onPress={onHelp} badge={!progress.helpSeen} />
+          <IconButton icon="gear" art={HOME_ART.btnGear} size={60} label={t('a11y.settings')} caption={t('ui.settings')} onPress={onSettings} />
         </View>
       </View>
       <View style={{ position: 'absolute', top: cardsTop, left: 0, right: 0, paddingLeft: insets.left + 16, paddingRight: insets.left + insets.right + 16 }} onLayout={(e) => setAreaW(e.nativeEvent.layout.width)}>
@@ -184,7 +199,9 @@ const styles = StyleSheet.create({
   top: { position: 'absolute', alignItems: 'flex-start', zIndex: 2 },
   titleWrap: { position: 'absolute', alignItems: 'center' },
   cards: { justifyContent: 'center', alignItems: 'flex-start' },
-  name: { color: '#fff', fontSize: 22, fontWeight: '700' },
+  name: { color: '#fff', fontSize: 16, fontWeight: '800', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.45)', textShadowRadius: 3 },
+  pill: { position: 'absolute', justifyContent: 'center' },
+  count: { backgroundColor: 'rgba(27,19,64,0.85)' },
   emblem: { position: 'absolute', top: 10, left: 10, width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(27,19,64,0.92)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)', alignItems: 'center', justifyContent: 'center' },
   lock: { position: 'absolute', top: 8, right: 8, width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(27,19,64,0.8)', alignItems: 'center', justifyContent: 'center' },
   ring: { position: 'absolute', top: -6, left: -6, borderWidth: 3, borderColor: COLORS.glow },

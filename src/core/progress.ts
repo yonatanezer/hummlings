@@ -15,6 +15,8 @@ export interface Progress {
   coachTapDone: boolean; // a singer was tapped once (the hand stops showing the tap)
   coachHoldDone: boolean; // a singer was held once (the volume slider opened)
   coachRecordDone: boolean; // a recording was started once
+  lessonsDone: string[]; // worlds whose first lesson (level 1) was finished or skipped
+  coins: number; // earned in levels
 }
 
 export interface Settings {
@@ -38,6 +40,8 @@ export const defaultProgress = (): Progress => ({
   coachTapDone: false,
   coachHoldDone: false,
   coachRecordDone: false,
+  lessonsDone: [],
+  coins: 0,
 });
 
 /** Tolerant loader: unknown / corrupt data becomes defaults, known fields are kept. */
@@ -65,6 +69,8 @@ export function parseProgress(raw: unknown): Progress {
     coachTapDone: r.coachTapDone === true,
     coachHoldDone: r.coachHoldDone === true,
     coachRecordDone: r.coachRecordDone === true,
+    lessonsDone: Array.isArray(r.lessonsDone) ? r.lessonsDone.filter((x) => typeof x === 'string') : [],
+    coins: typeof r.coins === 'number' && Number.isFinite(r.coins) ? Math.max(0, Math.floor(r.coins)) : 0,
   };
 }
 

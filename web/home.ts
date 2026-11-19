@@ -1,84 +1,91 @@
-// Web demo opening screen: six singers drop onto a hill one after another (each lands on a note of a rising scale and pops the next letters of the
-// title in); afterwards touch a singer, or slide over several, and it hops and sings its note. Same idea as the app's intro and home screen.
-import { blinkOpen } from '../src/core/anim';
-import { HERO_COUNT, HERO_NOTES, HERO_PICKS } from '../src/core/hero';
-import type { Creature } from '../src/core/types';
+// Web demo home screen: the same screen as the app's (StageSelectScreen). The sky and the singers are drawn by the app's own drawing code (through CanvasKit);
+// the logo, buttons, world cards and little planets are the artist's pictures. Touch a singer (or slide over several) and it hops and sings its note.
+import { drawHero, HERO_NOTES, heroGeometry, heroHitTest, paddedGeo, type HeroHit } from '../src/ui/draw/hero';
+import { drawHomeBackdrop } from '../src/ui/draw/home';
+import { CARD_BY_STAGE_INDEX } from '../src/ui/homeCardOrder';
+import { HERO_PICKS } from '../src/core/hero';
+import { t, type StringKey } from '../src/i18n';
+import type { Creature, Stage } from '../src/core/types';
 import type { WebEngine } from './engine';
+import type { Skia2 } from './skiaBoot';
 
-const CELL_W = 220, CELL_H = 240, FEET_X = 110, FEET_Y = 222, SPRITE_S = 120;
-const GAP = 300, FALL = 420, HIT_MS = 1000;
+const GAP = 14, HIT_MS = 1000;
 const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const img = (src: string, css: string, alt = '') => `<img src="home/${src}.png" alt="${alt}" draggable="false" style="${css}">`;
 
-const easeOutBounce = (k: number): number => {
-  const n1 = 7.5625, d1 = 2.75;
-  if (k < 1 / d1) return n1 * k * k;
-  if (k < 2 / d1) { const q = k - 1.5 / d1; return n1 * q * q + 0.75; }
-  if (k < 2.5 / d1) { const q = k - 2.25 / d1; return n1 * q * q + 0.9375; }
-  const q = k - 2.625 / d1;
-  return n1 * q * q + 0.984375;
-};
+export function initHome(o: {
+  splash: HTMLElement; canvas: HTMLCanvasElement; engine: WebEngine; stages: Stage[]; creatures: Creature[];
+  skia: Promise<Skia2>; foundOf: (i: number) => number; onPick: (i: number) => void; onHelp: () => void; onSongs: () => void;
+}): { refresh: () => void } {
+  const { splash, canvas, engine, stages } = o;
+  let sk2: Skia2 | null = null, surface: any = null, raw: any = null, bg: any = null, bgKey = '';
+  let hits: HeroHit[] = [];
+  let W = 0, H = 0, dpr = 1;
+  let geo = heroGeometry(844, 390, 90, 0, 0), padded = paddedGeo(geo, 300);
+  const creatures = HERO_PICKS.map((i) => o.creatures[i]!);
+  const bgCv = document.getElementById('homeBg') as HTMLCanvasElement, decor = document.getElementById('homeDecor') as HTMLElement;
+  const ui = document.createElement('div');
+  ui.id = 'homeUi';
+  splash.appendChild(ui);
+  let bgSurface: any = null;
+  let firstVisit = true;
 
-interface Hit { i: number; t: number }
+  const build = () => {
+    const cardsTop = geo.top + geo.height + 2;
+    const availW = W - 32;
+    const fitW = (availW - GAP * (stages.length - 1)) / stages.length;
+    const cardW = Math.min(Math.max(fitW, 110), 220);
+    const cardH = Math.max(52, Math.min(H - cardsTop - 8 - 50, cardW * 0.92));
+    const artW = Math.min(cardW, cardH * 0.99), artH = artW * 0.99;
+    const fits = stages.length * cardW + (stages.length - 1) * GAP <= availW;
+    const logoH = 92, logoW = logoH * (560 / 195);
+    const lk = Math.min(44, cardH * 0.42);
+    const dec = (n: string, x: number, y: number, w: number, h: number, op = 1) => img(n, `position:absolute;left:${W * x}px;top:${H * y}px;width:${w}px;height:${h}px;opacity:${op};pointer-events:none`);
+    const btn = (id: string, art: string, label: string, cap: string, side: string) =>
+      `<button class="hb" id="${id}" aria-label="${label}" style="${side}"><img src="home/${art}.png" alt="" draggable="false" width="60" height="60">${id === 'hbHelp' ? '<i class="hdot"></i>' : ''}<span>${cap}</span></button>`;
+    decor.innerHTML =
+      dec('planet-ring', 0.8, 0.2, 78, 45, 0.9) + dec('planet-b', 0.07, 0.3, 34, 33, 0.85) + dec('planet-c', 0.66, 0.07, 22, 21, 0.8) + dec('comet', 0.28, 0.04, 64, 36, 0.85) +
+      dec('cloud-a', 0.04, 0.43, 84, 44, 0.45) + dec('cloud-b', 0.78, 0.42, 100, 45, 0.45) + dec('star-b', 0.2, 0.13, 20, 19) + dec('star-c', 0.9, 0.08, 18, 17) + dec('star-a', 0.58, 0.25, 14, 13);
+    ui.innerHTML =
+      `<div id="hlogo" role="img" aria-label="${t('app.name')}" style="left:${(W - logoW) / 2}px;top:6px;width:${logoW}px;height:${logoH}px">${img('logo', `width:${logoW}px;height:${logoH}px`)}<div class="rib" style="left:${logoW * 0.17}px;right:${logoW * 0.17}px;top:${logoH * 0.69}px;height:${logoH * 0.17}px"><span>${t('app.subtitle')}</span></div></div>` +
+      btn('hbSongs', 'btn-note', t('a11y.songs'), t('ui.songs'), 'left:10px;top:6px') + btn('hbHelp', 'btn-help', t('a11y.help'), t('ui.help'), 'right:10px;top:6px') +
+      `<div id="hcards" style="top:${cardsTop}px;justify-content:${fits ? 'center' : 'flex-start'};gap:${GAP}px">` +
+      stages.map((st, i) => {
+        const found = o.foundOf(i), total = st.combos.length;
+        const hint = firstVisit && i === 0;
+        return `<button class="hc" data-i="${i}" aria-label="${t(st.nameKey as StringKey)}. ${t('select.found', { n: found, m: total })}" style="width:${cardW}px;animation-delay:${120 + i * 90}ms">` +
+          `<span class="art" style="width:${artW}px;height:${artH}px">${hint ? `<i class="ring" style="width:${artW + 12}px;height:${artH + 12}px"></i>` : ''}` +
+          img(`card${CARD_BY_STAGE_INDEX[i]! + 1}`, `width:${artW}px;height:${artH}px`) +
+          `<span class="pill" style="top:${artH * 0.795}px;height:${artH * 0.15}px;left:${artW * 0.12}px;right:${artW * 0.12}px;font-size:${Math.min(16, artW * 0.1)}px"><b>${t(st.nameKey as StringKey)}</b></span>` +
+          (i > 0 ? `<span class="cnt" style="left:${artW * 0.79 - lk * 0.43}px;top:${artH * 0.6 - lk * 0.43}px;width:${lk * 0.85}px;height:${lk * 0.85}px"><svg viewBox="0 0 24 24" width="${lk * 0.5}" height="${lk * 0.5}"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3 6.1 20.6l1.3-6.6L2.5 9.4l6.6-.8z" fill="#FFC857"/></svg></span>` : '') +
+          (hint ? `<i class="finger" style="top:${artH * 0.42}px"></i>` : '') + `</span>` +
+          `<span class="dots">${st.combos.map((_, k) => `<i class="${k < found ? 'on' : ''}"></i>`).join('')}</span></button>`;
+      }).join('') + `</div>`;
+    ui.querySelectorAll<HTMLButtonElement>('.hc').forEach((b) => b.addEventListener('click', () => { firstVisit = false; o.onPick(Number(b.dataset.i)); }));
+    ui.querySelectorAll<HTMLElement>('.pill b').forEach((b) => { let fs = parseFloat(getComputedStyle(b).fontSize); const min = fs * 0.6; while (b.scrollWidth > b.clientWidth && fs > min) { fs -= 0.5; b.style.fontSize = `${fs}px`; } });
+    ui.querySelector('#hbHelp')!.addEventListener('click', () => o.onHelp());
+    ui.querySelector('#hbSongs')!.addEventListener('click', () => o.onSongs());
+  };
 
-export function initHome(opts: { splash: HTMLElement; canvas: HTMLCanvasElement; title: HTMLElement; engine: WebEngine; creatures: Creature[]; atlasUrl: string }): void {
-  const { splash, canvas, title, engine } = opts;
-  const g = canvas.getContext('2d')!;
-  const singers = HERO_PICKS.map((i) => ({ cr: opts.creatures[i]!, row: i }));
-  let atlas: HTMLImageElement | null = null;
-  const img = new Image();
-  img.onload = () => { atlas = img; };
-  img.src = opts.atlasUrl;
-  void engine.init().catch(() => undefined); // decode the sounds now (the browser keeps the audio context suspended until the first touch)
-
-  // Title: one span per letter, popped in as the singers land.
-  const text = title.getAttribute('aria-label') ?? title.textContent ?? '';
-  const letters = Array.from(text);
-  title.textContent = '';
-  letters.forEach((ch, k) => {
-    const landing = Math.min(HERO_COUNT - 1, Math.floor((k * HERO_COUNT) / letters.length));
-    const span = document.createElement('span');
-    span.textContent = ch;
-    span.style.animationDelay = `${still ? 0 : 200 + FALL + landing * GAP}ms`;
-    title.appendChild(span);
-  });
-  const sub = splash.querySelector<HTMLElement>('#homeSub');
-  if (sub && !still) { sub.style.opacity = '0'; setTimeout(() => { sub.style.transition = 'opacity .6s'; sub.style.opacity = '1'; }, 200 + FALL + (HERO_COUNT - 1) * GAP + 200); }
-  const swell = () => { title.style.transform = 'scale(1.14)'; setTimeout(() => { title.style.transform = ''; }, 120); };
-
-  const t0 = performance.now();
-  let hits: Hit[] = [];
-  let W = 0, H = 0;
-  const xs: number[] = [], ys: number[] = [];
-  let S = 80;
   const layout = () => {
-    const dpr = Math.min(2, devicePixelRatio || 1);
-    W = innerWidth; H = innerHeight;
+    const r = splash.getBoundingClientRect();
+    W = r.width; H = r.height; dpr = Math.min(2, devicePixelRatio || 1);
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     canvas.style.width = `${W}px`; canvas.style.height = `${H}px`;
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    S = Math.max(46, Math.min(H * 0.27, (W * 0.9) / 6.6));
-    const feet = H - Math.max(96, H * 0.26);
-    xs.length = 0; ys.length = 0;
-    for (let i = 0; i < HERO_COUNT; i++) {
-      const t = (i + 0.5) / HERO_COUNT;
-      xs.push(W * (0.05 + 0.9 * t));
-      ys.push(feet - Math.sin(Math.PI * t) * S * 0.16);
-    }
+    bgCv.width = canvas.width; bgCv.height = canvas.height; bgCv.style.width = `${W}px`; bgCv.style.height = `${H}px`;
+    try { surface?.delete?.(); bgSurface?.delete?.(); } catch { /* gone */ }
+    surface = null; raw = null; bgSurface = null; bgKey = '';
+    if (sk2) { surface = sk2.ck.MakeWebGLCanvasSurface(canvas) ?? sk2.ck.MakeSWCanvasSurface(canvas); raw = surface?.getCanvas() ?? null; bgSurface = sk2.ck.MakeSWCanvasSurface(bgCv); }
+    geo = heroGeometry(W, H, 6 + 84, 0, 0);
+    padded = paddedGeo(geo, H - geo.top);
+    build();
   };
-  layout();
-  addEventListener('resize', layout);
 
-  const hitTest = (x: number, y: number): number => {
-    let best = -1, bestD = Infinity;
-    for (let i = 0; i < HERO_COUNT; i++) {
-      const dx = Math.abs(x - xs[i]!), d = Math.hypot(dx, (y - (ys[i]! - S * 0.5)) * 0.8);
-      if (dx < S * 0.62 && d < S * 0.85 && d < bestD) { best = i; bestD = d; }
-    }
-    return best;
-  };
+  // the singers: touch one (or slide over several) and it hops and sings its note
   let last = -1;
   const sing = (e: PointerEvent) => {
-    const i = hitTest(e.clientX, e.clientY);
+    const r = splash.getBoundingClientRect();
+    const i = heroHitTest(geo, e.clientX - r.left, e.clientY - r.top - geo.top);
     if (i < 0) { last = -1; return; }
     if (i === last) return;
     last = i;
@@ -86,89 +93,41 @@ export function initHome(opts: { splash: HTMLElement; canvas: HTMLCanvasElement;
     const now = performance.now();
     hits = [...hits.filter((h) => now - h.t < HIT_MS + 100), { i, t: now }];
     engine.playSfx('pop', HERO_NOTES[i]!);
-    swell();
   };
   splash.addEventListener('pointerdown', (e) => { if ((e.target as HTMLElement).closest('button')) return; sing(e); });
   splash.addEventListener('pointermove', (e) => { if (e.buttons || e.pointerType === 'touch') sing(e); });
   splash.addEventListener('pointerup', () => { last = -1; });
   splash.addEventListener('pointercancel', () => { last = -1; });
 
-  const sprite = (row: number, pose: number, x: number, y: number, o: { sx: number; sy: number; lift: number; tilt: number }) => {
-    if (!atlas) return;
-    const k = S / SPRITE_S;
-    g.save();
-    g.translate(x, y - o.lift);
-    g.rotate(o.tilt);
-    g.scale(o.sx * k, o.sy * k);
-    g.drawImage(atlas, pose * CELL_W, row * CELL_H, CELL_W, CELL_H, -FEET_X, -FEET_Y, CELL_W, CELL_H);
-    g.restore();
-  };
-
   const draw = (now: number) => {
-    if (splash.classList.contains('hide')) return; // the stage took over
     requestAnimationFrame(draw);
-    const time = now - t0;
-    g.clearRect(0, 0, W, H);
-    const bg = g.createLinearGradient(0, 0, 0, H);
-    bg.addColorStop(0, '#2E1F73'); bg.addColorStop(0.6, '#1B1340'); bg.addColorStop(1, '#120C2E');
-    g.fillStyle = bg; g.fillRect(0, 0, W, H);
-    for (let i = 0; i < 70; i++) { // stars
-      const a = Math.sin(i * 127.1) * 43758.5453, b = Math.sin(i * 311.7) * 12543.321;
-      g.globalAlpha = (0.25 + ((i * 13) % 7) * 0.08) * (still ? 1 : 0.7 + 0.3 * Math.sin(time / 700 + i));
-      g.fillStyle = i % 6 === 0 ? '#FFE8A3' : '#FFFFFF';
-      g.beginPath(); g.arc((a - Math.floor(a)) * W, (b - Math.floor(b)) * H * 0.7, 0.8 + ((i * 7) % 5) * 0.45, 0, Math.PI * 2); g.fill();
+    if (splash.classList.contains('hide') || !sk2 || !raw) return;
+    const { sk } = sk2;
+    hits = hits.filter((h) => now - h.t < HIT_MS + 100);
+    const key = `${W}x${H}`;
+    if (bgKey !== key) {
+      const rec = sk.PictureRecorder();
+      drawHomeBackdrop(sk, rec.beginRecording({ x: 0, y: 0, width: W, height: H }), W, H);
+      bg = rec.finishRecordingAsPicture(); bgKey = key;
+      const bc = bgSurface?.getCanvas();
+      if (bc) { bc.save(); bc.scale(dpr, dpr); bc.drawPicture(bg.ref ?? bg); bc.restore(); bgSurface.flush(); }
     }
-    g.globalAlpha = 1;
-    // hill
-    const hy = ys[0]! - S * 0.34;
-    const hg = g.createLinearGradient(0, hy, 0, H * 1.1);
-    hg.addColorStop(0, '#4A3796'); hg.addColorStop(0.45, '#241A5C'); hg.addColorStop(1, '#150E3A');
-    g.fillStyle = hg; g.beginPath(); g.ellipse(W / 2, hy + H * 0.65, W * 0.62, H * 0.65, 0, 0, Math.PI * 2); g.fill();
-
-    for (let i = 0; i < HERO_COUNT; i++) {
-      const x = xs[i]!, y = ys[i]!;
-      let drop = 0, land = -1;
-      if (!still) {
-        const k = (time - 200 - i * GAP) / FALL;
-        if (k < 0) continue;
-        if (k < 1) drop = (1 - easeOutBounce(k)) * (y + S * 2.2);
-        else land = (k - 1) * FALL;
-      }
-      const breathe = still ? 0 : Math.sin(time / 640 + i * 1.7);
-      let lift = Math.max(0, breathe) * S * 0.03, sy = 1 + breathe * 0.025, sx = 1 - breathe * 0.015, tilt = 0, singing = false;
-      let age = -1;
-      for (const h of hits) if (h.i === i && now - h.t >= 0 && now - h.t < HIT_MS) age = now - h.t;
-      if (age >= 0) {
-        const p = Math.min(1, age / 420);
-        lift += Math.sin(p * Math.PI) * S * 0.38; sy *= 1 + Math.sin(p * Math.PI) * 0.1; sx *= 1 - Math.sin(p * Math.PI) * 0.06;
-        singing = age < 700;
-        tilt = Math.sin(age / 90) * 0.07 * Math.max(0, 1 - age / 700);
-      }
-      if (land >= 0 && land < 220) { const q = land / 220; sy *= 1 - Math.sin(q * Math.PI) * 0.16; sx *= 1 + Math.sin(q * Math.PI) * 0.1; singing = true; }
-      g.fillStyle = `rgba(10,6,32,${0.35 * (drop > 0 ? 0.4 : 1)})`;
-      g.beginPath(); g.ellipse(x, y + S * 0.01, S * 0.42, S * 0.06, 0, 0, Math.PI * 2); g.fill();
-      const swayV = still ? 1 : Math.sin(time / 170 + i) > 0.35 ? 0 : Math.sin(time / 170 + i) < -0.35 ? 2 : 1;
-      const blink = blinkOpen(time + i * 977, i * 977 + 13) < 0.5;
-      const pose = (singing ? 1 : blink ? 2 : 0) * 3 + swayV;
-      sprite(singers[i]!.row, pose, x, y - drop, { sx, sy, lift, tilt });
-    }
-    // notes rising from touched singers
-    for (const h of hits) {
-      const age = now - h.t;
-      if (age < 0 || age >= HIT_MS) continue;
-      const k = age / HIT_MS;
-      for (let n = 0; n < 3; n++) {
-        const kk = Math.min(1, Math.max(0, k * 1.15 - n * 0.12));
-        if (kk <= 0) continue;
-        const nx = xs[h.i]! + Math.sin(kk * 5 + n * 2.1) * S * 0.28 + (n - 1) * S * 0.25, ny = ys[h.i]! - S * (1.3 + kk * 0.8);
-        const r = S * (0.085 + 0.02 * n);
-        g.globalAlpha = Math.sin(kk * Math.PI) * 0.95;
-        g.fillStyle = n === 1 ? '#FFE8A3' : '#9FE8FF';
-        g.beginPath(); g.arc(nx, ny, r, 0, Math.PI * 2); g.fill();
-        g.fillRect(nx + r * 0.7, ny - r * 3.6, r * 0.42, r * 3.6);
-      }
-      g.globalAlpha = 1;
-    }
+    const rec = sk.PictureRecorder();
+    const c = rec.beginRecording({ x: 0, y: 0, width: W, height: H });
+    c.save();
+    c.translate(0, geo.top - padded.pad);
+    drawHero(sk, c, creatures, padded.geo, W, now, hits, -1, 300, still);
+    c.restore();
+    const pic = rec.finishRecordingAsPicture();
+    raw.clear(sk2.ck.Color4f(0, 0, 0, 0));
+    raw.save(); raw.scale(dpr, dpr); raw.drawPicture((pic as any).ref ?? pic); raw.restore();
+    surface.flush();
+    try { (pic as any).dispose?.(); } catch { /* ok */ }
   };
+
+  layout();
+  addEventListener('resize', layout);
+  void o.skia.then((s) => { sk2 = s; layout(); });
   requestAnimationFrame(draw);
+  return { refresh: build };
 }

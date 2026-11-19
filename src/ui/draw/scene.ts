@@ -4,6 +4,7 @@ import { TUNING } from '../../core/tuning';
 import { beatBounce, blinkOpen, breath, hop, onsetPulse } from '../../core/anim';
 import type { Layout } from '../../core/layout';
 import type { CoachCue } from '../../core/coach';
+import type { LessonView } from '../../core/lesson';
 import { IDLE_POSE, bodyDims, drawCreature, type Pose } from './creature';
 import { gradientPaint, mix, freshPaint, paint, radialPaint, STROKE, type Canvas, type SkiaApi, rect } from './common';
 import { drawCelebration, danceOffset } from './celebrations';
@@ -45,6 +46,7 @@ export interface SceneInput {
   trayK?: number; // 1 = singer menu shown, 0 = slid away (animated by the screen)
   popup?: { spot: number; creatureId: string; volume: number; solo: boolean } | null; // volume popup after a long press
   volumes?: Record<string, number>;
+  lesson?: LessonView | null; // the first lesson of a world: dark groups in the menu, the lit one, and the coin counter
 }
 
 export function idHash(id: string): number {
@@ -296,6 +298,21 @@ function drawCoachHand(sk: SkiaApi, c: Canvas, s: SceneInput, cue: CoachCue, byI
     }
     return;
   }
+  if (cue.kind === 'swipe') {
+    // a finger slides the singer menu towards the group that is out of sight
+    const t = (s.timeMs % 2400) / 2400;
+    const dir = cue.dir ?? 1;
+    const move = Math.min(1, Math.max(0, (t - 0.15) / 0.6));
+    const e = move * move * (3 - 2 * move);
+    const x0 = l.W * (dir > 0 ? 0.72 : 0.28), x1 = l.W * (dir > 0 ? 0.28 : 0.72);
+    const x = x0 + (x1 - x0) * e, y = l.tray.y + l.tray.h * 0.45;
+    const fade = t < 0.08 ? t / 0.08 : t > 0.88 ? (1 - t) / 0.12 : 1;
+    c.drawLine(x0, y, x, y, paint(sk, '#FFE8A3', 0.55 * fade, STROKE, 7));
+    c.drawCircle(x + 3, y + 8, 26, paint(sk, '#000000', 0.25 * fade));
+    c.drawCircle(x, y, 24 - (move > 0 && move < 1 ? 2 : 0), paint(sk, '#FFFFFF', 0.92 * fade));
+    c.drawCircle(x, y, 24 - (move > 0 && move < 1 ? 2 : 0), paint(sk, '#FFC857', 0.85 * fade, STROKE, 3));
+    return;
+  }
   if (cue.kind === 'tap') {
     const t = (s.timeMs % 2600) / 2600;
     const k = (t * 2) % 1; // two taps per loop
@@ -328,6 +345,71 @@ function drawCoachHand(sk: SkiaApi, c: Canvas, s: SceneInput, cue: CoachCue, byI
   c.drawCircle(x, y, 24 - pressed * 2, paint(sk, '#FFFFFF', 0.92 * fade));
   c.drawCircle(x, y, 24 - pressed * 2, paint(sk, '#FFC857', 0.85 * fade, STROKE, 3));
   c.drawCircle(x, y, 38 + 6 * Math.sin(t * 40), paint(sk, '#FFFFFF', 0.35 * fade * (1 - move), STROKE, 2));
+}
+
+/** A gold coin with a star. */
+function drawCoin(sk: SkiaApi, c: Canvas, x: number, y: number, r: number, alpha: number) {
+  'worklet';
+  c.drawCircle(x, y, r, paint(sk, '#FFC857', alpha));
+  c.drawCircle(x, y, r, paint(sk, '#B8741A', alpha, STROKE, Math.max(1.5, r * 0.14)));
+  const q = sk.PathBuilder.Make();
+  for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? r * 0.28 : r * 0.62; if (k === 0) q.moveTo(x + Math.cos(a) * d, y + Math.sin(a) * d); else q.lineTo(x + Math.cos(a) * d, y + Math.sin(a) * d); }
+  q.close();
+  c.drawPath(q.build(), paint(sk, '#FFF3C4', alpha));
+}
+
+/** First lesson: the groups that may not be touched yet are dark, the lit one glows. Drawn on top of the (cached) singer strip, so it costs a few rectangles per frame. */
+function drawLessonVeil(sk: SkiaApi, c: Canvas, s: SceneInput) {
+  'worklet';
+  const { layout: l, stage } = s, z = s.lesson!;
+  if (!z.lit) return;
+  const per = stage.creatures.length / 4;
+  const k = Math.min(1, Math.max(0, (s.timeMs - z.since) / 350));
+  const pulse = s.reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(s.timeMs / 260);
+  c.save();
+  c.clipRect(rect(0, l.tray.y + 2, l.W, l.tray.h), 1, true);
+  [0, 1, 2, 3].forEach((g) => {
+    const a = l.slotPos[g * per]!, b = l.slotPos[g * per + per - 1]!;
+    const layer = stage.creatures[g * per]!.layer;
+    const x = a.x - l.slot * 0.55 - s.scrollX, y = l.tray.y + l.tray.h * 0.08, w = b.x - a.x + l.slot * 1.1, h = l.tray.h * 0.84;
+    if (layer === z.lit) {
+      c.drawRRect(sk.RRectXY(rect(x, y, w, h), 22, 22), paint(sk, '#FFE066', (0.1 + 0.1 * pulse) * k));
+      c.drawRRect(sk.RRectXY(rect(x, y, w, h), 22, 22), paint(sk, '#FFE066', (0.55 + 0.45 * pulse) * k, STROKE, 4));
+    } else c.drawRRect(sk.RRectXY(rect(x - 2, y - 2, w + 4, h + 4), 24, 24), paint(sk, '#05031A', layer === z.prev ? 0.74 * k : 0.74));
+  });
+  c.restore();
+}
+
+/** First lesson: four coin slots at the top, one per group; a coin flies in from every singer that lands. */
+function drawLessonCounter(sk: SkiaApi, c: Canvas, s: SceneInput) {
+  'worklet';
+  const l = s.layout, z = s.lesson!;
+  const gap = 42 * l.u, r = 15 * l.u, cx = l.W / 2, y = z.topY;
+  const FLY = 850;
+  const layers = ['drums', 'bass', 'melody', 'voice'] as const;
+  c.drawRRect(sk.RRectXY(rect(cx - 2 * gap, y - r - 8, 4 * gap, 2 * r + 16), r + 8, r + 8), paint(sk, '#1B1340', 0.8));
+  c.drawRRect(sk.RRectXY(rect(cx - 2 * gap, y - r - 8, 4 * gap, 2 * r + 16), r + 8, r + 8), paint(sk, '#FFFFFF', 0.28, STROKE, 2));
+  for (let i = 0; i < 4; i++) {
+    const x = cx + (i - 1.5) * gap;
+    let flying = false, pop = 0;
+    if (!s.reduceMotion) {
+      for (const f of z.fx) {
+        if (f.slot !== i) continue;
+        const age = s.timeMs - f.t0;
+        if (age < FLY) {
+          flying = true;
+          const e = Math.max(0, age) / FLY, ee = e * e * (3 - 2 * e);
+          const fx = f.x + (x - f.x) * ee, fy = f.y + (y - f.y) * ee - Math.sin(ee * Math.PI) * l.size * 0.5;
+          drawCoin(sk, c, fx, fy, r * (1.5 - 0.5 * ee), 1);
+        } else if (age < FLY + 300) pop = Math.sin(((age - FLY) / 300) * Math.PI);
+      }
+    }
+    if (i < z.done && !flying) drawCoin(sk, c, x, y, r * (1 + 0.45 * pop), 1);
+    else {
+      c.drawCircle(x, y, r, paint(sk, '#000000', 0.35));
+      c.drawCircle(x, y, r, paint(sk, LAYER_COLORS[layers[i]!], i === z.done ? 0.95 : 0.5, STROKE, i === z.done ? 3.5 : 2.5));
+    }
+  }
 }
 
 /** Draws a pre-rasterised image 1:1 in device pixels (it was rendered at pixelRatio x the layout size). */
@@ -447,6 +529,7 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
     if (s.scrollX > 4) c.drawRect(rect(0, l.tray.y + 2, 40, l.tray.h), gradientPaint(sk, 0, 0, 40, 0, [fadeC, '#00000000'], 0.95));
     if (s.scrollX < l.scrollMax - 4) c.drawRect(rect(l.W - 40, l.tray.y + 2, 40, l.tray.h), gradientPaint(sk, l.W - 40, 0, l.W, 0, ['#00000000', fadeC], 0.95));
   } else if (s.trayImage) drawRaster(c, s.trayImage, s.pixelRatio ?? 1); else if (s.trayPicture) c.drawPicture(s.trayPicture); else drawTray(sk, c, s);
+  if (s.lesson) drawLessonVeil(sk, c, s);
   c.restore(); // end of the sliding tray
   if (trayK < 0.98) {
     const hy = l.H - 34 * (1 - trayK);
@@ -475,6 +558,7 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
     drawCreature(sk, c, cr, d.x, d.y + l.size * h * 0.5, l.size * TUNING.dragLift, { ...IDLE_POSE, mouth: 0.4, tilt: 0.06 });
   }
 
+  if (s.lesson) drawLessonCounter(sk, c, s);
   if (s.hint && s.drags.length === 0) drawHintHand(sk, c, s, byId);
   if (s.coach && s.drags.length === 0 && !s.popup) drawCoachHand(sk, c, s, s.coach, byId);
 }
