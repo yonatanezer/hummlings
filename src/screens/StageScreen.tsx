@@ -11,7 +11,7 @@ import { randomBand } from '../core/surprise';
 import { AccentContext } from '../ui/IconButton';
 import { coachKind, pickSlot, pickSpot, pickTapSpot, type CoachCue } from '../core/coach';
 import { audibleIds, emptyStage, nextFreeSpot, swapSpot } from '../core/stageState';
-import { LESSON_FINISH_MS, LESSON_LAYERS, LESSON_LEVELS, LESSON_SCROLL_WAIT_MS, QUIET_BELOW, level2Cue, level2Step, level3Cue, level3Step, levelBand, lessonCue, lessonLit, lessonPickable, lessonScrollTarget, lessonStep, lessonSteps, lessonTotalCoins, levelKey, nextLevel, type LessonFx, type LessonLevel } from '../core/lesson';
+import { LESSON_FINISH_MS, LESSON_LAYERS, LESSON_SCROLL_WAIT_MS, QUIET_BELOW, level2Cue, level2Step, level3Cue, level3Step, levelBand, levelMapStates, worldStart, lessonCue, lessonLit, lessonPickable, lessonScrollTarget, lessonStep, lessonSteps, lessonTotalCoins, levelKey, type LessonFx, type LessonLevel } from '../core/lesson';
 import { autoName, defaultNameNumber, warnBars, type Song } from '../core/timeline';
 import { TUNING, barSec } from '../core/tuning';
 import { exportSong, saveSongToDevice, type ExportResult } from '../app/exportSong';
@@ -23,6 +23,7 @@ import { StageHud } from '../ui/StageHud';
 import { recallBand, rememberBand } from '../app/bandMemory';
 import { ComboBook, GOAL_ICON } from './ComboBook';
 import { LessonDone } from '../ui/LessonDone';
+import { LevelMap } from '../ui/LevelMap';
 import { STAGES, FREE_STAGE_IDS } from '../content';
 import type { GoalId } from '../core/goals';
 import { Icon, type IconName } from '../ui/Icon';
@@ -118,8 +119,8 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
   const [recordCue, setRecordCue] = useState(false); // the record button pulses (the coach's last step)
   const lastTouch = useRef(Date.now()); // the coach waits for a pause before it shows the next step
   // Level 1 of the world: the guided first lesson (core/lesson.ts). 'play' = running, 'done' = the success card is up, null = free play.
-  const [lesson, setLesson] = useState<'play' | 'done' | null>(() => (nextLevel(stage.id, progress.lessonsDone) ? 'play' : null));
-  const [level, setLevel] = useState<LessonLevel>(() => nextLevel(stage.id, progress.lessonsDone) ?? 1); // which level runs: 1 = four groups, 2 = my band
+  const [lesson, setLesson] = useState<'map' | 'play' | 'done' | null>(() => worldStart(stage.id, progress.lessonsDone)); // 'map' = the level map is up
+  const [level, setLevel] = useState<LessonLevel>(1); // which level runs: 1 = four groups, 2 = my band, 3 = volume
   const lessonRef = useRef(lesson);
   lessonRef.current = lesson;
   const levelRef = useRef(level);
@@ -280,10 +281,12 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     }
     publishLesson();
   };
-  const skipLesson = () => {
+  /** Leaves the level (without finishing it) for the level map. */
+  const toMap = () => {
     clearTimeout(finishTimer.current);
-    update((p) => ({ ...p, lessonsDone: [...p.lessonsDone, ...LESSON_LEVELS.map((l) => levelKey(stage.id, l)).filter((k) => !p.lessonsDone.includes(k))] }));
-    setLesson(null);
+    session.dispatch({ kind: 'endSolo' });
+    sv.popup.value = null; sv.coach.value = null;
+    setLesson('map');
   };
   /** Levels 2 and 3 start with a ready-made band that hops on, already playing. */
   function placeBand() {
@@ -457,7 +460,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
   };
   const touchFn = (kind: 'start' | 'move' | 'end' | 'cancel') => (e: GestureResponderEvent) => {
     // Lift/cancel events must always be handled: dropping them while paused left a creature stuck in the "dragged" list, drawn big and forever.
-    if ((!ready || paused || lessonRef.current === 'done') && kind !== 'end' && kind !== 'cancel') return;
+    if ((!ready || paused || lessonRef.current === 'done' || lessonRef.current === 'map') && kind !== 'end' && kind !== 'cancel') return;
     lastTouch.current = Date.now();
     if (kind === 'start' && tracker.activeCount === 0 && sv.drags.value.length) sv.drags.value = [];
     if (kind === 'start' && !reduceMotion) { const t0 = sv.timeMs.value, q = e.nativeEvent.changedTouches[0]; if (q) sv.taps.value = [...sv.taps.value.filter((x) => t0 - x.t0 < 1400), { x: q.pageX, y: q.pageY, t0, kind: 'press' }]; }
@@ -544,7 +547,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
       {lesson === 'play' && (
         <View pointerEvents="box-none" style={[styles.top, { top: insets.top + 6, left: insets.left + 10, right: insets.right + 10, flexDirection: row, justifyContent: 'space-between' }]}>
           <IconButton icon="back" label={t('a11y.back')} onPress={onBack} />
-          {progress.lessonsDone.length > 0 ? <IconButton icon="next" label={t('a11y.lessonSkip')} onPress={skipLesson} /> : <View />}
+          {progress.lessonsDone.length > 0 ? <IconButton icon="close" label={t('a11y.levelMap')} onPress={toMap} /> : <View />}
         </View>
       )}
       {lesson !== 'play' && <View pointerEvents="box-none" style={[styles.top, { top: insets.top + 6, left: insets.left + 10, right: insets.right + 10, flexDirection: row }]}>
@@ -682,7 +685,8 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
           </View>
         </View>
       )}
-      {lesson === 'done' && <LessonDone level={level} onNext={() => { const nx = nextLevel(stage.id, progressRef.current.lessonsDone); if (nx !== null && nx > levelRef.current) startLevel(nx); else setLesson(null); }} />}
+      {lesson === 'done' && <LessonDone level={level} onNext={toMap} />}
+      {lesson === 'map' && <LevelMap levels={levelMapStates(stage.id, progress.lessonsDone)} coins={progress.coins} onPick={(n) => startLevel(n as LessonLevel)} onFree={() => setLesson(null)} onBack={onBack} />}
       {gate}
       {paused && (
         <View style={styles.overlay}>

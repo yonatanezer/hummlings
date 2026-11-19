@@ -19,6 +19,20 @@ export type LessonLevel = 1 | 2 | 3;
 export const LESSON_LEVELS: readonly LessonLevel[] = [1, 2, 3];
 /** What `progress.lessonsDone` holds for a finished level: the bare world id for level 1 (as it always was), `world:2` for level 2. */
 export const levelKey = (stageId: string, level: LessonLevel): string => (level === 1 ? stageId : `${stageId}:${level}`);
+export type LevelState = 'done' | 'current' | 'locked';
+/** The circles of a world's map: finished ones (can be played again), the one that waits (the first not finished), and the ones not open yet. */
+export function levelMapStates(stageId: string, done: readonly string[]): { level: LessonLevel; state: LevelState }[] {
+  return LESSON_LEVELS.map((level, i) => {
+    const finished = done.includes(levelKey(stageId, level));
+    const open = i === 0 || done.includes(levelKey(stageId, LESSON_LEVELS[i - 1]!));
+    return { level, state: finished ? 'done' : open ? 'current' : 'locked' };
+  });
+}
+/** What entering a world shows: its first level straight away when nothing was played yet (there is nothing to choose), the map after that, nothing for a world without levels. */
+export function worldStart(stageId: string, done: readonly string[]): 'play' | 'map' | null {
+  if (!hasLesson(stageId)) return null;
+  return LESSON_LEVELS.some((l) => done.includes(levelKey(stageId, l))) ? 'map' : 'play';
+}
 /** The first level of this world that is not finished yet (null: all done, or the world has no levels). */
 export function nextLevel(stageId: string, done: readonly string[]): LessonLevel | null {
   if (!hasLesson(stageId)) return null;

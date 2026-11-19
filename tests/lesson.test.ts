@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { STAGES } from '../src/content';
 import { computeLayout } from '../src/core/layout';
 import { GestureTracker, type World } from '../src/core/gestures';
-import { hasLesson, LEVEL3_SPOTS, level3Band, level3Cue, level3Step, levelBand, LEVEL2_SPOTS, level2Band, level2Cue, level2Step, lessonPickable, lessonSteps, levelKey, nextLevel, LESSON_STEPS, lessonCanPick, lessonCue, lessonDirection, lessonLit, lessonScrollTarget, lessonStep, lessonTotalCoins } from '../src/core/lesson';
+import { levelMapStates, worldStart, hasLesson, LEVEL3_SPOTS, level3Band, level3Cue, level3Step, levelBand, LEVEL2_SPOTS, level2Band, level2Cue, level2Step, lessonPickable, lessonSteps, levelKey, nextLevel, LESSON_STEPS, lessonCanPick, lessonCue, lessonDirection, lessonLit, lessonScrollTarget, lessonStep, lessonTotalCoins } from '../src/core/lesson';
 
 const stage = STAGES[0]!;
 const first = (layer: string) => stage.creatures.find((c) => c.layer === layer)!.id;
@@ -224,5 +224,21 @@ describe('level 3: volume', () => {
     const t3 = new GestureTracker();
     t3.start(3, sp, 0, w);
     expect(t3.tick(5000, w)).toEqual([{ type: 'longPress', creatureId: band[0] }]);
+  });
+});
+
+describe('level map', () => {
+  it('shows finished circles, the one that waits and the ones not open yet', () => {
+    expect(levelMapStates('pond', []).map((x) => x.state)).toEqual(['current', 'locked', 'locked']);
+    expect(levelMapStates('pond', ['pond']).map((x) => x.state)).toEqual(['done', 'current', 'locked']);
+    expect(levelMapStates('pond', ['pond', 'pond:2', 'pond:3']).map((x) => x.state)).toEqual(['done', 'done', 'done']);
+    expect(levelMapStates('pond', ['pond:2']).map((x) => x.state)).toEqual(['current', 'done', 'current']); // an older save: the order is only a guide
+  });
+  it('a new player goes straight into level 1, everyone else sees the map, other worlds have none', () => {
+    expect(worldStart('pond', [])).toBe('play');
+    expect(worldStart('pond', ['pond'])).toBe('map');
+    expect(worldStart('pond', ['pond:3'])).toBe('map');
+    expect(worldStart('fair', [])).toBeNull();
+    expect(worldStart('fair', ['pond'])).toBeNull();
   });
 });

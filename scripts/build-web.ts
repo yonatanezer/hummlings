@@ -210,6 +210,22 @@ body.lesson #sideL,body.lesson #sideR,body.lesson #bar{visibility:hidden!importa
 #lessonNext{width:76px;height:76px;min-height:0;padding:0;border-radius:50%;display:grid;place-items:center;border:3.5px solid #FF4D6D;background:#1B1340;opacity:0;animation:lfade .3s 1.9s forwards}
 #lessonNext svg{width:42px;height:42px;stroke:#fff;fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
 @keyframes lpop{to{transform:scale(1)}}@keyframes lfade{to{opacity:1}}
+/*levels*/#levelMap{position:fixed;inset:0;z-index:9;display:grid;place-items:center;background:rgba(10,6,32,.78);transition:opacity .3s}
+.lm-coins{position:fixed;top:max(12px,env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:rgba(27,19,64,.92);border:2px solid #FFC857;border-radius:24px;padding:6px 16px}
+.lm-coins b{color:#FFE066;font-size:24px}
+.lm-path{display:flex;align-items:center}
+.lm-link{width:30px;height:7px;border-radius:4px;margin:0 4px;background:rgba(255,255,255,.22)}.lm-link.done{background:#FFC857}
+.lm-node{position:relative;width:80px;height:80px;min-height:0;padding:0;border-radius:50%;display:grid;place-items:center;border:4px solid #B8741A;background:#FFE8A3;color:#3A2400;font-size:36px;font-weight:900;transform:scale(0);animation:lpop .55s cubic-bezier(.3,1.6,.5,1) forwards}
+.lm-node.done{background:#FFC857}
+.lm-node.locked{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3);color:#fff;cursor:default}
+.lm-node.locked svg{width:34px;height:34px;stroke:#fff;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.lm-node.current::before{content:"";position:absolute;inset:-9px;border-radius:50%;border:4px solid #FFE066;animation:lring 1.3s ease-in-out infinite}
+.lm-node.free{background:#5FE3C0;border-color:#1E8F72}.lm-node.free svg{width:38px;height:38px;fill:#10282A;stroke:none}
+.lm-badge{position:absolute;right:-4px;bottom:-4px;width:26px;height:26px;border-radius:50%;background:#5FE3C0;border:2px solid #10282A;display:grid;place-items:center}.lm-badge svg{width:15px;height:15px;stroke:#10282A;fill:none;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+.lm-back{position:fixed;top:max(10px,env(safe-area-inset-top,0px));left:max(10px,env(safe-area-inset-left,0px));width:48px;height:48px;min-height:0;padding:0;border-radius:50%;display:grid;place-items:center;background:rgba(27,19,64,.92)}
+.lm-back svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+@keyframes lring{0%,100%{opacity:.35;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
+@media (max-height:380px){.lm-node{width:64px;height:64px;font-size:30px}}
 @media (max-height:380px){.lcard{padding:10px 22px;gap:4px}.lcard h2{font-size:22px}#lessonNext{width:62px;height:62px}}
 </style>
 <div id="wrap"><canvas id="game" aria-label="Hummlings stage"></canvas></div>
@@ -236,7 +252,8 @@ body.lesson #sideL,body.lesson #sideR,body.lesson #bar{visibility:hidden!importa
 <div id="playbar" class="hide"><button id="stopPlay" class="ic" aria-label="Stop playback"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor" stroke="none"/></svg><span style="display:inline">Playing a song</span></button></div>
 <div id="help" class="ov hide" role="dialog" aria-label="How to play"><div class="sheet"><button class="ic x" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><h2>How to play</h2><video id="helpVid" muted loop playsinline autoplay width="560" height="308"></video><p id="helpTxt"></p><div class="nav"><button id="hPrev" class="ic" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span id="hDots"></span><button id="hNext" class="ic" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></div></div></div>
 <button id="tl" class="tarrow hide" aria-label="Scroll left"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><button id="tr" class="tarrow hide" aria-label="Scroll right"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-<button id="lessonSkip" class="ic hide" aria-label="Skip the lesson" title="Skip the lesson"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+<button id="lessonSkip" class="ic hide" aria-label="Level map" title="Level map"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+<div id="levelMap" class="hide" role="dialog"></div>
 <div id="lessonDone" class="hide" role="dialog"></div>
 <div id="rotate" class="hide"><svg viewBox="0 0 96 96" width="132" height="132"><rect class="ph" x="12" y="30" width="22" height="38" rx="6" opacity=".45"/><path class="ar" d="M22 22A34 34 0 0 1 66 22"/><path class="ar" d="M58 15l9 7-10 5"/><rect x="50" y="46" width="38" height="22" rx="6"/><path d="M82 57h.01" stroke-width="5"/></svg></div>
 <div id="loading" class="hide"><p>Loading music…</p></div>
