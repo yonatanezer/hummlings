@@ -8,7 +8,7 @@ import type { LessonView } from '../../core/lesson';
 import type { ScreenView } from '../../core/levelscreens';
 import { IDLE_POSE, bodyDims, drawCreature, type Pose } from './creature';
 import { gradientPaint, mix, freshPaint, paint, radialPaint, STROKE, type Canvas, type SkiaApi, rect } from './common';
-import { coinArt, drawFloorRing, drawHand, sparkle, unit, drawLevelMapScreen, drawDoneScreen, drawIntroScreen, drawBurstRing } from './levelart';
+import { coinArt, drawFloorRing, drawHand, qa, sparkle, unit, drawLevelMapScreen, drawDoneScreen, drawIntroScreen, drawBurstRing } from './levelart';
 import { drawCelebration, danceOffset } from './celebrations';
 import { drawComboBanner, drawDecor, drawFloatingNotes, drawScenery, drawTaps, type TapEffect } from './scenery';
 import { popupRects } from '../../core/layout';
@@ -535,8 +535,10 @@ export function drawScene(sk: SkiaApi, c: Canvas, s: SceneInput) {
       const fx = l.W * (0.08 + 0.84 * unit(i)) + Math.sin(s.timeMs / 1300 + i * 2.1) * 22;
       const fy = l.stageH * (0.22 + 0.42 * unit(i + 30)) + Math.cos(s.timeMs / 1700 + i) * 14;
       const tw = 0.5 + 0.5 * Math.sin(s.timeMs / 420 + i * 1.7), col = mix(LAYER_COLORS[(['drums', 'bass', 'melody', 'voice'] as const)[i % 4]!], '#FFFFFF', 0.5);
-      c.drawCircle(fx, fy, 9, radialPaint(sk, fx, fy, 9, [col, '#00000000'], 0.5 * tw * born));
-      c.drawCircle(fx, fy, 1.8, paint(sk, '#FFFFFF', 0.9 * tw * born));
+      const fa = qa(tw * born);
+      c.drawCircle(fx, fy, 8, paint(sk, col, 0.16 * fa));
+      c.drawCircle(fx, fy, 4.5, paint(sk, col, 0.34 * fa));
+      c.drawCircle(fx, fy, 1.8, paint(sk, '#FFFFFF', fa));
     }
   }
   if (s.celebration) drawCelebration(sk, c, s.celebration.celebrationId, l, stage.palette, s.timeMs, s.beat - s.celebration.startBeat, s.reduceMotion);

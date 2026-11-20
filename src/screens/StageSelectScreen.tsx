@@ -93,9 +93,11 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
   // Centred on what the eye sees: the camera cut-out (left inset) and the navigation bar (right inset) both eat space, so the left inset is mirrored on the right.
   const availW = (areaW || width) - insets.left * 2 - insets.right - 32;
   const fitW = (availW - GAP * (STAGES.length - 1)) / STAGES.length;
-  const cardW = Math.min(Math.max(fitW, 110), 220);
+  const cardW = Math.min(Math.max(fitW, 110), width >= 900 && height >= 640 ? 250 : 220); // a tablet: bigger cards
   const nameBlock = 14 + 12 + 24; // one-line name, dots, gaps and the float of the card
   const cardH = Math.max(52, Math.min(height - cardsTop - 8 - nameBlock, cardW * 0.92));
+  const spare = height - cardsTop - (cardH + 46); // room left under the cards: a tablet puts them lower, so the bottom is not empty
+  const cardsY = cardsTop + Math.max(0, Math.min(spare * 0.5, height * 0.12));
   const row = rtl ? 'row-reverse' : 'row';
   const fits = STAGES.length * cardW + (STAGES.length - 1) * GAP <= availW;
   const Wrap = (fits ? View : ScrollView) as ElementType;
@@ -178,7 +180,7 @@ export function StageSelectScreen({ onPick, onLocked, onSettings, onSongs, onHel
           <IconButton icon="gear" art={HOME_ART.btnGear} size={60} label={t('a11y.settings')} caption={t('ui.settings')} onPress={onSettings} />
         </View>
       </View>
-      <View style={{ position: 'absolute', top: cardsTop, left: 0, right: 0, paddingLeft: insets.left + 16, paddingRight: insets.left + insets.right + 16 }} onLayout={(e) => setAreaW(e.nativeEvent.layout.width)}>
+      <View style={{ position: 'absolute', top: cardsY, left: 0, right: 0, paddingLeft: insets.left + 16, paddingRight: insets.left + insets.right + 16 }} onLayout={(e) => setAreaW(e.nativeEvent.layout.width)}>
         <Wrap {...wrapProps}>
           {STAGES.map((st, i) => {
             const locked = !FREE_STAGE_IDS.includes(st.id) && !progress.unlocked;

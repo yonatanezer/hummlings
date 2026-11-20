@@ -34,8 +34,10 @@ export function initHome(o: {
     const cardsTop = geo.top + geo.height + 2;
     const availW = W - 32;
     const fitW = (availW - GAP * (stages.length - 1)) / stages.length;
-    const cardW = Math.min(Math.max(fitW, 110), 220);
+    const cardW = Math.min(Math.max(fitW, 110), W >= 900 && H >= 640 ? 250 : 220); // a tablet: bigger cards
     const cardH = Math.max(52, Math.min(H - cardsTop - 8 - 50, cardW * 0.92));
+    const spare = H - cardsTop - (cardH + 46); // room left under the cards: a tablet puts them lower, so the screen is not empty at the bottom
+    const cardsY = cardsTop + Math.max(0, Math.min(spare * 0.5, H * 0.12));
     const artW = Math.min(cardW, cardH * 0.99), artH = artW * 0.99;
     const fits = stages.length * cardW + (stages.length - 1) * GAP <= availW;
     const logoH = 92, logoW = logoH * (560 / 195);
@@ -49,7 +51,7 @@ export function initHome(o: {
     ui.innerHTML =
       `<div id="hlogo" role="img" aria-label="${t('app.name')}" style="left:${(W - logoW) / 2}px;top:6px;width:${logoW}px;height:${logoH}px">${img('logo', `width:${logoW}px;height:${logoH}px`)}<div class="rib" style="left:${logoW * 0.17}px;right:${logoW * 0.17}px;top:${logoH * 0.69}px;height:${logoH * 0.17}px"><span>${t('app.subtitle')}</span></div></div>` +
       btn('hbSongs', 'btn-note', t('a11y.songs'), t('ui.songs'), 'left:10px;top:6px') + btn('hbHelp', 'btn-help', t('a11y.help'), t('ui.help'), 'right:10px;top:6px') +
-      `<div id="hcards" style="top:${cardsTop}px;justify-content:${fits ? 'center' : 'flex-start'};gap:${GAP}px">` +
+      `<div id="hcards" style="top:${cardsY}px;justify-content:${fits ? 'center' : 'flex-start'};gap:${GAP}px">` +
       stages.map((st, i) => {
         const found = o.foundOf(i), total = st.combos.length;
         const hint = firstVisit && i === 0;

@@ -27,7 +27,7 @@ export function LevelMap({ levels, coins, onPick, onFree, onBack }: {
   const { rtl } = useLang();
   const L = mapLayout(width, height, levels.length, rtl);
   return (
-    <View style={StyleSheet.absoluteFill} accessibilityViewIsModal accessibilityLabel={t('a11y.levelMap')} pointerEvents="box-none">
+    <View style={StyleSheet.absoluteFill} accessibilityViewIsModal accessibilityLabel={t('a11y.levelMap')}>
       <Pressable accessibilityRole="button" accessibilityLabel={t('a11y.back')} hitSlop={12} onPress={() => { hapticLight(); onBack(); }}
         style={{ position: 'absolute', left: L.back.x - 28, top: L.back.y - 28, width: 56, height: 56 }} />
       <View accessible accessibilityLabel={`${coins}`} pointerEvents="none" style={{ position: 'absolute', left: L.coins.x + 44, top: L.coins.y, width: L.coins.w - 56, height: L.coins.h, justifyContent: 'center' }}>

@@ -180,7 +180,8 @@ export function SceneCanvas({ sv, width, height }: { sv: SceneValues; width: num
     };
     const rec = Skia.PictureRecorder();
     const canvas = rec.beginRecording(Skia.XYWHRect(0, 0, width, height));
-    drawScene(Skia, canvas, input);
+    // A drawing error must never leave the recorder unfinished (its canvas is then freed half-built, which crashed the app natively): draw what we can, always finish.
+    try { drawScene(Skia, canvas, input); } catch (e) { console.warn('[scene] draw failed', String(e)); }
     const r = rec.finishRecordingAsPicture();
     return r;
   });

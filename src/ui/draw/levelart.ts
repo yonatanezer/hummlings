@@ -17,6 +17,11 @@ export function unit(i: number): number {
   const v = Math.sin(i * 127.1 + 311.7) * 43758.5453;
   return v - Math.floor(v);
 }
+/** Alpha in steps of 1/16: the shared paint cache is keyed by alpha, and a fade through every value would allocate a new native paint on every frame. */
+export function qa(a: number): number {
+  'worklet';
+  return Math.round(Math.min(1, Math.max(0, a)) * 16) / 16;
+}
 /** 0..1 ease-out. */
 function ease(k: number): number {
   'worklet';
@@ -60,7 +65,7 @@ export function sparkle(sk: SkiaApi, c: Canvas, x: number, y: number, R: number,
   const q = sk.PathBuilder.Make();
   q.moveTo(x, y - R); q.lineTo(x + R * 0.2, y - R * 0.2); q.lineTo(x + R, y); q.lineTo(x + R * 0.2, y + R * 0.2);
   q.lineTo(x, y + R); q.lineTo(x - R * 0.2, y + R * 0.2); q.lineTo(x - R, y); q.lineTo(x - R * 0.2, y - R * 0.2); q.close();
-  c.drawPath(q.build(), paint(sk, color, alpha));
+  c.drawPath(q.build(), paint(sk, color, qa(alpha)));
 }
 
 /** A glossy, button-like disc: a shadow underneath, a dark rim, a lit face and a highlight. */
@@ -74,8 +79,9 @@ function disc3d(sk: SkiaApi, c: Canvas, x: number, y: number, r: number, top: st
 }
 
 /** A gold star with a bevel and a gloss. */
-function goldStar(sk: SkiaApi, c: Canvas, x: number, y: number, R: number, alpha: number) {
+function goldStar(sk: SkiaApi, c: Canvas, x: number, y: number, R: number, alpha0: number) {
   'worklet';
+  const alpha = qa(alpha0);
   c.drawPath(starPath(sk, x, y + R * 0.09, R * 1.06, R * 0.5), paint(sk, '#9A5E0E', alpha));
   c.drawPath(starPath(sk, x, y, R, R * 0.48), gradientPaint(sk, x, y - R, x, y + R, ['#FFEC9A', '#FFB62E'], alpha));
   c.drawPath(starPath(sk, x, y, R, R * 0.48), paint(sk, '#FFF7D0', 0.55 * alpha, STROKE, Math.max(1, R * 0.06)));
@@ -83,8 +89,9 @@ function goldStar(sk: SkiaApi, c: Canvas, x: number, y: number, R: number, alpha
 }
 
 /** A gold coin with a star and a gloss; `shine` 0..1 sweeps a glint across it. */
-export function coinArt(sk: SkiaApi, c: Canvas, x: number, y: number, r: number, alpha: number, shine: number) {
+export function coinArt(sk: SkiaApi, c: Canvas, x: number, y: number, r: number, alpha0: number, shine: number) {
   'worklet';
+  const alpha = qa(alpha0);
   c.drawCircle(x, y + r * 0.1, r, paint(sk, '#9A5E0E', alpha));
   c.drawCircle(x, y, r, gradientPaint(sk, x, y - r, x, y + r, ['#FFE48A', '#F5A71C'], alpha));
   c.drawCircle(x, y, r * 0.74, paint(sk, '#B8741A', 0.6 * alpha, STROKE, Math.max(1.2, r * 0.07)));
@@ -94,8 +101,9 @@ export function coinArt(sk: SkiaApi, c: Canvas, x: number, y: number, r: number,
 }
 
 /** The coach's hand: a cartoon pointing hand whose finger tip is at (x, y). `press` 0..1 squeezes it; `u` scales it. */
-export function drawHand(sk: SkiaApi, c: Canvas, x0: number, y0: number, u: number, press: number, alpha: number, floorY: number) {
+export function drawHand(sk: SkiaApi, c: Canvas, x0: number, y0: number, u: number, press: number, alpha0: number, floorY: number) {
   'worklet';
+  const alpha = qa(alpha0);
   if (alpha <= 0.01) return;
   const x = x0, y = Math.min(y0, floorY - 68 * u); // the hand hangs below its finger tip: near the bottom edge the tip moves up so the hand is not cut off
   const s = u * (1 - 0.07 * press);
@@ -127,7 +135,7 @@ export function drawHand(sk: SkiaApi, c: Canvas, x0: number, y0: number, u: numb
 export function drawBurstRing(sk: SkiaApi, c: Canvas, x: number, y: number, R: number, k: number, color: string) {
   'worklet';
   if (k <= 0 || k >= 1) return;
-  c.drawCircle(x, y, R * ease(k), paint(sk, color, 0.7 * (1 - k), STROKE, 4 * (1 - k) + 1));
+  c.drawCircle(x, y, R * ease(k), paint(sk, color, qa(0.7 * (1 - k)), STROKE, Math.round(4 * (1 - k)) + 1));
 }
 
 /** A ring on the floor that grows and fades (a singer lands): k = 0..1. */
@@ -135,7 +143,7 @@ export function drawFloorRing(sk: SkiaApi, c: Canvas, x: number, y: number, R: n
   'worklet';
   if (k <= 0 || k >= 1) return;
   const e = ease(k);
-  c.drawOval(rect(x - R * e, y - R * e * 0.24, 2 * R * e, R * e * 0.48), paint(sk, color, 0.75 * (1 - k), STROKE, 4 * (1 - k) + 1));
+  c.drawOval(rect(x - R * e, y - R * e * 0.24, 2 * R * e, R * e * 0.48), paint(sk, color, qa(0.75 * (1 - k)), STROKE, Math.round(4 * (1 - k)) + 1));
 }
 
 /** The night of the pond for the map: sky, moon, stars, water, lily pads, reeds. */

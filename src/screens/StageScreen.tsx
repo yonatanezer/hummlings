@@ -575,6 +575,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     return () => clearTimeout(timer);
   }, [lesson, run]);
 
+  const chrome = lesson !== 'play' && lesson !== 'map' && lesson !== 'done'; // the usual buttons and HUD: not during a level, nor over the map or the success card
   const onStageCount = session.state.spots.filter(Boolean).length;
   const row = rtl ? 'row-reverse' : 'row';
 
@@ -590,7 +591,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
           {progress.lessonsDone.length > 0 ? <IconButton icon="close" label={t('a11y.levelMap')} onPress={toMap} /> : <View />}
         </View>
       )}
-      {lesson !== 'play' && <View pointerEvents="box-none" style={[styles.top, { top: insets.top + 6, left: insets.left + 10, right: insets.right + 10, flexDirection: row }]}>
+      {chrome && <View pointerEvents="box-none" style={[styles.top, { top: insets.top + 6, left: insets.left + 10, right: insets.right + 10, flexDirection: row }]}>
         <IconButton icon="back" label={t('a11y.back')} onPress={onBack} />
         <Pressable style={styles.world} accessibilityRole="button" accessibilityLabel={t(stage.nameKey as StringKey)} hitSlop={6} onPress={() => { if (!recording) setWorlds((v) => !v); }}><WorldIcon stageId={stage.id} size={34} /></Pressable>
         <View style={{ flex: 1, alignItems: 'center' }}><StageHud stage={stage} state={session.state} discovered={progress.discoveredCombos} compact={width < 700} row={row} /></View>
@@ -606,7 +607,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
           <IconButton icon="help" label={t('a11y.help')} caption={t('ui.help')} onPress={onHelp} />
         </View>
       </View>}
-      {lesson !== 'play' && <View pointerEvents="box-none" style={[styles.clear, { left: insets.left + 14, top: layout.stageH - 84 }]}>
+      {chrome && <View pointerEvents="box-none" style={[styles.clear, { left: insets.left + 14, top: layout.stageH - 84 }]}>
         <IconButton icon="dice" label={t('a11y.surprise')} caption={t('ui.surprise')} onPress={() => {
           const l = layoutRef.current;
           for (const id of session.state.spots) if (id) goBackAll(id, l.spots[session.state.spots.indexOf(id)]!);
@@ -619,7 +620,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
           syncScene();
         }} />
       </View>}
-      {lesson !== 'play' && <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 14, top: layout.stageH - 84 }]}>
+      {chrome && <View pointerEvents="box-none" style={[styles.clear, { right: insets.right + 14, top: layout.stageH - 84 }]}>
         {onStageCount > 0 && <IconButton icon="sweep" label={t('a11y.clear')} caption={t('ui.clear')} onPress={() => {
           const l = layoutRef.current;
           for (const id of session.state.spots) if (id) { const s = session.state.spots.indexOf(id); goBackAll(id, l.spots[s]!); }
@@ -640,7 +641,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
                 onPress={() => (on ? (session.dispatch({ kind: 'remove', creatureId: c.id }), syncScene()) : apply({ type: 'trayTap', creatureId: c.id }))} />;
             })}
           </ScrollView>
-          {lesson !== 'play' && session.state.spots.map((id, spot) => {
+          {chrome && session.state.spots.map((id, spot) => {
             if (!id) return null;
             const c = stage.creatures.find((q) => q.id === id)!;
             const sp = layout.spots[spot]!;
@@ -680,7 +681,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
         </View>
       )}
       {lesson === 'play' && lessonDir !== 0 && <TrayArrow side={lessonDir > 0 ? 'right' : 'left'} y={layout.tray.y + layout.tray.h / 2} offset={(lessonDir > 0 ? insets.right : insets.left) + 6} label={t(lessonDir > 0 ? 'a11y.trayRight' : 'a11y.trayLeft')} onPress={scrollToLit} />}
-      {lesson !== 'play' && (edges.left || edges.right) && (
+      {chrome && (edges.left || edges.right) && (
         <>
           {edges.left && <TrayArrow side="left" y={layout.tray.y + layout.tray.h / 2} offset={insets.left + 6} label={t('a11y.trayLeft')} onPress={() => scrollTrayTo(sv.scrollX.value - layout.W * 0.7)} />}
           {edges.right && <TrayArrow side="right" y={layout.tray.y + layout.tray.h / 2} offset={insets.right + 6} label={t('a11y.trayRight')} onPress={() => scrollTrayTo(sv.scrollX.value + layout.W * 0.7)} />}

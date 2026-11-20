@@ -19,10 +19,14 @@ export interface ScreenView {
 export interface Disc { x: number; y: number; r: number }
 export interface Box { x: number; y: number; w: number; h: number }
 
-const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
+function clamp(v: number, lo: number, hi: number): number {
+  'worklet';
+  return Math.min(hi, Math.max(lo, v));
+}
 
 /** The circles of the map along a gentle wave, the free-play circle last. Mirrored for right-to-left languages (level 1 starts on the right). */
 export function mapLayout(W: number, H: number, n: number, rtl: boolean): { nodes: Disc[]; free: Disc; back: Disc; coins: Box } {
+  'worklet'; // the level screens are drawn by the scene's worklets, which call these layout functions
   const r = clamp(H * 0.115, 26, 50);
   const padX = Math.max(r * 1.8, W * 0.115);
   const cy = H * 0.56, amp = H * 0.085;
@@ -39,6 +43,7 @@ export function mapLayout(W: number, H: number, n: number, rtl: boolean): { node
 
 /** The success card: a card with a ribbon on top, three stars, the coins, and the continue button. */
 export function doneLayout(W: number, H: number): { card: Box; ribbon: Box; stars: Disc[]; coinsY: number; countX: number; button: Disc; u: number } {
+  'worklet';
   const u = clamp(Math.min(W / 844, H / 390), 0.7, 2);
   const w = Math.min(W - 24, 430 * u), h = Math.min(H - 20, 322 * u);
   const card: Box = { x: (W - w) / 2, y: (H - h) / 2 + 6, w, h };
@@ -50,6 +55,7 @@ export function doneLayout(W: number, H: number): { card: Box; ribbon: Box; star
 
 /** The banner that names a level when it starts: a ribbon just under the counter. */
 export function introLayout(W: number, stageH: number): Box {
+  'worklet';
   const u = clamp(Math.min(W / 844, stageH / 280), 0.7, 2);
   const w = 200 * u, h = 58 * u;
   return { x: (W - w) / 2, y: 70 * u, w, h };
@@ -57,6 +63,7 @@ export function introLayout(W: number, stageH: number): Box {
 
 /** The row of coins on the success card: the first coin's centre, the distance between coins, their radius, and where the "+N" starts. */
 export function doneCoinRow(card: Box, countX: number, u: number, n: number): { x0: number; gap: number; r: number; endX: number } {
+  'worklet';
   const r = 15 * u, gap = r * 2.45, w = n * gap;
   const left = countX - 34 * u - w / 2;
   return { x0: left + gap / 2, gap, r, endX: left + w + 8 * u };

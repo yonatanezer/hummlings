@@ -32,7 +32,7 @@ export function LessonDone({ level = 1, onNext }: { level?: LessonLevel; onNext:
   const btn = useAnimatedStyle(() => ({ opacity: k.value > 0.05 ? 1 : 0 }));
   const row = doneCoinRow(D.card, D.countX, D.u, steps);
   return (
-    <View style={StyleSheet.absoluteFill} accessibilityViewIsModal pointerEvents="box-none">
+    <View style={StyleSheet.absoluteFill} accessibilityViewIsModal>
       <View pointerEvents="none" style={{ position: 'absolute', left: D.ribbon.x, top: D.ribbon.y, width: D.ribbon.w, height: D.ribbon.h, alignItems: 'center', justifyContent: 'center' }}>
         <Text accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit style={[styles.title, { fontSize: 24 * D.u }]}>{t(last ? 'lesson.final' : 'lesson.done')}</Text>
       </View>
