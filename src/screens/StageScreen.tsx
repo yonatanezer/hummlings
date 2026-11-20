@@ -1,3 +1,4 @@
+import { track } from '../app/analytics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, AppState, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
@@ -190,7 +191,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
       onCelebration: (id, bar) => {
         const combo = stage.combos.find((c) => c.id === id)!;
         sv.celebration.value = { celebrationId: combo.celebrationId, creatureIds: combo.creatureIds as unknown as string[], startBeat: bar * TUNING.beatsPerBar };
-        discover(id);
+        discover(id); track('combo_found', { stage: stage.id, combo: id });
         showToast({ icons: ['combos'], text: t('combo.found') });
         hapticSuccess();
         engine.playSfx('combo');
@@ -256,7 +257,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     const song = session.stopRecording({ id: `song_${Date.now()}`, name: autoName(names, (n) => t('songs.defaultName', { n })), createdAt: Date.now() });
     setRecording(false);
     setRecBars(0);
-    if (song) { addSong(song); setSaved(song); setExportMsg(null); }
+    if (song) { track('song_saved'); addSong(song); setSaved(song); setExportMsg(null); }
   }, [session, addSong]);
 
   const onRecord = () => {
@@ -284,6 +285,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
       if (lvl !== 5) { hapticSuccess(); engine.playSfx('combo'); } // level 5 has the combo's own celebration
       if (lvl !== 5) sv.taps.value = [...sv.taps.value.filter((e) => t0 - e.t0 < 1400), ...[0.18, 0.38, 0.62, 0.82].map((f, i) => ({ x: l.W * f, y: l.stageH * (0.28 + 0.1 * (i % 2)), t0, kind: 'spark' as const }))];
       const coins = lessonTotalCoins(lvl), key = levelKey(stage.id, lvl);
+      track('level_done', { stage: stage.id, level: lvl });
       update((p) => (p.lessonsDone.includes(key) ? p : { ...p, lessonsDone: [...p.lessonsDone, key], coins: p.coins + coins, firstDropDone: true }));
       finishTimer.current = setTimeout(() => { engine.playSfx('goal'); session.dispatch({ kind: 'endSolo' }); sv.popup.value = null; syncScene(); setLesson('done'); }, lessonFinishMs(lvl));
     }
@@ -324,6 +326,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     sv.taps.value = [];
     lessonMeta.step = -1; lessonMeta.fx = [];
     levelRef.current = next; lessonRef.current = 'play';
+    track('level_start', { stage: stage.id, level: next });
     setLevel(next); setLesson('play'); setRun((n) => n + 1);
     scrollTrayTo(0, 300);
     placeBand();

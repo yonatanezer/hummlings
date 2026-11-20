@@ -1,3 +1,4 @@
+import { track } from './src/app/analytics';
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, I18nManager, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -73,7 +74,7 @@ function Root() {
   let screen;
   switch (route.name) {
     case 'splash': screen = <SplashScreen onDone={done} />; break;
-    case 'select': screen = <StageSelectScreen onPick={(id) => setRoute({ name: 'stage', stageId: id })} onLocked={(id) => setPreviewFor(id)} onSettings={() => setRoute({ name: 'settings' })} onSongs={() => songs(route)} onHelp={() => setRoute({ name: 'help', from: route })} />; break;
+    case 'select': screen = <StageSelectScreen onPick={(id) => { track('stage_open', { stage: id }); setRoute({ name: 'stage', stageId: id }); }} onLocked={(id) => setPreviewFor(id)} onSettings={() => setRoute({ name: 'settings' })} onSongs={() => songs(route)} onHelp={() => setRoute({ name: 'help', from: route })} />; break;
     case 'stage': screen = <StageScreen key={route.stageId} stage={getStage(route.stageId)} onBack={() => setRoute({ name: 'select' })} onSwitch={(id) => setRoute({ name: 'stage', stageId: id })} onLocked={(id) => setPreviewFor(id)} onSongs={() => songs(route)} onHelp={() => setRoute({ name: 'help', from: route })} onPlay={(id) => setRoute({ name: 'player', songId: id })} onDebug={setDebug} />; break;
     case 'songs': screen = <SongsScreen onBack={() => setRoute(route.from.name === 'stage' ? { name: 'select' } : route.from)} onPlay={(id) => setRoute({ name: 'player', songId: id })} />; break;
     case 'player': {
