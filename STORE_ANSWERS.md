@@ -3,13 +3,14 @@
 ## Ratings
 - Apple age rating 4+: no objectionable content, no web content (the privacy policy link opens the browser behind the grown-up check), no user-generated content shared in-app.
 - PEGI 3. Google Play IARC: Everyone.
-- Not enrolled in Apple Kids category or Google Families programme (kid-safe anyway: no ads, no tracking, no chat).
+- Not enrolled in Apple Kids category or Google Families programme (kid-safe anyway: no ads, no cross-app tracking, no chat).
 
 ## Privacy
-- Apple privacy label: **Data Not Collected**.
-- Google Data safety: no data collected, none shared; no data transmitted (purchases are handled by Google/Apple); account creation: none; data deletion: not applicable (data stays on the device; Settings > Reset progress).
+- Apple privacy label: **Data Used to Track You: none. Data Not Linked to You: Usage Data (Product Interaction), purpose Analytics.** Not Data Not Collected any more (PostHog EU anonymous events, see src/app/analytics.ts).
+- Google Data safety: collects App activity > App interactions (anonymous, not linked, not shared except with PostHog as a service provider, purpose Analytics, collection not optional); no personal data, no device or advertising IDs; data in transit is encrypted (HTTPS); purchases are handled by Google/Apple; account creation: none; data deletion: not applicable (data stays on the device; Settings > Reset progress).
 - Permissions: none requested. RECORD_AUDIO and external storage permissions are blocked in app.json.
-- Tracking (ATT): not used. No third-party SDKs that collect data.
+- Tracking (ATT): not used, no advertising identifier. No analytics SDK; events are posted to PostHog EU with no device id.
+- Risk to re-check before submitting: the app is also for children. Apple Kids category and Google Families programme stay NOT enrolled (see Ratings); enrolling would need analytics off or behind parental consent.
 - Privacy policy URL: https://yonatanezer.github.io/app-pages/hummlings/privacy.html
 - Support URL: https://yonatanezer.github.io/app-pages/hummlings/support.html
 

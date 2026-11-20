@@ -23,7 +23,7 @@ async function flush() {
         api_key: POSTHOG_KEY,
         batch: batch.map((e) => ({
           event: e.event, timestamp: e.timestamp, distinct_id: sessionId,
-          properties: { ...e.properties, $process_person_profile: false, $geoip_disable: true, app_version: APP_VERSION, platform: Platform.OS },
+          properties: { ...e.properties, $process_person_profile: false, $geoip_disable: true, app: "hummlings", app_version: APP_VERSION, platform: Platform.OS },
         })),
       }),
     });
