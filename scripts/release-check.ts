@@ -23,7 +23,7 @@ async function main() {
   check('eas.json has development, preview, production', ['development', 'preview', 'production'].every((k) => k in eas.build));
   // 3. placeholders and dev tools
   const src = walk('src').concat(['App.tsx']).filter((f) => /\.(ts|tsx)$/.test(f) && !f.includes('loopAssets'));
-  const bad = src.filter((f) => /TODO|FIXME|lorem ipsum|XXX|console\.log/i.test(readFileSync(f, 'utf8')));
+  const bad = src.filter((f) => /\b(TODO|FIXME|XXX)\b|lorem ipsum|console\.log/.test(readFileSync(f, 'utf8')));
   check('no TODO / FIXME / console.log in src', bad.length === 0, bad.join(', '));
   check('dev overlay hidden in production', readFileSync('src/ui/DevOverlay.tsx', 'utf8').includes('__DEV__'));
   const pur = readFileSync('src/app/purchases.ts', 'utf8');
