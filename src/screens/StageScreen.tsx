@@ -1,4 +1,4 @@
-import { track } from '../app/analytics';
+import { secondsSince, track } from '../app/analytics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, AppState, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
@@ -127,6 +127,8 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
   const [run, setRun] = useState(0); // counts level starts (the banner of a level plays once per start)
   lessonRef.current = lesson;
   const levelRef = useRef(level);
+  const visit = useRef({ t0: Date.now(), maxSingers: 0, combos: 0, levels: 0 }).current;
+  useEffect(() => () => { track('stage_leave', { stage: stage.id, seconds: secondsSince(visit.t0), level: levelRef.current, singers_max: visit.maxSingers, combos: visit.combos, levels_done: visit.levels }); }, [stage.id, visit]);
   levelRef.current = level;
   const silencedRef = useRef(false); // level 2: a singer was silenced at least once
   const quietRef = useRef(false); // level 3: a singer's volume went under the quiet line at least once
@@ -187,11 +189,11 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
     let alive = true;
     session.countIn = !progressRef.current.firstDropDone;
     session.setEvents({
-      onState: () => syncScene(),
+      onState: () => { visit.maxSingers = Math.max(visit.maxSingers, session.state.spots.filter(Boolean).length); syncScene(); },
       onCelebration: (id, bar) => {
         const combo = stage.combos.find((c) => c.id === id)!;
         sv.celebration.value = { celebrationId: combo.celebrationId, creatureIds: combo.creatureIds as unknown as string[], startBeat: bar * TUNING.beatsPerBar };
-        discover(id); track('combo_found', { stage: stage.id, combo: id });
+        discover(id); track('combo_found', { stage: stage.id, combo: id, at_s: secondsSince(visit.t0) }); visit.combos++;
         showToast({ icons: ['combos'], text: t('combo.found') });
         hapticSuccess();
         engine.playSfx('combo');
@@ -285,7 +287,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
       if (lvl !== 5) { hapticSuccess(); engine.playSfx('combo'); } // level 5 has the combo's own celebration
       if (lvl !== 5) sv.taps.value = [...sv.taps.value.filter((e) => t0 - e.t0 < 1400), ...[0.18, 0.38, 0.62, 0.82].map((f, i) => ({ x: l.W * f, y: l.stageH * (0.28 + 0.1 * (i % 2)), t0, kind: 'spark' as const }))];
       const coins = lessonTotalCoins(lvl), key = levelKey(stage.id, lvl);
-      track('level_done', { stage: stage.id, level: lvl });
+      track('level_done', { stage: stage.id, level: lvl, at_s: secondsSince(visit.t0) }); visit.levels++;
       update((p) => (p.lessonsDone.includes(key) ? p : { ...p, lessonsDone: [...p.lessonsDone, key], coins: p.coins + coins, firstDropDone: true }));
       finishTimer.current = setTimeout(() => { engine.playSfx('goal'); session.dispatch({ kind: 'endSolo' }); sv.popup.value = null; syncScene(); setLesson('done'); }, lessonFinishMs(lvl));
     }

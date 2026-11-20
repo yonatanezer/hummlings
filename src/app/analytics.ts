@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { APP_VERSION, POSTHOG_HOST, POSTHOG_KEY } from './config';
 
 /**
@@ -35,4 +35,23 @@ export function track(event: string, properties: Record<string, string | number 
   queue.push({ event, properties, timestamp: new Date().toISOString() });
   if (queue.length >= 20) { void flush(); return; }
   if (!timer) timer = setTimeout(() => void flush(), 15000);
+}
+
+const startedAt = Date.now();
+let lastResume = Date.now(), activeMs = 0, screens = 0;
+export const secondsSince = (t: number) => Math.round((Date.now() - t) / 1000);
+
+/** One call per screen change: with the time between them it shows where play stops. */
+export function screenView(name: string) { screens++; track('screen', { name }); }
+
+if (POSTHOG_KEY && !__DEV__) {
+  track('session_start');
+  AppState.addEventListener('change', (st) => {
+    if (st === 'active') lastResume = Date.now();
+    else {
+      activeMs += Date.now() - lastResume;
+      track('session_end', { active_s: Math.round(activeMs / 1000), total_s: secondsSince(startedAt), screens });
+      void flush();
+    }
+  });
 }

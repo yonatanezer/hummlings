@@ -1,4 +1,4 @@
-import { track } from './src/app/analytics';
+import { screenView, track } from './src/app/analytics';
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, I18nManager, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -42,6 +42,7 @@ function Root() {
     const device = Localization.getLocales()[0]?.languageCode ?? 'en';
     setLang(resolveLang(progress.settings.language, device));
   }, [progress.settings.language]);
+  useEffect(() => { screenView(route.name === 'stage' ? `stage:${route.stageId}` : route.name); }, [route]);
   useEffect(() => { I18nManager.allowRTL(false); I18nManager.forceRTL(false); }, []);
 
   // Refunded purchases lock again on the next launch; offline (null) keeps the cached entitlement.
