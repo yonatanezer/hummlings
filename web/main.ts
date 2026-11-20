@@ -1,0 +1,746 @@
+// Playable web demo of Hummlings (Canvas 2D + Web Audio) using the real core logic and the real loops.
+import { beatBounce, blinkOpen, breath, hop, onsetPulse } from '../src/core/anim';
+import { GestureTracker, type GestureEvent, type World } from '../src/core/gestures';
+import { computeLayout, popupRects, type Layout } from '../src/core/layout';
+import { Session } from '../src/core/session';
+import { TUNING } from '../src/core/tuning';
+import { LAYER_COLORS, type Creature, type Layer, type Stage } from '../src/core/types';
+import { validateStage } from '../src/core/schema';
+import pond from '../content/stages/1-pond.json';
+import fair from '../content/stages/2-fair.json';
+import clouds from '../content/stages/3-clouds.json';
+import neon from '../content/stages/4-neon.json';
+import frost from '../content/stages/5-frost.json';
+import { WebEngine } from './engine';
+import { bootSkia, type Skia2 } from './skiaBoot';
+import { StageView } from './stageView';
+import { audibleIds, swapSpot } from '../src/core/stageState';
+import { drawComboCard } from '../src/ui/draw/comboCard';
+import type { SceneInput } from '../src/ui/draw/scene';
+import type { TapEffect } from '../src/ui/draw/scenery';
+import { initHome } from './home';
+import { isRtl, resolveLang, setLang, t as tr } from '../src/i18n';
+import { lessonFinishMs, LESSON_LAYERS, LESSON_SCROLL_WAIT_MS, setLevel5Combo, QUIET_BELOW, level5Cue, level5Ghosts, level5Missing, level5Plan, level5Step, slotScrollTarget, level4Cue, level4Step, level2Cue, level2Step, level3Cue, level3Step, levelBand, levelMapStates, worldStart, LESSON_LEVELS, lessonCue, lessonLit, lessonPickable, lessonScrollTarget, lessonStep, lessonSteps, lessonTotalCoins, levelKey, type LessonFx, type LessonLevel, type LessonView } from '../src/core/lesson';
+import type { CoachCue } from '../src/core/coach';
+import { doneCoinRow, doneLayout, introLayout, mapLayout, type ScreenView } from '../src/core/levelscreens';
+import { en } from '../src/i18n/en';
+import { popRate } from '../src/core/sfx';
+import { randomBand } from '../src/core/surprise';
+import { nextFreeSpot, type StageState } from '../src/core/stageState';
+import { worldIconSvg } from '../src/core/worldIcons';
+import { P } from './pictos';
+import { autoName, comboStartsAt, stateAtBar, warnBars, type Song } from '../src/core/timeline';
+import { songProvider } from '../src/core/session';
+import { barSec } from '../src/core/tuning';
+import { renderSong, samplesPerBar } from '../src/core/render';
+import { encodeWav } from '../src/core/wav';
+
+const STAGES: Stage[] = [pond, fair, clouds, neon, frost].map((r) => validateStage(r).stage!);
+const NAMES = ['Moonlit Pond', 'Candy Fair', 'Sleepy Cloud Town', 'Neon City', 'Frosty Peaks'];
+const SHORT = ['Pond', 'Fair', 'Clouds', 'Neon', 'Frost'];
+const BODY_H = { round: 0.84, wide: 0.7, tall: 1.1, small: 0.74 } as const;
+const CELL_W = 220, CELL_H = 240, FEET_X = 110, FEET_Y = 222, SPRITE_S = 120;
+
+const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+const canvas = $<HTMLCanvasElement>('game');
+let view: StageView | null = null;
+let skiaBook: Skia2 | null = null;
+const dprNow = () => Math.min(2, window.devicePixelRatio || 1);
+const engine = new WebEngine();
+engine.base = '';
+let stageIdx = 0;
+let stage = STAGES[0]!;
+let session: Session | null = null;
+let atlas: HTMLImageElement | null = null;
+let layout: Layout = computeLayout(844, 390);
+let W = 844, H = 390;
+let scrollX = 0;
+const tracker = new GestureTracker();
+const placedAnim = new Map<string, { since: number; from: { x: number; y: number } }>();
+let drags: { id: string; x: number; y: number }[] = [];
+let returning: { id: string; since: number; from: { x: number; y: number } }[] = [];
+let celebration: { comboId: string; creatureIds: string[]; startBeat: number } | null = null;
+let lastBeat = 0;
+const taps: TapEffect[] = [];
+const addTap = (x: number, y: number, kind: TapEffect['kind'], t: number, color?: string) => { while (taps.length && t - taps[0]!.t0 > 1400) taps.shift(); taps.push({ x, y, t0: t, kind, color }); };
+let rewardP: { progress: number } | null = null;
+let popup: { spot: number; creatureId: string } | null = null;
+let trayOpen = true;
+let trayK = 1; // 1 = shown, 0 = tucked away (animated)
+let playMode: { song: Song } | null = null;
+let recording = false;
+let ready = false;
+let hint = true;
+// Opening the page with #reset starts the game from the very beginning (the lesson, found combos, stickers, songs and coins are forgotten).
+function resetIfAsked(): boolean {
+  if (location.hash !== '#reset') return false;
+  try { for (const k of Object.keys(localStorage)) if (k.startsWith('hum.')) localStorage.removeItem(k); } catch { /* storage unavailable */ }
+  try { history.replaceState(null, '', location.pathname + location.search); } catch { /* ignore */ }
+  return true;
+}
+resetIfAsked();
+addEventListener('hashchange', () => { if (resetIfAsked()) location.reload(); }); // the page was already open: forget everything, then start over
+// #combo1 ... #combo4: which of the pond's four secret combos level 5 uses (to listen to each and choose); it is remembered in this browser
+function chooseCombo(): boolean {
+  const m = /^#combo([1-4])$/.exec(location.hash);
+  if (!m) return false;
+  try { localStorage.setItem('hum.combo5', m[1]!); } catch { /* storage unavailable */ }
+  try { history.replaceState(null, '', location.pathname + location.search); } catch { /* ignore */ }
+  return true;
+}
+chooseCombo();
+addEventListener('hashchange', () => { if (chooseCombo()) location.reload(); });
+try { const n = Number(localStorage.getItem('hum.combo5')); if (n >= 1 && n <= 4) setLevel5Combo(n - 1); } catch { /* default */ }
+const store = { get: (k: string): string[] => { try { return JSON.parse(localStorage.getItem(k) ?? '[]') as string[]; } catch { return []; } }, set: (k: string, v: string[]) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } } };
+const found = new Set<string>(store.get('hum.combos'));
+const stickers = new Set<string>(store.get('hum.goals'));
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// The levels of the first world (src/core/lesson.ts), the same rules as the app.
+const lessonsDone = new Set<string>(store.get('hum.lessons'));
+let coins = (() => { try { return Math.max(0, Number(localStorage.getItem('hum.coins') ?? 0) || 0); } catch { return 0; } })();
+let lessonMode: 'map' | 'play' | 'done' | null = null; // 'map' = the level map is up
+let lessonLevel: LessonLevel = 1; // 1: four groups lit one at a time, 2: my band (silence, wake, choose), 3: volume (lower, raise, star)
+let silenced = false; // level 2: a singer was silenced at least once
+let quiet = false; // level 3: a singer's volume went under the quiet line at least once
+let swaps = 0; // level 4: how many times a singer on stage was replaced
+let comboFound = false; // level 5: the secret combo's celebration began
+const lessonStepNow = (): number => {
+  const st = session?.state;
+  if (!st) return 0;
+  return lessonLevel === 1 ? lessonStep(stage, st.spots) : lessonLevel === 2 ? level2Step(st.spots, st.muted, silenced) : lessonLevel === 3 ? level3Step(st.spots, st.volume, st.solo, quiet) : lessonLevel === 4 ? level4Step(swaps) : level5Step(stage, st.spots, comboFound);
+};
+const lessonMeta = { step: -1, prev: null as Layer | null, since: 0, sinceMs: 0, fx: [] as LessonFx[] };
+let screenView: ScreenView | null = null; // the map, the success card or the level banner: drawn by the scene
+let introTimer: ReturnType<typeof setTimeout> | undefined;
+let lessonDir: -1 | 0 | 1 = 0;
+let lessonTouchAt = 0, lessonScrollAt = 0;
+let lessonTimer: ReturnType<typeof setTimeout> | undefined;
+
+function resize() {
+  const r = canvas.getBoundingClientRect();
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  W = r.width; H = r.height;
+  layout = computeLayout(W, H, undefined, 12, $('bar').offsetHeight + 4);
+  view?.resize(W, H, dpr);
+}
+addEventListener('resize', () => { resize(); if (lessonMode === 'map') placeMap(); $('rotate').classList.toggle('hide', innerWidth >= innerHeight); });
+
+const rnd = (i: number) => { const x = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
+const hash = (s: string) => { let h = 7; for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) >>> 0; return h; };
+const burst = (x: number, y: number, _c: string[], _n: number, kind: 'star' | 'spark', t: number, _speed?: number) => addTap(x, y, kind === 'star' ? 'star' : 'spark', t);
+let scrollAnim = 0;
+function scrollTrayTo(target: number, ms = 380) {
+  const from = scrollX, to = Math.max(0, Math.min(layout.scrollMax, target)), t0 = performance.now();
+  const id = ++scrollAnim;
+  const step = (now: number) => { if (id !== scrollAnim) return; const k = Math.min(1, (now - t0) / ms), e = 1 - (1 - k) ** 3; scrollX = from + (to - from) * e; if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function syncArrows() {
+  const show = trayOpen && trayK > 0.9 && layout.scrollMax > 0;
+  const y = layout.tray.y + layout.tray.h / 2 - 22;
+  const l = $('tl'), r = $('tr');
+  if (lessonMode === 'map' || lessonMode === 'done') { l.classList.add('hide'); r.classList.add('hide'); }
+  else if (lessonMode === 'play') { l.classList.toggle('hide', lessonDir !== -1); r.classList.toggle('hide', lessonDir !== 1); }
+  else { l.classList.toggle('hide', !(show && scrollX > 8)); r.classList.toggle('hide', !(show && scrollX < layout.scrollMax - 8)); }
+  l.style.left = '10px'; r.style.right = '10px'; l.style.top = r.style.top = `${y}px`;
+}
+const scrollToLit = () => {
+  if (lessonLevel === 2) { scrollTrayTo(scrollX + (lessonDir || 1) * layout.W * 0.6, 600); return; }
+  if (lessonLevel === 5) {
+    const cue = level5Cue(stage, layout, scrollX, session?.state.spots ?? []);
+    const target = cue?.kind === 'swipe' ? slotScrollTarget(layout, scrollX, cue.slot) : null;
+    if (target !== null) scrollTrayTo(target, 700);
+    return;
+  }
+  const lit = lessonLit(lessonStep(stage, session?.state.spots ?? []));
+  const target = lit ? lessonScrollTarget(stage, layout, scrollX, lit) : null;
+  if (target !== null) scrollTrayTo(target, 700);
+};
+$('tl').addEventListener('click', () => (lessonMode === 'play' ? scrollToLit() : scrollTrayTo(scrollX - layout.W * 0.6)));
+$('tr').addEventListener('click', () => (lessonMode === 'play' ? scrollToLit() : scrollTrayTo(scrollX + layout.W * 0.6)));
+const LAYER_OF = (id: string) => stage.creatures.find((c) => c.id === id)?.layer;
+function frame(t: number) {
+  requestAnimationFrame(frame);
+  if (!session || !view) return;
+  const st = session.state;
+  const beat = engine.state === 'running' ? engine.positionBeats() : -1;
+  // the singer menu slides away and back
+  trayK += ((trayOpen ? 1 : 0) - trayK) * 0.22;
+  if (Math.abs((trayOpen ? 1 : 0) - trayK) < 0.002) trayK = trayOpen ? 1 : 0;
+  returning = returning.filter((r) => t - r.since < TUNING.hopMs + 40);
+  const rw = session.reward;
+  if (rw && !session.celebrating) {
+    const total = Math.max(1, rw.startBeat - rw.fromBeat), left = Math.max(0, rw.startBeat - beat);
+    rewardP = { progress: Math.min(1, Math.max(0, 1 - left / total)) };
+  } else rewardP = null;
+  const celeb = celebration ? { celebrationId: stage.combos.find((c) => c.id === celebration!.comboId)!.celebrationId, creatureIds: celebration.creatureIds, startBeat: celebration.startBeat } : null;
+  const muted: Record<string, true> = {};
+  for (const id of Object.keys(st.muted)) if (st.muted[id]) muted[id] = true;
+  const pu = popup ? { spot: popup.spot, creatureId: popup.creatureId, volume: st.volume[popup.creatureId] ?? 1, solo: st.solo === popup.creatureId } : null;
+  let coach: CoachCue | null = null, lessonView: LessonView | null = null;
+  if (lessonMode === 'play' && !playMode) {
+    const step = lessonStepNow(), m = lessonMeta;
+    if (step !== m.step) { m.prev = lessonLevel === 1 && m.step >= 0 ? lessonLit(m.step) : null; m.step = step; m.since = t; m.sinceMs = t; }
+    m.fx = m.fx.filter((f) => t - f.t0 < 1300);
+    coach = lessonLevel === 1 ? lessonCue(stage, layout, scrollX, st.spots, step) : lessonLevel === 2 ? level2Cue(stage, layout, scrollX, st.spots, st.muted, step) : lessonLevel === 3 ? level3Cue(stage, st.spots, st.volume, popup ? { spot: popup.spot } : null, step) : lessonLevel === 4 ? level4Cue(stage, layout, scrollX, st.spots, step) : level5Cue(stage, layout, scrollX, st.spots);
+    lessonView = lessonLevel === 1
+      ? { slots: LESSON_LAYERS.map((l) => LAYER_COLORS[l]), dim: false, lit: lessonLit(step), prev: m.prev, since: m.since, done: step, topY: 34, fx: m.fx }
+      : { slots: ['#FFE066', '#FFE066', '#FFE066'], dim: lessonLevel === 3 || (lessonLevel === 2 && step < 2), lit: null, prev: null, since: m.since, done: step, topY: 34, fx: m.fx, ...(lessonLevel === 5 ? { litIds: level5Missing(stage, st.spots), ghosts: level5Ghosts(stage, st.spots) } : {}) };
+    lessonDir = coach?.kind === 'swipe' ? (coach.dir ?? 1) : 0;
+    const lit = lessonLevel === 1 ? lessonLit(step) : null;
+    // the menu slides to the lit group by itself when nobody does
+    if ((lit || lessonLevel === 5) && lessonDir !== 0 && tracker.activeCount === 0 && t - lessonTouchAt > LESSON_SCROLL_WAIT_MS && t - m.sinceMs > LESSON_SCROLL_WAIT_MS && t - lessonScrollAt > 2000) {
+      const target = lessonLevel === 5 ? slotScrollTarget(layout, scrollX, coach!.slot) : lessonScrollTarget(stage, layout, scrollX, lit!);
+      if (target !== null) { lessonScrollAt = t; scrollTrayTo(target, 900); }
+    }
+  } else lessonDir = 0;
+  const input: SceneInput = {
+    layout, stage,
+    placed: st.spots.flatMap((id, spot) => { if (!id) return []; const a = placedAnim.get(id); return [{ id, spot, since: a?.since ?? -1e6, from: a?.from ?? layout.spots[spot]! }]; }),
+    muted, solo: st.solo, drags, returning, scrollX, beat, timeMs: t, reduceMotion, celebration: celeb,
+    hint: hint && ready && drags.length === 0 && st.spots.every((x) => !x), hintSlot: 0, recordingBeat: null,
+    popup: pu, trayK, reward: rewardP, taps, volumes: st.volume, coach, lesson: lessonView, screen: screenView,
+  };
+  view.draw(input, W, H);
+  syncArrows();
+  lastBeat = beat;
+  updateHud();
+}
+
+let lastHud = '';
+
+
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
+function toast(html: string) { const el = $('toast'); el.innerHTML = html; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600); }
+const GOAL_PICTO: Record<string, (s: number) => string> = {
+  fullBand: (s) => (['drums', 'bass', 'melody', 'voice'] as const).map((l) => `<span style="color:${LAYER_COLORS[l]}">${GLYPH[l].replace('<svg ', `<svg width="${s}" height="${s}" `)}</span>`).join(''),
+  drumCircle: (s) => [0, 1, 2].map(() => `<span style="color:${LAYER_COLORS.drums}">${GLYPH.drums.replace('<svg ', `<svg width="${s}" height="${s}" `)}</span>`).join(''),
+  choir: (s) => [0, 1, 2].map(() => `<span style="color:${LAYER_COLORS.voice}">${GLYPH.voice.replace('<svg ', `<svg width="${s}" height="${s}" `)}</span>`).join(''),
+  fullStage: (s) => `<span class="dd">${Array.from({ length: 6 }, () => `<i style="background:#fff;width:${s * 0.45}px;height:${s * 0.45}px"></i>`).join('')}</span>`,
+  soloist: (s) => `${P.star(s)}${(['drums', 'bass', 'melody', 'voice'] as const).map((l) => `<span style="color:${LAYER_COLORS[l]}">${GLYPH[l].replace('<svg ', `<svg width="${s * 0.8}" height="${s * 0.8}" `)}</span>`).join('')}`,
+  mixMaster: (s) => `${P.speakerOff(s)}${P.speaker(s)}${P.speakerOff(s)}`,
+  swapper: (s) => P.swipe(s),
+  twoCombos: (s) => `${P.book(s)}${P.star(s * 0.8)}${P.star(s * 0.8)}`,
+};
+const LAYER_ORDER = ['drums', 'bass', 'melody', 'voice'] as const;
+const LAYER_NAMES = { drums: 'Drums', bass: 'Bass', melody: 'Melody', voice: 'Voice' } as const;
+const GLYPH = {
+  drums: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="13" rx="8" ry="4"/><path d="M4 13v4c0 2 3.6 3.5 8 3.5s8-1.5 8-3.5v-4M8 4l4 6M16 4l-4 6"/></svg>',
+  bass: '<svg viewBox="0 0 24 24"><path d="M3 12c3-6 6 6 9 0s6 6 9 0"/></svg>',
+  melody: '<svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="16" r="2.5"/></svg>',
+  voice: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="13" rx="7" ry="5.5"/><path d="M9 11.5h.01M15 11.5h.01"/><ellipse cx="12" cy="16" rx="2.6" ry="1.8"/></svg>',
+} as const;
+let lastBand = '';
+function updateHud() {
+  if (!session) return;
+  $('beat').style.transform = `scale(${1 + 0.6 * Math.max(0, 1 - ((engine.positionBeats() % 1) * 4))})`;
+  const live = new Set(session.state.solo ? [session.state.solo] : session.state.spots.filter((x): x is string => !!x && !session!.state.muted[x]));
+  const band = LAYER_ORDER.map((l) => (stage.creatures.some((c) => c.layer === l && live.has(c.id)) ? '1' : '0')).join('');
+  if (band !== lastBand) { lastBand = band; $('band').innerHTML = LAYER_ORDER.map((l, i) => `<b class="${band[i] === '1' ? 'on' : ''}" style="--c:${LAYER_COLORS[l]}" title="${LAYER_NAMES[l]}: ${band[i] === '1' ? 'playing' : 'not playing'}"><i>${GLYPH[l]}</i>${LAYER_NAMES[l]}</b>`).join(''); }
+  const on = new Set(session.state.spots.filter((x): x is string => !!x).filter((x) => !session!.state.muted[x] && (session!.state.volume[x] ?? 1) >= 0.03));
+  const cnt = (c: (typeof stage.combos)[number]) => (session!.state.solo ? 0 : c.creatureIds.filter((id) => on.has(id)).length);
+  const open = stage.combos.filter((c) => !found.has(c.id));
+  const best = open.sort((x, y) => cnt(y) - cnt(x))[0];
+  const nFound = stage.combos.length - open.length;
+  const html = best
+    ? `<span class="combo" title="Closest secret combo">${[0, 1, 2, 3].map((i) => `<i class="${i < cnt(best) ? 'lit' : ''}"></i>`).join('')}</span><span class="fnd" title="Combos found"><small>${nFound}/${stage.combos.length}</small>${Array.from({ length: stage.combos.length }, (_, i) => P.star(16, i < nFound ? '#FFE066' : '#ffffff33')).join('')}</span>`
+    : `<span class="fnd">${Array.from({ length: stage.combos.length }, () => P.star(18)).join('')}</span>`;
+  if (html !== lastHud) { $('combos').innerHTML = html; lastHud = html; }
+}
+
+function world(): World {
+  const on = lessonMode === 'play', step = on ? lessonStepNow() : 99, lvl = lessonLevel;
+  return { layout, scrollX, trayIds: stage.creatures.map((c) => c.id), onStage: session!.state.spots, popup, volumeOf: (id) => session!.state.volume[id] ?? 1, trayHidden: !trayOpen, canPick: on ? (id) => lessonPickable(lvl, stage, step, id) : undefined, locked: on && (lvl === 1 || lvl === 4 || lvl === 5), tapOnly: on && lvl === 2, holdOnly: on && lvl === 3, noHide: on };
+}
+
+function syncLessonUi() {
+  document.body.classList.toggle('lesson', lessonMode !== null);
+  $('lessonSkip').classList.toggle('hide', lessonMode !== 'play');
+  $('lessonSkip').setAttribute('aria-label', tr('a11y.levelMap'));
+  $('lessonSkip').setAttribute('title', tr('a11y.levelMap'));
+}
+/** Levels 2 and 3 start with a ready-made band that hops on, already playing. */
+function placeBand(t: number) {
+  const s = session!, band = levelBand(lessonLevel, stage);
+  if (!band) return;
+  band.ids.forEach((id, k) => {
+    const i = stage.creatures.findIndex((c) => c.id === id);
+    placedAnim.set(id, { since: t + k * 140, from: { x: layout.slotPos[i]!.x - scrollX, y: layout.slotPos[i]!.y } });
+    s.dispatch({ kind: 'drop', creatureId: id, spot: band.spots[k]! });
+  });
+  s.countIn = false; hint = false; silenced = false; quiet = false; swaps = 0; comboFound = false;
+}
+/** Puts one of the overlay layers (touch targets and text only; the art is the scene's) exactly over the canvas. */
+function overlayBox(el: HTMLElement) {
+  const r = canvas.getBoundingClientRect();
+  el.style.left = `${r.left}px`; el.style.top = `${r.top}px`; el.style.width = `${r.width}px`; el.style.height = `${r.height}px`;
+}
+const place = (el: HTMLElement, x: number, y: number, w: number, h: number) => { el.style.left = `${x}px`; el.style.top = `${y}px`; el.style.width = `${w}px`; el.style.height = `${h}px`; };
+/** The map of this world's levels: gold = finished (tap to play again), the glowing one is next, dark ones are not open yet; the last circle is free play. */
+function placeMap() {
+  const el = $('levelMap');
+  overlayBox(el);
+  const L = mapLayout(W, H, LESSON_LEVELS.length, isRtl());
+  place(el.querySelector('.lm-back') as HTMLElement, L.back.x - 28, L.back.y - 28, 56, 56);
+  place(el.querySelector('.lm-coins') as HTMLElement, L.coins.x + 44, L.coins.y, L.coins.w - 56, L.coins.h);
+  el.querySelectorAll<HTMLElement>('.lm-node[data-lv]').forEach((b) => {
+    const p = L.nodes[Number(b.dataset.lv) - 1]!;
+    place(b, p.x - p.r * 1.1, p.y - p.r * 1.1, p.r * 2.2, p.r * 2.2);
+    b.style.fontSize = `${p.r * 0.98}px`;
+  });
+  const f = L.free;
+  place($('lmFree'), f.x - f.r * 1.1, f.y - f.r * 1.1, f.r * 2.2, f.r * 2.2);
+}
+function showLevelMap(hopFrom = 0) {
+  lessonMode = 'map';
+  syncLessonUi();
+  clearTimeout(lessonTimer); clearTimeout(introTimer);
+  $('lessonDone').classList.add('hide'); $('levelIntro').classList.add('hide');
+  const states = levelMapStates(stage.id, [...lessonsDone]);
+  const cur = states.find((q) => q.state === 'current');
+  screenView = { kind: 'map', since: performance.now(), level: cur?.level ?? 0, hopFrom: (cur && hopFrom > 0 && cur.level === hopFrom + 1) || (!cur && hopFrom > 0) ? hopFrom : 0, states: states.map((q) => q.state), rtl: isRtl(), steps: 0, last: false };
+  const el = $('levelMap');
+  el.dir = isRtl() ? 'rtl' : 'ltr';
+  el.setAttribute('aria-label', tr('a11y.levelMap'));
+  const nodes = states.map((lv, i) => {
+    const label = tr('a11y.level', { n: lv.level }) + (lv.state === 'locked' ? ', ' + tr('select.locked') : '');
+    return `<button class="lm-node" data-lv="${lv.level}" ${lv.state === 'locked' ? 'disabled' : ''} aria-label="${label}" style="animation-delay:${0.15 + i * 0.12}s">${lv.state === 'locked' ? '' : lv.level}</button>`;
+  }).join('');
+  el.innerHTML = `<button class="lm-back" aria-label="${tr('a11y.back')}"></button><div class="lm-coins" aria-label="${coins}">${coins}</div>${nodes}` +
+    `<button class="lm-node" id="lmFree" aria-label="${tr('a11y.freePlay')}"></button>`;
+  placeMap();
+  el.classList.remove('hide');
+  el.querySelectorAll<HTMLButtonElement>('.lm-node[data-lv]').forEach((b) => b.addEventListener('click', () => startLevel(Number(b.dataset.lv) as LessonLevel)));
+  const free = () => { lessonMode = null; screenView = null; el.classList.add('hide'); syncLessonUi(); };
+  $('lmFree').addEventListener('click', free);
+  (el.querySelector('.lm-back') as HTMLElement).addEventListener('click', free);
+}
+/** Starts (or restarts) a level: the stage is cleared, levels 2 to 5 get their ready-made band; the level's banner drops in for a moment. */
+function startLevel(lv: LessonLevel) {
+  if (!session) return;
+  const t = performance.now();
+  clearTimeout(lessonTimer);
+  popup = null;
+  session.state.spots.forEach((id, sp) => { if (id) returning.push({ id, since: t, from: layout.spots[sp]! }); });
+  session.dispatch({ kind: 'clear' });
+  taps.length = 0; lessonMeta.step = -1; lessonMeta.prev = null; lessonMeta.fx = []; lessonDir = 0; lessonTouchAt = t;
+  lessonLevel = lv; lessonMode = 'play'; silenced = false; quiet = false; swaps = 0; comboFound = false; hint = false;
+  $('levelMap').classList.add('hide'); $('lessonDone').classList.add('hide');
+  scrollTrayTo(0, 300);
+  placeBand(t);
+  syncLessonUi();
+  showIntro(t);
+}
+/** The banner that names the level: drawn by the scene, its text is an overlay that drops in with it. */
+function showIntro(t: number) {
+  screenView = { kind: 'intro', since: t, level: lessonLevel, hopFrom: 0, states: [], rtl: isRtl(), steps: 0, last: false };
+  const el = $('levelIntro'), B = introLayout(W, layout.stageH), r = canvas.getBoundingClientRect();
+  el.textContent = tr('a11y.level', { n: lessonLevel });
+  place(el, r.left + B.x, r.top + B.y, B.w, B.h);
+  el.style.fontSize = `${B.h * 0.5}px`;
+  el.classList.remove('hide');
+  el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+  clearTimeout(introTimer);
+  introTimer = setTimeout(() => { el.classList.add('hide'); if (screenView?.kind === 'intro') screenView = null; }, 2600);
+}
+/** Leaves the level (without finishing it) for the level map; from a success card the hummling walks on from the level just finished. */
+function toMap() { const from = lessonMode === 'done' ? lessonLevel : 0; session?.dispatch({ kind: 'endSolo' }); popup = null; showLevelMap(from); }
+/** After the last level: straight into free play, the band of the last level still on stage. */
+function freePlay() { clearTimeout(lessonTimer); lessonMode = null; screenView = null; $('lessonDone').classList.add('hide'); $('levelMap').classList.add('hide'); syncLessonUi(); }
+function showLessonDone() {
+  lessonMode = 'done';
+  syncLessonUi();
+  clearTimeout(introTimer); $('levelIntro').classList.add('hide');
+  const last = lessonLevel === LESSON_LEVELS[LESSON_LEVELS.length - 1];
+  const total = lessonTotalCoins(lessonLevel), steps = lessonSteps(lessonLevel);
+  screenView = { kind: 'done', since: performance.now(), level: lessonLevel, hopFrom: 0, states: [], rtl: isRtl(), steps, last };
+  const el = $('lessonDone'), D = doneLayout(W, H), row = doneCoinRow(D.card, D.countX, D.u, steps);
+  overlayBox(el);
+  el.setAttribute('aria-label', tr(last ? 'lesson.final' : 'lesson.done'));
+  el.innerHTML = `<div class="ld-title">${tr(last ? 'lesson.final' : 'lesson.done')}</div><div class="ld-count" id="lcount" aria-label="${total}">+0</div>` +
+    `<button id="lessonNext" aria-label="${tr(last ? 'a11y.freePlay' : 'a11y.lessonNext')}"></button>`;
+  const title = el.querySelector('.ld-title') as HTMLElement, count = $('lcount');
+  place(title, D.ribbon.x, D.ribbon.y, D.ribbon.w, D.ribbon.h);
+  title.style.fontSize = `${24 * D.u}px`;
+  place(count, row.endX, D.coinsY - 22 * D.u, 80 * D.u, 44 * D.u);
+  count.style.fontSize = `${30 * D.u}px`;
+  place($('lessonNext'), D.button.x - D.button.r * 1.3, D.button.y - D.button.r * 1.3, D.button.r * 2.6, D.button.r * 2.6);
+  el.classList.remove('hide');
+  $('lessonNext').addEventListener('click', last ? freePlay : toMap);
+  const t0 = performance.now() + 950;
+  const id = setInterval(() => {
+    const k = Math.min(1, Math.max(0, (performance.now() - t0) / 1100));
+    const c = document.getElementById('lcount');
+    if (c) c.textContent = `+${Math.round(total * k)}`;
+    if (k >= 1 || !c) clearInterval(id);
+  }, 40);
+}
+$('lessonSkip').addEventListener('click', toMap);
+/** A singer of the lit group landed: a coin flies to the counter, stars burst, and with the fourth the whole song plays and the success card follows. */
+function lessonLanded(stepBefore: number, spot: number, t: number) {
+  const step = lessonStepNow();
+  if (step <= stepBefore) return;
+  const sp = layout.spots[spot]!;
+  for (let k = 0; k < step - stepBefore; k++) lessonMeta.fx.push({ x: sp.x, y: sp.y - layout.size * 0.6, t0: t + k * 200, slot: stepBefore + k });
+  if (!reduceMotion) addTap(sp.x, sp.y - layout.size * 0.5, 'star', t);
+  if (step >= lessonSteps(lessonLevel)) {
+    if (lessonLevel !== 5) { // level 5 has the combo's own celebration
+      engine.playSfx('combo');
+      [0.18, 0.38, 0.62, 0.82].forEach((f, i) => addTap(W * f, layout.stageH * (0.28 + 0.1 * (i % 2)), 'spark', t));
+    }
+    const key = levelKey(stage.id, lessonLevel);
+    if (!lessonsDone.has(key)) { coins += lessonTotalCoins(lessonLevel); try { localStorage.setItem('hum.coins', String(coins)); } catch { /* storage unavailable */ } }
+    lessonsDone.add(key); store.set('hum.lessons', [...lessonsDone]);
+    lessonTimer = setTimeout(() => { engine.playSfx('goal'); session?.dispatch({ kind: 'endSolo' }); popup = null; if (lessonMode === 'play') showLessonDone(); }, lessonFinishMs(lessonLevel));
+  }
+}
+function apply(ev: GestureEvent, t: number) {
+  const s = session!;
+  const lessonOn = lessonMode === 'play';
+  if (lessonOn && ev.type === 'trayTap' && !lessonPickable(lessonLevel, stage, lessonStepNow(), ev.creatureId)) return;
+  if (lessonOn && lessonLevel !== 4 && ev.type === 'drop' && s.state.spots[ev.spot]) { apply({ type: 'returnToTray', touch: ev.touch, creatureId: ev.creatureId, p: ev.p }, t); return; } // never take another singer's place
+  const drop = (id: string) => (drags = drags.filter((d) => d.id !== id));
+  const back = (id: string, from: { x: number; y: number }) => returning.push({ id, since: t, from });
+  switch (ev.type) {
+    case 'pickup': engine.playSfx('pickup'); drags = [...drags.filter((d) => d.id !== ev.creatureId), { id: ev.creatureId, x: ev.p.x, y: ev.p.y }]; break;
+    case 'drag': drags = drags.map((d) => (d.id === ev.creatureId ? { ...d, x: ev.p.x, y: ev.p.y } : d)); break;
+    case 'drop': {
+      drop(ev.creatureId);
+      const old = s.state.spots[ev.spot];
+      if (old && old !== ev.creatureId) back(old, layout.spots[ev.spot]!);
+      placedAnim.set(ev.creatureId, { since: t, from: { x: ev.p.x, y: ev.p.y + layout.size * 0.6 } });
+      const stepBefore = lessonOn ? lessonStepNow() : 0;
+      if (lessonOn && lessonLevel === 4 && old && old !== ev.creatureId) swaps += 1; // a singer took the place of another
+      engine.playSfx('pop', lessonOn ? popRate(stage.key, Math.min(5, stepBefore + 1)) : popRate(stage.key, ev.spot)); // in the lesson every singer sings a higher note than the last
+      addTap(layout.spots[ev.spot]!.x, layout.spots[ev.spot]!.y - layout.size * 0.3, 'drop', t, lessonOn && lessonLevel === 1 ? LAYER_COLORS[LESSON_LAYERS[stepBefore] ?? 'voice'] : stage.palette.glow);
+      s.dispatch({ kind: 'drop', creatureId: ev.creatureId, spot: ev.spot });
+      if (hint || lessonOn) { hint = false; s.countIn = false; }
+      if (lessonOn) lessonLanded(stepBefore, ev.spot, t);
+      break;
+    }
+    case 'returnToTray': drop(ev.creatureId); back(ev.creatureId, { x: ev.p.x, y: ev.p.y + layout.size * 0.6 }); break;
+    case 'remove': engine.playSfx('remove'); drop(ev.creatureId); back(ev.creatureId, { x: ev.p.x, y: ev.p.y + layout.size * 0.6 }); s.dispatch({ kind: 'remove', creatureId: ev.creatureId }); break;
+    case 'tap': {
+      const stepBefore = lessonOn ? lessonStepNow() : 0;
+      engine.playSfx(s.state.muted[ev.creatureId] ? 'unmute' : 'mute'); s.dispatch({ kind: 'mute', creatureId: ev.creatureId });
+      if (lessonOn && s.state.muted[ev.creatureId]) silenced = true;
+      if (lessonOn) lessonLanded(stepBefore, s.state.spots.indexOf(ev.creatureId), t);
+      break;
+    }
+    case 'longPress': { const spot = s.state.spots.indexOf(ev.creatureId); if (spot >= 0) popup = { spot, creatureId: ev.creatureId }; engine.playSfx('pickup'); break; }
+    case 'volumeSet': {
+      const stepBefore = lessonOn ? lessonStepNow() : 0;
+      s.dispatch({ kind: 'volume', creatureId: ev.creatureId, value: ev.value });
+      if (lessonOn && ev.value < QUIET_BELOW) quiet = true;
+      if (lessonOn) lessonLanded(stepBefore, s.state.spots.indexOf(ev.creatureId), t);
+      break;
+    }
+    case 'popupSolo': {
+      const stepBefore = lessonOn ? lessonStepNow() : 0;
+      s.dispatch({ kind: 'solo', creatureId: ev.creatureId }); engine.playSfx('pop', 1.5);
+      if (lessonOn) lessonLanded(stepBefore, s.state.spots.indexOf(ev.creatureId), t);
+      break;
+    }
+    case 'trayTap': {
+      const i = stage.creatures.findIndex((c) => c.id === ev.creatureId);
+      // a full stage: the new singer takes the place of one of the same kind (else a muted one, else the first), which hops back to the menu
+      const spot = nextFreeSpot(s.state) >= 0 ? nextFreeSpot(s.state) : swapSpot(s.state, LAYER_OF, ev.creatureId);
+      if (i < 0) break;
+      apply({ type: 'drop', touch: -1, creatureId: ev.creatureId, spot, p: { x: layout.slotPos[i]!.x - scrollX, y: layout.slotPos[i]!.y - layout.size * 0.6 } }, t);
+      break;
+    }
+    case 'popupClose': popup = null; break;
+    case 'trayHide': trayOpen = false; break;
+    case 'trayShow': trayOpen = true; break;
+    case 'tapEmpty': {
+      s.dispatch({ kind: 'endSolo' });
+      if (ev.p.y < layout.stageH) { // the world's own toy: tapping the scenery plays a note of the scale
+        const deg = Math.max(0, Math.min(5, Math.floor((ev.p.x / W) * 6)));
+        engine.playSfx('pop', popRate(stage.key, deg) * 2);
+        addTap(ev.p.x, ev.p.y, stage.id === 'pond' || stage.id === 'neon' ? 'ripple' : stage.id === 'fair' ? 'spark' : 'star', t);
+      }
+      break;
+    }
+    case 'scroll': scrollX = ev.scrollX; break;
+  }
+}
+function pt(e: PointerEvent) { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+canvas.addEventListener('pointerdown', (e) => {
+  if (!ready || !session || playMode || lessonMode === 'done' || lessonMode === 'map') return;
+  lessonTouchAt = performance.now();
+  canvas.setPointerCapture(e.pointerId);
+  const t = performance.now();
+  if (!reduceMotion) addTap(pt(e).x, pt(e).y, 'press', t);
+  tracker.start(e.pointerId, pt(e), Date.now(), world()).forEach((ev) => apply(ev, t));
+  if (tracker.hasPendingLongPress) setTimeout(() => tracker.tick(Date.now(), world()).forEach((ev) => apply(ev, performance.now())), TUNING.longPressMs + 10);
+});
+canvas.addEventListener('pointermove', (e) => { if (ready && session && !playMode && (lessonMode !== 'done' && lessonMode !== 'map')) { lessonTouchAt = performance.now(); } if (ready && session && !playMode && (lessonMode !== 'done' && lessonMode !== 'map')) tracker.move(e.pointerId, pt(e), Date.now(), world()).forEach((ev) => apply(ev, performance.now())); });
+const up = (e: PointerEvent) => { if (ready && session && !playMode) tracker.end(e.pointerId, pt(e), Date.now(), world()).forEach((ev) => apply(ev, performance.now())); };
+canvas.addEventListener('pointerup', up);
+canvas.addEventListener('pointercancel', (e) => { if (session) tracker.cancel(e.pointerId, world()).forEach((ev) => apply(ev, performance.now())); });
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+async function loadAtlas(id: string) {
+  const img = new Image();
+  img.src = `sprites/${id}.png`;
+  try { await img.decode(); atlas = img; } catch { atlas = null; }
+}
+
+async function openStage(i: number) {
+  ready = false;
+  session = null; // the frame loop pauses until the new world is ready
+  $('loading').innerHTML = `${worldIconSvg(STAGES[i]!.id, 84)}<span class="spin"></span>`;
+  $('loading').classList.remove('hide');
+  engine.stop();
+  stageIdx = i; stage = STAGES[i]!;
+  placedAnim.clear(); drags = []; returning = []; celebration = null; scrollX = 0; hint = true;
+  clearTimeout(lessonTimer);
+  lessonMode = worldStart(stage.id, [...lessonsDone]); lessonLevel = 1; silenced = false; quiet = false; swaps = 0; comboFound = false;
+  lessonMeta.step = -1; lessonMeta.prev = null; lessonMeta.fx = []; lessonDir = 0; lessonTouchAt = performance.now(); $('lessonDone').classList.add('hide');
+  if (lessonMode === 'play') hint = false; // the lesson has its own hand
+  syncLessonUi();
+  document.querySelectorAll('#worlds button').forEach((b, k) => b.classList.toggle('on', k === i));
+  await engine.init();
+  await Promise.all([engine.loadStage(stage), loadAtlas(stage.id)]);
+  session = new Session(stage, engine, {
+    onCelebration: (id, bar) => { const c = stage.combos.find((q) => q.id === id)!; celebration = { comboId: id, creatureIds: [...c.creatureIds], startBeat: bar * 4 }; found.add(id); store.set('hum.combos', [...found]); engine.playSfx('combo'); toast(`${P.star(30)}${P.book(30)}<span>${en['combo.found']}</span>`);
+      if (lessonMode === 'play' && lessonLevel === 5 && id === level5Plan(stage).comboId) { const before = lessonStepNow(); comboFound = true; lessonLanded(before, Math.max(0, session!.state.spots.findIndex(Boolean)), performance.now()); } // level 5: the secret combo was found
+    },
+    onCelebrationEnd: () => { celebration = null; },
+    onGoal: (key) => { stickers.add(key); store.set('hum.goals', [...stickers]); if (lessonMode === 'play' || lessonMode === 'done') return; /* a level has its own cheer */ engine.playSfx('goal'); toast(`${P.sticker(30)}${GOAL_PICTO[key.split(':')[1]!]?.(24) ?? ''}<span>${(en as Record<string, string>)['goal.' + key.split(':')[1]]}</span>`); burst(W / 2, H * 0.3, ['#FFC857', '#FFFFFF', '#5FE3C0'], 16, 'star', performance.now(), 220); },
+  }, [...found], [...stickers]);
+  session.countIn = true;
+  session.start();
+  ready = true;
+  $('loading').classList.add('hide');
+  if (lessonMode === 'map') showLevelMap(); else if (lessonMode === 'play') showIntro(performance.now());
+}
+
+$('worlds').innerHTML = NAMES.map((n, i) => `<button data-i="${i}" aria-label="${n}" title="${n}"><span class="wi">${worldIconSvg(STAGES[i]!.id, 32)}</span><span class="long">${n}</span><span class="short">${SHORT[i]}</span></button>`).join('');
+$('worlds').addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button'); if (b) void openStage(Number(b.dataset.i)); });
+$('dice').addEventListener('click', () => {
+  if (!session || !ready) return;
+  const s = session;
+  rememberForUndo();
+  s.state.spots.forEach((id, sp) => { if (id) returning.push({ id, since: performance.now(), from: layout.spots[sp]! }); });
+  s.dispatch({ kind: 'clear' });
+  const now = performance.now();
+  randomBand(stage).forEach((id, spot) => {
+    const i = stage.creatures.findIndex((c) => c.id === id);
+    placedAnim.set(id, { since: now + spot * 90, from: { x: layout.slotPos[i]!.x - scrollX, y: layout.slotPos[i]!.y } });
+    s.dispatch({ kind: 'drop', creatureId: id, spot });
+  });
+  hint = false; engine.playSfx('goal');
+});
+$('clear').addEventListener('click', () => { if (!session) return; rememberForUndo(); session.state.spots.forEach((id, s) => { if (id) returning.push({ id, since: performance.now(), from: layout.spots[s]! }); }); session.dispatch({ kind: 'clear' }); });
+setLang(resolveLang('system', navigator.language));
+document.documentElement.lang = navigator.language;
+$('splash').dir = isRtl() ? 'rtl' : 'ltr'; // only the home screen is translated (the rest of the demo is in English)
+const skiaP = bootSkia('canvaskit.wasm');
+void skiaP.then((sk2: Skia2) => { skiaBook = sk2; view = new StageView(sk2, canvas); view.resize(W, H, dprNow()); }).catch((e) => console.error('skia', e));
+initHome({
+  splash: $('splash'), canvas: $<HTMLCanvasElement>('homeCv'), engine, stages: STAGES, creatures: STAGES[0]!.creatures, skia: skiaP,
+  foundOf: (i) => STAGES[i]!.combos.filter((c) => found.has(c.id)).length,
+  onPick: (i) => { $('splash').classList.add('hide'); void openStage(i); },
+  onHelp: () => $('helpBtn').click(), onSongs: () => $('songsBtn').click(),
+});
+$('mute').addEventListener('click', () => { const on = engine.state === 'running'; if (on) engine.pause(); else engine.resume(); $('mute').setAttribute('aria-pressed', String(on)); $('mute').classList.toggle('off', on); });
+resize();
+$('rotate').classList.toggle('hide', innerWidth >= innerHeight);
+requestAnimationFrame(frame);
+void stageIdx;
+
+// ---- combo book + how-to-play overlays ----
+const cardsEl = $('cards');
+function openBook() {
+  if (!session) return;
+  const s = session;
+  const on = new Set(s.state.spots.filter((x): x is string => !!x).filter((x) => !s.state.muted[x]));
+  cardsEl.innerHTML = '';
+  stage.combos.forEach((c) => {
+    const f = found.has(c.id);
+    const card = document.createElement('div'); card.className = 'card';
+    // the card is drawn by the app's own drawing code
+    const cw = 200, ch = 120, dpr = Math.min(2, devicePixelRatio || 1);
+    const cv = document.createElement('canvas'); cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr); cv.style.width = `${cw}px`; cv.style.height = `${ch}px`; cv.style.borderRadius = '12px';
+    if (skiaBook) {
+      const { sk, ck } = skiaBook, surf = ck.MakeSWCanvasSurface(cv);
+      if (surf) {
+        const rec = sk.PictureRecorder();
+        drawComboCard(sk, rec.beginRecording({ x: 0, y: 0, width: cw, height: ch }), stage, c, cw, ch, f, audibleIds(s.state));
+        const pic = rec.finishRecordingAsPicture();
+        const rc = surf.getCanvas(); rc.scale(dpr, dpr); rc.drawPicture((pic as any).ref ?? pic); surf.flush();
+      }
+    }
+    const n = s.state.solo ? 0 : c.creatureIds.filter((id) => on.has(id)).length;
+    const dots = document.createElement('div'); dots.className = 'combo' + (f ? ' found' : ''); dots.style.display = 'flex'; dots.style.gap = '6px';
+    dots.innerHTML = [0, 1, 2, 3].map((i) => `<i class="${f || i < n ? 'lit' : ''}"></i>`).join('');
+    card.append(cv, dots);
+    if (f) { const b = document.createElement('button'); b.textContent = 'Replay the show'; b.addEventListener('click', () => { $('book').classList.add('hide'); s.replayCombo(c.id); }); card.append(b); }
+    cardsEl.append(card);
+  });
+  const gs = document.createElement('div'); gs.className = 'goals';
+  gs.innerHTML = `<h3>${P.sticker(26)} ${(en as Record<string, string>)['goal.title']}</h3>` + s.goals.progress(s.state, s.discoveredInStage).map((g) => {
+    const d = stickers.has(`${stage.id}:${g.id}`);
+    return `<div class="goal${d ? ' done' : ''}"><span class="gp">${GOAL_PICTO[g.id]!(30)}</span><span class="gt"><b>${(en as Record<string, string>)['goal.' + g.id]}</b><small>${(en as Record<string, string>)['goal.' + g.id + '.desc']}</small></span>${P.dots(d ? g.total : g.n, g.total)}${d ? P.star(24) : ''}</div>`;
+  }).join('');
+  cardsEl.append(gs);
+  $('book').classList.remove('hide');
+}
+$('bookBtn').addEventListener('click', openBook);
+$('book').addEventListener('click', (e) => { if (e.target === $('book') || (e.target as HTMLElement).closest('.x')) $('book').classList.add('hide'); });
+let helpStep = 0;
+function showHelp() {
+  const v = $('helpVid') as HTMLVideoElement;
+  v.src = `help/${helpStep + 1}.mp4`;
+  void v.play().catch(() => { /* autoplay may need a tap */ });
+  $('helpTxt').textContent = (en as Record<string, string>)[`help.step${helpStep + 1}`]!;
+  $('hDots').innerHTML = Array.from({ length: 7 }, (_, i) => `<i class="${i === helpStep ? 'on' : ''}"></i>`).join('');
+}
+$('helpBtn').addEventListener('click', () => { $('helpBtn').classList.remove('pulse'); helpStep = 0; showHelp(); $('help').classList.remove('hide'); });
+$('hPrev').addEventListener('click', () => { helpStep = Math.max(0, helpStep - 1); showHelp(); });
+$('hNext').addEventListener('click', () => { if (helpStep === 6) $('help').classList.add('hide'); else { helpStep++; showHelp(); } });
+$('help').addEventListener('click', (e) => { if (e.target === $('help') || (e.target as HTMLElement).closest('.x')) $('help').classList.add('hide'); });
+
+// ---- recording, saved songs, playback and export ----
+const MAX_SONGS = 50;
+const loadSongs = (): Song[] => { try { return JSON.parse(localStorage.getItem('hum.songs') ?? '[]') as Song[]; } catch { return []; } };
+const saveSongs = (a: Song[]) => { try { localStorage.setItem('hum.songs', JSON.stringify(a)); } catch { /* storage unavailable */ } };
+const fmt = (bars: number, bpm: number) => { const s = Math.round(bars * barSec(bpm)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const stageOf = (song: Song) => STAGES.find((x) => x.id === song.stageId)!;
+
+function setRecUi() {
+  const b = $('recBtn');
+  b.classList.toggle('recording', recording);
+  b.setAttribute('aria-label', recording ? 'Stop recording' : 'Record');
+  $('recLbl').textContent = recording ? '0:00' : 'Record';
+}
+function stopRecording() {
+  if (!session || !session.recorder) return;
+  const song = session.stopRecording({ id: `song_${Date.now()}`, name: autoName(loadSongs().map((x) => x.name)), createdAt: Date.now() });
+  recording = false; setRecUi();
+  if (!song) return;
+  const all = [...loadSongs(), song]; saveSongs(all);
+  toast(`${P.sticker(30)}<span>${en['rec.saved']}</span>`);
+  renderSongs();
+}
+$('recBtn').addEventListener('click', () => {
+  if (!session || !ready || playMode) return;
+  if (recording) return stopRecording();
+  if (loadSongs().length >= MAX_SONGS) { toast(`<span>${en['songs.limit']}</span>`); return; }
+  session.startRecording(); recording = true; setRecUi();
+});
+setInterval(() => {
+  if (!recording || !session?.recorder) return;
+  const bars = Math.max(0, session.lastProvidedBar + 1 - session.recorder.startBar);
+  const secs = Math.round(bars * barSec(stage.bpm));
+  $('recLbl').textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  $('recBtn').classList.toggle('warn', bars >= warnBars(stage.bpm));
+  if (bars >= session.recorder.maxBarCount) stopRecording();
+}, 250);
+
+function renderSongs() {
+  const list = loadSongs();
+  const el = $('songList');
+  if (!list.length) { el.innerHTML = `<div class="empty">${P.sticker(48)}<p>No songs yet</p><p class="hint">Tap the red record button on the stage, play something, and your song shows up here.</p></div>`; return; }
+  el.innerHTML = '';
+  [...list].reverse().forEach((song) => {
+    const st = stageOf(song);
+    const row = document.createElement('div'); row.className = 'srow';
+    row.innerHTML = `<span class="wi">${worldIconSvg(st.id, 30)}</span><div class="sinfo"><input class="sname" value="${song.name.replace(/"/g, '&quot;')}" maxlength="24" aria-label="Song name"><small>${fmt(song.bars, st.bpm)} · ${song.bars} bars · ${new Date(song.createdAt).toLocaleDateString()}</small></div>`;
+    const btn = (label: string, svgHtml: string, fn: () => void, cls = '') => { const b = document.createElement('button'); b.className = `ic ${cls}`; b.setAttribute('aria-label', label); b.title = label; b.innerHTML = svgHtml; b.addEventListener('click', fn); return b; };
+    row.append(
+      btn('Play', P.play(24), () => { $('songs').classList.add('hide'); void playSong(song); }),
+      btn('Download song', '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 15V4M8 8l4-4 4 4M5 12v8h14v-8"/></svg>', () => void exportWav(song)),
+      btn('Delete. Tap again to confirm.', '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/></svg>', () => {}, 'del'),
+    );
+    const del = row.querySelector('.del') as HTMLButtonElement;
+    let armed = false;
+    del.addEventListener('click', () => { if (!armed) { armed = true; del.classList.add('armed'); setTimeout(() => { armed = false; del.classList.remove('armed'); }, 2500); return; } saveSongs(loadSongs().filter((x) => x.id !== song.id)); renderSongs(); });
+    (row.querySelector('.sname') as HTMLInputElement).addEventListener('change', (e) => { const name = (e.target as HTMLInputElement).value.trim().slice(0, 24) || song.name; saveSongs(loadSongs().map((x) => (x.id === song.id ? { ...x, name } : x))); });
+    el.append(row);
+  });
+}
+$('songsBtn').addEventListener('click', () => { renderSongs(); $('songs').classList.remove('hide'); });
+$('songs').addEventListener('click', (e) => { if (e.target === $('songs') || (e.target as HTMLElement).closest('.x')) $('songs').classList.add('hide'); });
+
+async function playSong(song: Song) {
+  const st = stageOf(song);
+  ready = false;
+  engine.stop();
+  stageIdx = STAGES.indexOf(st); stage = st;
+  document.querySelectorAll('#worlds button').forEach((b, k) => b.classList.toggle('on', k === stageIdx));
+  placedAnim.clear(); drags = []; returning = []; celebration = null; popup = null; recording = false; setRecUi();
+  clearTimeout(lessonTimer); lessonMode = null; lessonMeta.fx = []; $('levelMap').classList.add('hide'); syncLessonUi();
+  await engine.init();
+  await Promise.all([engine.loadStage(st), loadAtlas(st.id)]);
+  const fake = { state: stateAtBar(song, 0), recorder: null, countIn: false, lastProvidedBar: 0, goals: { progress: () => [] }, discoveredInStage: 0, dispatch() {}, replayCombo() {}, startRecording() {}, setEvents() {} } as unknown as Session;
+  session = fake;
+  playMode = { song };
+  $('playbar').classList.remove('hide');
+  const provider = songProvider(st, song);
+  const seen = new Set<string>();
+  engine.start(st.bpm, (bar) => {
+    const state = stateAtBar(song, bar);
+    const now = performance.now();
+    placedAnim.clear();
+    state.spots.forEach((id) => { if (id && !seen.has(id)) { placedAnim.set(id, { since: now, from: { x: layout.slotPos[st.creatures.findIndex((c) => c.id === id)]!.x, y: layout.slotPos[0]!.y } }); } });
+    seen.clear(); state.spots.forEach((id) => { if (id) seen.add(id); });
+    fake.state = state;
+    const cid = comboStartsAt(song, bar);
+    if (cid) { const combo = st.combos.find((c) => c.id === cid)!; celebration = { comboId: cid, creatureIds: [...combo.creatureIds], startBeat: bar * 4 }; }
+    else if (celebration && bar * 4 - celebration.startBeat >= 32) celebration = null;
+    if (bar > song.bars) setTimeout(stopPlayback, 0);
+    return provider(bar);
+  });
+}
+function stopPlayback() {
+  if (!playMode) return;
+  playMode = null; $('playbar').classList.add('hide');
+  void openStage(stageIdx);
+}
+$('stopPlay').addEventListener('click', stopPlayback);
+
+async function exportWav(song: Song) {
+  const st = stageOf(song);
+  toast('<span>Preparing your song…</span>');
+  try {
+    await engine.init();
+    const files = [...st.creatures.map((c) => c.loopFile), ...st.combos.map((c) => c.bonusLoopFile)];
+    const bank = await engine.decodeBank(files, samplesPerBar(st.bpm) * st.loopBars);
+    const { samples } = renderSong(st, song, bank);
+    const blob = new Blob([encodeWav(samples, 48000) as BlobPart], { type: 'audio/wav' });
+    const file = new File([blob], `Hummlings - ${song.name}.wav`, { type: 'audio/wav' });
+    const nav = navigator as Navigator & { canShare?: (d: object) => boolean; share?: (d: object) => Promise<void> };
+    if (nav.canShare?.({ files: [file] })) { await nav.share!({ files: [file], title: song.name }); return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.append(a); a.click(); a.remove();
+    toast('<span>Your audio file is ready. If nothing downloaded, your browser may have blocked it. The app can share songs directly.</span>');
+  } catch { toast('<span>Could not make the audio file. Please try again.</span>'); }
+}
+renderSongs();
+
+// ---- undo for Clear and Surprise (7 seconds) ----
+let undoState: StageState | null = null;
+let undoTimer: ReturnType<typeof setTimeout> | undefined;
+function rememberForUndo() {
+  if (!session || !session.state.spots.some(Boolean)) return;
+  undoState = session.state;
+  $('undo').classList.remove('hide');
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(() => $('undo').classList.add('hide'), 7000);
+}
+$('undo').addEventListener('click', () => {
+  const b = undoState;
+  if (!session || !b) return;
+  const s = session;
+  s.state.spots.forEach((id) => { if (id) s.dispatch({ kind: 'remove', creatureId: id }); });
+  b.spots.forEach((id, spot) => {
+    if (!id) return;
+    placedAnim.set(id, { since: performance.now(), from: layout.spots[spot]! });
+    s.dispatch({ kind: 'drop', creatureId: id, spot });
+    const v = b.volume[id];
+    if (v !== undefined) s.dispatch({ kind: 'volume', creatureId: id, value: v });
+    if (b.muted[id]) s.dispatch({ kind: 'mute', creatureId: id });
+  });
+  $('undo').classList.add('hide');
+});
