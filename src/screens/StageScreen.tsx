@@ -265,7 +265,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
   const onRecord = () => {
     if (recording) return stopRecording();
     if (progressRef.current.songs.length >= TUNING.maxSongs) return setLimitMsg(true);
-    session.startRecording();
+    session.startRecording(); track('record_start', { stage: stage.id });
     setRecording(true);
     if (!progressRef.current.coachRecordDone) update((p) => ({ ...p, coachRecordDone: true }));
   };
@@ -518,6 +518,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
         const pop = sv.popup.value;
         const cue = lvl === 1 ? lessonCue(stage, l, sv.scrollX.value, st.spots, step) : lvl === 2 ? level2Cue(stage, l, sv.scrollX.value, st.spots, st.muted, step) : lvl === 3 ? level3Cue(stage, st.spots, st.volume, pop ? { spot: pop.spot } : null, step) : lvl === 4 ? level4Cue(stage, l, sv.scrollX.value, st.spots, step) : level5Cue(stage, l, sv.scrollX.value, st.spots);
         const cur = sv.coach.value;
+      if (cue && cue.kind !== cur?.kind) track('coach_cue', { stage: stage.id, kind: cue.kind }); // a hint appeared: the child was idle or stuck
         if ((cue?.kind ?? null) !== (cur?.kind ?? null) || (cue?.spot ?? -1) !== (cur?.spot ?? -1) || (cue?.slot ?? -1) !== (cur?.slot ?? -1) || (cue?.dir ?? 0) !== (cur?.dir ?? 0)) sv.coach.value = cue;
         const dir = cue?.kind === 'swipe' ? (cue.dir ?? 1) : 0;
         setLessonDir((d) => (d === dir ? d : dir));
@@ -634,7 +635,7 @@ export function StageScreen({ stage, onBack, onSwitch, onLocked, onSongs, onHelp
         }} />}
       </View>}
 
-      {book && <ComboBook stage={stage} session={session} discovered={progress.discoveredCombos} onClose={() => setBook(false)} onReplay={(id) => { setBook(false); session.replayCombo(id); }} />}
+      {book && <ComboBook stage={stage} session={session} discovered={progress.discoveredCombos} onClose={() => setBook(false)} onReplay={(id) => { track('combo_replay', { stage: stage.id, combo: id }); setBook(false); session.replayCombo(id); }} />}
       {screenReader && ready && (
         <>
           <ScrollView horizontal style={[styles.srTray, { top: layout.tray.y, height: layout.tray.h }]} contentContainerStyle={{ alignItems: 'center' }}>

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { STAGES } from '../content';
 import { getPurchases } from '../app/purchases';
+import { track } from '../app/analytics';
 import { useProgress } from '../app/progress';
 import { t } from '../i18n';
 import { IconButton } from '../ui/IconButton';
@@ -20,10 +21,12 @@ export function UnlockScreen({ onBack }: { onBack: () => void }) {
   useEffect(() => { void getPurchases().getPrice().then(setPrice); }, []);
   // the store price is isolated so a currency sign never jumps to the other side in a right-to-left sentence; without a price the label stays complete
   const buyLabel = price ? t('unlock.buy', { price: `\u2066${price}\u2069` }) : t('unlock.buyNoPrice');
+  useEffect(() => { track('unlock_shown'); }, []);
   const cw = Math.min(width * 0.13, 150), ch = Math.min(height * 0.42, cw * 1.1);
   const buy = async () => {
-    setStatus('pending');
+    setStatus('pending'); track('purchase_tap');
     const r = await getPurchases().buy();
+    track('purchase_result', { result: r });
     if (r === 'purchased') { update((p) => ({ ...p, unlocked: true })); setStatus('done'); }
     else setStatus(r === 'pending' ? 'pending' : r === 'cancelled' ? 'idle' : 'failed');
   };
