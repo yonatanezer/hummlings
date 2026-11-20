@@ -157,7 +157,7 @@ function drawMapBackdrop(sk: SkiaApi, c: Canvas, W: number, H: number, t: number
   c.drawCircle(mx + H * 0.018, my + H * 0.02, H * 0.008, paint(sk, '#EBD79A', 0.8 * a));
   for (let i = 0; i < 38; i++) {
     const tw = 0.5 + 0.5 * Math.sin(t / 650 + i * 1.9);
-    c.drawCircle(unit(i) * W, unit(i + 50) * H * 0.62, 0.7 + unit(i + 90) * 1.5, paint(sk, '#FFFFFF', (0.25 + 0.6 * tw) * a));
+    c.drawCircle(unit(i) * W, unit(i + 50) * H * 0.62, 0.7 + unit(i + 90) * 1.5, paint(sk, '#FFFFFF', qa((0.25 + 0.6 * tw) * a))); // quantized: the paint cache then holds ~16 paints instead of one new native paint per star per frame
   }
   const y0 = H * 0.74;
   c.drawRect(rect(0, y0, W, H - y0), gradientPaint(sk, 0, y0, 0, H, ['#235C93', '#0E2850'], a));
